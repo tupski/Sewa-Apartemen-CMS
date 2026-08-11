@@ -1,11 +1,14 @@
 <?php
 
+use App\Http\Controllers\AmenityController;
 use App\Http\Controllers\BlockController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\NavigationController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PropertyController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\UnitController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -46,6 +49,18 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
     // Settings Management
     Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::post('settings', [SettingsController::class, 'update'])->name('settings.update');
+
+    // Property Management
+    Route::resource('properties', PropertyController::class);
+    Route::patch('properties/{property}/status', [PropertyController::class, 'updateStatus'])->name('properties.status');
+
+    // Unit Management
+    Route::resource('units', UnitController::class);
+    Route::patch('units/{unit}/status', [UnitController::class, 'updateStatus'])->name('units.status');
+
+    // Amenity Management
+    Route::resource('amenities', AmenityController::class);
+    Route::patch('amenities/{amenity}/status', [AmenityController::class, 'updateStatus'])->name('amenities.status');
 });
 
 require __DIR__.'/auth.php';
