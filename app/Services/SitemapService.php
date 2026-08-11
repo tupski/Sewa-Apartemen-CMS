@@ -94,8 +94,15 @@ class SitemapService
             ];
         }
 
-        // Guard: future BlogPost model
-        if (class_exists(\App\Models\Post::class) && !class_exists(\App\Models\BlogPost::class)) {
+        // Blog
+        if (class_exists(\App\Models\Post::class)) {
+            $urls[] = [
+                'loc' => url('/blog'),
+                'lastmod' => now()->toIso8601String(),
+                'changefreq' => 'weekly',
+                'priority' => '0.7',
+            ];
+
             $postModel = \App\Models\Post::class;
             foreach ($postModel::where('status', 'published')->get() as $post) {
                 $urls[] = [

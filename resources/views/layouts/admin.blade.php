@@ -105,6 +105,35 @@
                     Amenities
                 </a>
 
+                <!-- Blog Section -->
+                <div class="pt-4 pb-2">
+                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase">Blog</p>
+                </div>
+
+                <a href="{{ route('admin.posts.index') }}"
+                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.posts.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path>
+                    </svg>
+                    Posts
+                </a>
+
+                <a href="{{ route('admin.categories.index') }}"
+                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.categories.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h-1v2h1V7zm0 4h-1v2h1v-2zm0 4h-1v2h1v-2zM17 7h-1v2h1V7zm0 4h-1v2h1v-2zm0 4h-1v2h1v-2zM5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5c0-1.1.9-2 2-2z"></path>
+                    </svg>
+                    Categories
+                </a>
+
+                <a href="{{ route('admin.tags.index') }}"
+                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.tags.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10M7 11h10M7 15h5"></path>
+                    </svg>
+                    Tags
+                </a>
+
                 <!-- SEO Section -->
                 <div class="pt-4 pb-2">
                     <p class="px-4 text-xs font-semibold text-gray-400 uppercase">SEO</p>

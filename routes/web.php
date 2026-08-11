@@ -2,21 +2,31 @@
 
 use App\Http\Controllers\AmenityController;
 use App\Http\Controllers\BlockController;
+use App\Http\Controllers\BlogController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\NavigationController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PropertyController;
 use App\Http\Controllers\RedirectController;
 use App\Http\Controllers\SeoController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\TagController;
 use App\Http\Controllers\UnitController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+// Public Blog Routes
+Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
+Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
+Route::get('/blog/category/{slug}', [BlogController::class, 'category'])->name('blog.category');
+Route::get('/blog/tag/{slug}', [BlogController::class, 'tag'])->name('blog.tag');
 
 // Public SEO routes
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('sitemap');
@@ -81,6 +91,11 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
 
     // Redirect Management
     Route::resource('redirects', RedirectController::class);
+
+    // Blog Management
+    Route::resource('posts', PostController::class);
+    Route::resource('categories', CategoryController::class);
+    Route::resource('tags', TagController::class);
 });
 
 require __DIR__.'/auth.php';
