@@ -118,15 +118,25 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm text-gray-500">
-                                        @if($unit->size_sqm){{ $unit->size_sqm }}m²@endif
-                                        @if($unit->bedrooms) • {{ $unit->bedrooms }} BR@endif
-                                        @if($unit->bathrooms) • {{ $unit->bathrooms }} BA@endif
+                                        @if($unit->size_sqm)
+                                            {{ $unit->size_sqm }}m²
+                                        @endif
+                                        @if($unit->bedrooms)
+                                             • {{ $unit->bedrooms }} BR
+                                        @endif
+                                        @if($unit->bathrooms)
+                                             • {{ $unit->bathrooms }} BA
+                                        @endif
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm text-gray-500">
-                                        @if($unit->price_per_night)Night: Rp{{ number_format($unit->price_per_night) }}@endif
-                                        @if($unit->price_per_month)<br>Mth: Rp{{ number_format($unit->price_per_month) }}@endif
+                                        @if($unit->price_per_night)
+                                            Night: Rp{{ number_format($unit->price_per_night) }}
+                                        @endif
+                                        @if($unit->price_per_month)
+                                            <br>Mth: Rp{{ number_format($unit->price_per_month) }}
+                                        @endif
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">

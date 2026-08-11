@@ -32,7 +32,7 @@ class NavigationController extends Controller
             ->get()
             ->groupBy('menu_location');
 
-        return view('navigations.index', compact('navigations', 'groupedNavigations'));
+        return view('admin.navigations.index', compact('navigations', 'groupedNavigations'));
     }
 
     /**
@@ -44,7 +44,7 @@ class NavigationController extends Controller
             ->ordered()
             ->get();
 
-        return view('navigations.create', compact('navigations'));
+        return view('admin.navigations.create', compact('navigations'));
     }
 
     /**
@@ -55,7 +55,7 @@ class NavigationController extends Controller
         $navigation = Navigation::create($request->validated());
 
         return redirect()
-            ->route('navigations.index')
+            ->route('admin.navigations.index')
             ->with('success', 'Navigation item created successfully.');
     }
 
@@ -71,7 +71,7 @@ class NavigationController extends Controller
             ->ordered()
             ->get();
 
-        return view('navigations.edit', compact('navigation', 'navigations'));
+        return view('admin.navigations.edit', compact('navigation', 'navigations'));
     }
 
     /**
@@ -82,7 +82,7 @@ class NavigationController extends Controller
         $navigation->update($request->validated());
 
         return redirect()
-            ->route('navigations.index')
+            ->route('admin.navigations.index')
             ->with('success', 'Navigation item updated successfully.');
     }
 
@@ -94,7 +94,7 @@ class NavigationController extends Controller
         $navigation->delete();
 
         return redirect()
-            ->route('navigations.index')
+            ->route('admin.navigations.index')
             ->with('success', 'Navigation item deleted successfully.');
     }
 

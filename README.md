@@ -1,58 +1,95 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sewa Apartemen CMS
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A full-featured apartment rental management system built with Laravel 13.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Property Management**: CRUD for properties with address, city, province, status
+- **Unit Management**: Units per property with type, floor, size, bedrooms, bathrooms, pricing
+- **Amenities**: Manage amenities and assign to units
+- **Booking System**: Public booking form with date picker, guest counter, booking codes (BK-YYYYMMDD-XXXX), status workflow (pending → confirmed → completed / cancelled), admin notes, CSV export
+- **Blog**: Posts, categories, tags with rich text editor and featured images
+- **SEO Engine**: Meta tags, Open Graph, Twitter Cards, JSON-LD structured data, auto-generated sitemap.xml, robots.txt, redirect manager with loop detection
+- **Analytics**: GA4, Google Tag Manager, Meta Pixel, Microsoft Clarity, Google Search Console verification
+- **Pages & Blocks**: Custom pages with content blocks (hero, rich text, image, gallery)
+- **Navigation**: Multi-location menu builder (main, footer, sidebar) with drag-to-reorder
+- **Media Library**: File upload and management
+- **Settings**: Site configuration (general, contact, analytics, social, SEO, booking)
+- **Web Installer**: 5-step guided installation
+- **User Management**: Admin accounts with role assignment
+- **Security**: CSRF, X-Frame-Options, X-Content-Type-Options, mass assignment protection
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Quick Start
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Requirements
 
-## Learning Laravel
+- PHP 8.3+
+- MySQL 8.0+ / MariaDB 10.6+
+- Node.js 18+
+- Composer 2.x
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### Installation
 
 ```bash
-composer require laravel/boost --dev
+# Clone and install
+git clone <repo-url> sewa-apartemen-cms
+cd sewa-apartemen-cms
+composer setup
 
-php artisan boost:install
+# Or step by step:
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+npm install && npm run build
+php artisan storage:link
+
+# Start dev server
+composer dev
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Open http://localhost:8000/install to run the web installer, or http://localhost:8000 to view the site.
 
-## Contributing
+### Default Admin
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+After seeding:
+- Email: `admin@admin.com`
+- Password: `password`
 
-## Code of Conduct
+## Documentation
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+| Document | Description |
+|----------|-------------|
+| [User Guide](docs/USER_GUIDE.md) | How to browse properties, book units, read blog |
+| [Admin Guide](docs/ADMIN_GUIDE.md) | Managing properties, units, bookings, pages, blog, settings |
+| [Developer Guide](docs/DEVELOPER_GUIDE.md) | Code structure, services, caching, testing, extending |
+| [FAQ](docs/FAQ.md) | Common questions and answers |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Fix common issues |
+| [Deployment](docs/DEPLOYMENT.md) | Production deployment checklist |
+| [Architecture](docs/ARCHITECTURE.md) | System architecture overview |
+| [Database](docs/DATABASE.md) | Database schema |
+| [SEO](docs/SEO.md) | SEO architecture |
+| [Security](docs/SECURITY.md) | Security measures |
+| [Analytics](docs/ANALYTICS.md) | Analytics integrations |
+| [Booking](docs/BOOKING.md) | Booking flow |
+| [Testing](docs/TESTING.md) | Testing strategy |
+| [Roadmap](docs/ROADMAP.md) | Implementation phases |
 
-## Security Vulnerabilities
+## Testing
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+php artisan test
+```
+
+174 tests, 414 assertions. All passing.
+
+## Tech Stack
+
+- Backend: Laravel 13.8, PHP 8.3
+- Frontend: Blade, Tailwind CSS, Alpine.js
+- Database: MySQL 8 / MariaDB
+- Build: Vite
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+MIT
