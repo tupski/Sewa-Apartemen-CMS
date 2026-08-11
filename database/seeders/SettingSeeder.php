@@ -12,26 +12,93 @@ class SettingSeeder extends Seeder
      */
     public function run(): void
     {
-        $defaults = [
-            'site_name' => 'My Apartment',
+        // General Settings
+        $generalSettings = [
+            'site_name' => 'Sewa Apartemen CMS',
+            'site_description' => 'Professional apartment rental management system',
+            'site_logo' => '',
+            'site_favicon' => '',
+            'contact_email' => 'info@sewaapartemen.com',
+            'contact_phone' => '+62 21 1234 5678',
+            'contact_address' => 'Jakarta, Indonesia',
             'site_tagline' => 'Quality Living in Premium Location',
             'timezone' => 'Asia/Jakarta',
             'locale' => 'id',
             'currency' => 'IDR',
             'whatsapp_default' => '',
-            'primary_color' => '#3B82F6',
-            'secondary_color' => '#10B981',
-            'accent_color' => '#F59E0B',
-            'active_theme' => 'modern',
-            'theme_primary_color' => '#3B82F6',
-            'theme_secondary_color' => '#10B981',
-            'theme_accent_color' => '#F59E0B',
         ];
 
-        foreach ($defaults as $key => $value) {
+        // Footer Settings
+        $footerSettings = [
+            'footer_about' => 'Sewa Apartemen CMS is a professional apartment rental management system that helps you manage your properties efficiently.',
+            'footer_copyright' => '© 2026 Sewa Apartemen CMS. All rights reserved.',
+            'social_facebook' => '',
+            'social_twitter' => '',
+            'social_instagram' => '',
+            'social_linkedin' => '',
+            'social_youtube' => '',
+        ];
+
+        // Theme Settings
+        $themeSettings = [
+            'primary_color' => '#3b82f6',
+            'secondary_color' => '#10b981',
+            'header_layout' => 'default',
+            'footer_layout' => 'default',
+            'enable_dark_mode' => '0',
+            'accent_color' => '#F59E0B',
+            'active_theme' => 'modern',
+        ];
+
+        // SEO Settings
+        $seoSettings = [
+            'meta_description' => 'Professional apartment rental management system for modern property management',
+            'meta_keywords' => 'apartment, rental, property management, cms, booking',
+            'google_analytics' => '',
+            'facebook_pixel' => '',
+        ];
+
+        // Insert general settings
+        foreach ($generalSettings as $key => $value) {
             Setting::updateOrCreate(
                 ['key' => $key],
-                ['value' => $value]
+                [
+                    'value' => $value,
+                    'group' => 'general',
+                ]
+            );
+        }
+
+        // Insert footer settings
+        foreach ($footerSettings as $key => $value) {
+            Setting::updateOrCreate(
+                ['key' => $key],
+                [
+                    'value' => $value,
+                    'group' => 'footer',
+                ]
+            );
+        }
+
+        // Insert theme settings
+        foreach ($themeSettings as $key => $value) {
+            Setting::updateOrCreate(
+                ['key' => $key],
+                [
+                    'value' => $value,
+                    'group' => 'theme',
+                ]
+            );
+        }
+
+        // Insert SEO settings
+        foreach ($seoSettings as $key => $value) {
+            Setting::updateOrCreate(
+                ['key' => $key],
+                [
+                    'value' => $value,
+                    'group' => 'seo',
+                ]
             );
         }
     }

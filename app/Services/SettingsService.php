@@ -30,9 +30,10 @@ class SettingsService
      *
      * @param string $key
      * @param mixed $value
+     * @param string $group
      * @return void
      */
-    public static function set(string $key, $value): void
+    public static function set(string $key, $value, string $group = 'general'): void
     {
         $type = self::determineType($value);
 
@@ -41,6 +42,7 @@ class SettingsService
             [
                 'value' => is_bool($value) ? (int) $value : $value,
                 'type' => $type,
+                'group' => $group,
             ]
         );
 
@@ -50,12 +52,17 @@ class SettingsService
     /**
      * Get all settings as an array.
      *
+     * @param string|null $group Optional group filter
      * @return array
      */
-    public static function all(): array
+    public static function all(?string $group = null): array
     {
         if (self::$cache === null) {
             self::loadCache();
+        }
+
+        if ($group !== null) {
+            return Setting::where('group', $group)->pluck('value', 'key')->toArray();
         }
 
         return self::$cache;
