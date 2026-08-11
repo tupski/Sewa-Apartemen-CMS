@@ -93,4 +93,26 @@ class Property extends Model
     {
         return $query->where('is_featured', true);
     }
+
+    /**
+     * Get the SEO metadata for the property.
+     */
+    public function seo()
+    {
+        return $this->morphOne(SeoMetadata::class, 'seoable');
+    }
+
+    /**
+     * The "booted" method of the model.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            \Illuminate\Support\Facades\Cache::forget('sitemap.xml');
+        });
+
+        static::deleted(function () {
+            \Illuminate\Support\Facades\Cache::forget('sitemap.xml');
+        });
+    }
 }

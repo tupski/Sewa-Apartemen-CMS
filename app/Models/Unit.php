@@ -95,4 +95,26 @@ class Unit extends Model
     {
         return $query->where('status', 'maintenance');
     }
+
+    /**
+     * Get the SEO metadata for the unit.
+     */
+    public function seo()
+    {
+        return $this->morphOne(SeoMetadata::class, 'seoable');
+    }
+
+    /**
+     * The "booted" method of the model.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            \Illuminate\Support\Facades\Cache::forget('sitemap.xml');
+        });
+
+        static::deleted(function () {
+            \Illuminate\Support\Facades\Cache::forget('sitemap.xml');
+        });
+    }
 }

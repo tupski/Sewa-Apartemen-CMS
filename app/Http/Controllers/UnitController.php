@@ -85,6 +85,16 @@ class UnitController extends Controller
                 $unit->amenities()->sync($request->amenities);
             }
 
+            // Save SEO metadata
+            $unit->seo()->updateOrCreate([], [
+                'meta_title' => $request->input('seo.meta_title'),
+                'meta_description' => $request->input('seo.meta_description'),
+                'open_graph' => $request->input('seo.open_graph'),
+                'twitter' => $request->input('seo.twitter'),
+                'canonical_url' => $request->input('seo.canonical_url'),
+                'index_status' => $request->boolean('seo.index_status', true),
+            ]);
+
             return redirect()
                 ->route('admin.units.index')
                 ->with('success', 'Unit created successfully.');
@@ -130,6 +140,16 @@ class UnitController extends Controller
             if ($request->has('amenities')) {
                 $unit->amenities()->sync($request->amenities);
             }
+
+            // Save SEO metadata
+            $unit->seo()->updateOrCreate([], [
+                'meta_title' => $request->input('seo.meta_title'),
+                'meta_description' => $request->input('seo.meta_description'),
+                'open_graph' => $request->input('seo.open_graph'),
+                'twitter' => $request->input('seo.twitter'),
+                'canonical_url' => $request->input('seo.canonical_url'),
+                'index_status' => $request->boolean('seo.index_status', true),
+            ]);
 
             return redirect()
                 ->route('admin.units.index')

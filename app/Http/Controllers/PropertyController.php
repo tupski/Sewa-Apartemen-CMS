@@ -78,6 +78,16 @@ class PropertyController extends Controller
                 $property->amenities()->sync($request->amenities);
             }
 
+            // Save SEO metadata
+            $property->seo()->updateOrCreate([], [
+                'meta_title' => $request->input('seo.meta_title'),
+                'meta_description' => $request->input('seo.meta_description'),
+                'open_graph' => $request->input('seo.open_graph'),
+                'twitter' => $request->input('seo.twitter'),
+                'canonical_url' => $request->input('seo.canonical_url'),
+                'index_status' => $request->boolean('seo.index_status', true),
+            ]);
+
             return redirect()
                 ->route('admin.properties.index')
                 ->with('success', 'Property created successfully.');
@@ -121,6 +131,16 @@ class PropertyController extends Controller
             if ($request->has('amenities')) {
                 $property->amenities()->sync($request->amenities);
             }
+
+            // Save SEO metadata
+            $property->seo()->updateOrCreate([], [
+                'meta_title' => $request->input('seo.meta_title'),
+                'meta_description' => $request->input('seo.meta_description'),
+                'open_graph' => $request->input('seo.open_graph'),
+                'twitter' => $request->input('seo.twitter'),
+                'canonical_url' => $request->input('seo.canonical_url'),
+                'index_status' => $request->boolean('seo.index_status', true),
+            ]);
 
             return redirect()
                 ->route('admin.properties.index')

@@ -88,4 +88,12 @@ class Page extends Model
     {
         return $query->where('status', 'draft');
     }
+
+    /**
+     * Get the SEO metadata for the page.
+     */
+    public function seo()
+    {
+        return $this->morphOne(SeoMetadata::class, 'seoable');
+    }
 }

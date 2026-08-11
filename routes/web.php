@@ -8,6 +8,8 @@ use App\Http\Controllers\NavigationController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PropertyController;
+use App\Http\Controllers\RedirectController;
+use App\Http\Controllers\SeoController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\UnitController;
 use Illuminate\Support\Facades\Route;
@@ -15,6 +17,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+// Public SEO routes
+Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('sitemap');
+Route::get('/robots.txt', [SeoController::class, 'robots'])->name('robots');
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -72,6 +78,9 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
     Route::resource('bookings', BookingController::class)->only(['index', 'show', 'destroy']);
     Route::patch('bookings/{booking}/confirm', [BookingController::class, 'confirm'])->name('bookings.confirm');
     Route::patch('bookings/{booking}/complete', [BookingController::class, 'complete'])->name('bookings.complete');
+
+    // Redirect Management
+    Route::resource('redirects', RedirectController::class);
 });
 
 require __DIR__.'/auth.php';
