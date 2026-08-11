@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AmenityController;
 use App\Http\Controllers\BlockController;
+use App\Http\Controllers\BookingController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\NavigationController;
 use App\Http\Controllers\PageController;
@@ -24,6 +25,11 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+// Public Booking Routes
+Route::get('/units/{unit:slug}/booking', [BookingController::class, 'create'])->name('bookings.create');
+Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
+Route::get('/bookings/{booking}/success', [BookingController::class, 'success'])->name('bookings.success');
 
 // Admin CMS Routes (require authentication)
 Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
@@ -61,6 +67,11 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
     // Amenity Management
     Route::resource('amenities', AmenityController::class);
     Route::patch('amenities/{amenity}/status', [AmenityController::class, 'updateStatus'])->name('amenities.status');
+
+    // Booking Management (Admin)
+    Route::resource('bookings', BookingController::class)->only(['index', 'show', 'destroy']);
+    Route::patch('bookings/{booking}/confirm', [BookingController::class, 'confirm'])->name('bookings.confirm');
+    Route::patch('bookings/{booking}/complete', [BookingController::class, 'complete'])->name('bookings.complete');
 });
 
 require __DIR__.'/auth.php';
