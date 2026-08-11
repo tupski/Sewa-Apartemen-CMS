@@ -70,7 +70,7 @@
                         <div class="flex-1">
                             <h4 class="text-xl font-semibold text-gray-900">{{ $booking->unit->name }}</h4>
                             <p class="text-gray-600">{{ $booking->unit->property->name }}</p>
-                            
+
                             <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
                                 @if($booking->unit->unit_type)
                                     <div><span class="font-medium text-gray-500">Type:</span> {{ $booking->unit->unit_type }}</div>
@@ -134,6 +134,20 @@
                 </div>
             </div>
 
+            <!-- Admin Notes -->
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-800">Admin Notes</h3>
+                </div>
+                <div class="p-6">
+                    <form action="{{ route('admin.bookings.notes', $booking) }}" method="POST" class="space-y-3">
+                        @csrf
+                        <textarea name="notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Internal notes about this booking...">{{ old('notes', $booking->notes) }}</textarea>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">Save Notes</button>
+                    </form>
+                </div>
+            </div>
+
             <!-- Booking Dates -->
             <div class="bg-white rounded-lg shadow-sm overflow-hidden">
                 <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
@@ -178,53 +192,47 @@
                 </div>
                 <div class="p-6 space-y-3">
                     @if($booking->status === 'pending')
-                        <form action="{{ route('admin.bookings.confirm', $booking) }}"
-                              method="POST"
-                              class="space-y-3">
-                            @csrf
-                            <button type="submit"
-                                    class="w-full py-3 px-4 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition flex items-center justify-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
+                        <form action="{{ route('admin.bookings.confirm', $booking) }}" method="POST" class="space-y-3">
+                            @csrf @method('PATCH')
+                            <button type="submit" class="w-full py-3 px-4 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                                 Confirm Booking
                             </button>
                         </form>
-                        <form action="{{ route('admin.bookings.destroy', $booking) }}"
-                              method="POST"
-                              class="space-y-3">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit"
-                                    onclick="return confirm('Are you sure you want to cancel this booking? This cannot be undone.');"
-                                    class="w-full py-3 px-4 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition flex items-center justify-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
+                        <form action="{{ route('admin.bookings.cancel', $booking) }}" method="POST" class="space-y-3">
+                            @csrf @method('PATCH')
+                            <button type="submit" onclick="return confirm('Cancel this booking?');" class="w-full py-3 px-4 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                 Cancel Booking
                             </button>
                         </form>
                     @elseif($booking->status === 'confirmed')
-                        <button disabled
-                                class="w-full py-3 px-4 bg-gray-300 text-gray-500 font-semibold rounded-lg cursor-not-allowed flex items-center justify-center">
-                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                            </svg>
-                            Already Confirmed
-                        </button>
+                        <form action="{{ route('admin.bookings.complete', $booking) }}" method="POST" class="space-y-3">
+                            @csrf @method('PATCH')
+                            <button type="submit" onclick="return confirm('Mark as completed?');" class="w-full py-3 px-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Complete Booking
+                            </button>
+                        </form>
+                        <form action="{{ route('admin.bookings.cancel', $booking) }}" method="POST" class="space-y-3">
+                            @csrf @method('PATCH')
+                            <button type="submit" onclick="return confirm('Cancel this booking?');" class="w-full py-3 px-4 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                Cancel Booking
+                            </button>
+                        </form>
                     @elseif($booking->status === 'cancelled')
-                        <button disabled
-                                class="w-full py-3 px-4 bg-red-100 text-red-600 font-semibold rounded-lg cursor-not-allowed flex items-center justify-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
+                        <button disabled class="w-full py-3 px-4 bg-red-100 text-red-600 font-semibold rounded-lg cursor-not-allowed flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                             Cancelled
                         </button>
+                    @elseif($booking->status === 'completed')
+                        <button disabled class="w-full py-3 px-4 bg-green-100 text-green-600 font-semibold rounded-lg cursor-not-allowed flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                            Completed
+                        </button>
                     @endif
-                    <a href="{{ route('admin.bookings.index') }}"
-                       class="w-full py-3 px-4 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 text-center transition">
-                        Back to Bookings
-                    </a>
+                    <a href="{{ route('admin.bookings.index') }}" class="w-full py-3 px-4 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 text-center transition">Back to Bookings</a>
                 </div>
             </div>
 

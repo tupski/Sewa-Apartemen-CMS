@@ -32,9 +32,9 @@ Route::get('/blog/tag/{slug}', [BlogController::class, 'tag'])->name('blog.tag')
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('sitemap');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('robots');
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', ['App\Http\Controllers\Admin\DashboardController', 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -87,7 +87,13 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
     // Booking Management (Admin)
     Route::resource('bookings', BookingController::class)->only(['index', 'show', 'destroy']);
     Route::patch('bookings/{booking}/confirm', [BookingController::class, 'confirm'])->name('bookings.confirm');
+    Route::patch('bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
     Route::patch('bookings/{booking}/complete', [BookingController::class, 'complete'])->name('bookings.complete');
+    Route::post('bookings/{booking}/notes', [BookingController::class, 'updateNotes'])->name('bookings.notes');
+    Route::get('bookings/export/csv', [BookingController::class, 'export'])->name('bookings.export');
+
+    // User Management
+    Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
 
     // Redirect Management
     Route::resource('redirects', RedirectController::class);
