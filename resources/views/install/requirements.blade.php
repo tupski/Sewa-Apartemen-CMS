@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Step 1: Requirements - Apartment CMS Installer</title>
-    @vite('resources/css/app.css')
+    <link rel="stylesheet" href="{{ asset('build/assets/app-DciKFhTV.css') }}">
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -91,7 +92,7 @@
                 <div class="mt-8">
                     <form method="POST" action="{{ route('install.requirements') }}" id="requirements-form">
                         @csrf
-                        <button type="submit" 
+                        <button type="submit"
                                 class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition"
                                 id="proceed-btn"
                                 disabled>
@@ -106,15 +107,16 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const proceedBtn = document.getElementById('proceed-btn');
-            
+
             // Check requirements
-            fetch('/install/requirements', {
+            fetch('{{ route("install.requirements") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({})
+                body: JSON.stringify({test: true})
             })
             .then(response => response.json())
             .then(data => {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Step 4: Create Admin Account - Apartment CMS Installer</title>
-    @vite('resources/css/app.css')
+    <link rel="stylesheet" href="{{ asset('build/assets/app-DciKFhTV.css') }}">
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -79,8 +79,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Name *
                         </label>
-                        <input type="text" 
-                               name="name" 
+                        <input type="text"
+                               name="name"
                                value="{{ old('name') }}"
                                class="form-input {{ $errors->has('name') ? 'border-red-500' : '' }}"
                                placeholder="Admin User"
@@ -95,8 +95,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Email Address *
                         </label>
-                        <input type="email" 
-                               name="email" 
+                        <input type="email"
+                               name="email"
                                value="{{ old('email') }}"
                                class="form-input {{ $errors->has('email') ? 'border-red-500' : '' }}"
                                placeholder="admin@yourdomain.com"
@@ -111,8 +111,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Password *
                         </label>
-                        <input type="password" 
-                               name="password" 
+                        <input type="password"
+                               name="password"
                                class="form-input {{ $errors->has('password') ? 'border-red-500' : '' }}"
                                placeholder="Minimum 8 characters"
                                required>
@@ -126,8 +126,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Confirm Password *
                         </label>
-                        <input type="password" 
-                               name="password_confirmation" 
+                        <input type="password"
+                               name="password_confirmation"
                                class="form-input {{ $errors->has('password_confirmation') ? 'border-red-500' : '' }}"
                                placeholder="Confirm your password"
                                required>

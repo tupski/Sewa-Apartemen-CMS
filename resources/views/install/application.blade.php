@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Step 2: Application Configuration - Apartment CMS Installer</title>
-    @vite('resources/css/app.css')
+    <link rel="stylesheet" href="{{ asset('build/assets/app-DciKFhTV.css') }}">
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -66,8 +66,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Application Name *
                         </label>
-                        <input type="text" 
-                               name="app_name" 
+                        <input type="text"
+                               name="app_name"
                                value="{{ old('app_name', config('app.name', 'My Apartment')) }}"
                                class="form-input {{ $errors->has('app_name') ? 'border-red-500' : '' }}"
                                placeholder="e.g., My Apartment"
@@ -79,8 +79,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Application URL *
                         </label>
-                        <input type="url" 
-                               name="app_url" 
+                        <input type="url"
+                               name="app_url"
                                value="{{ old('app_url', config('app.url', 'http://localhost')) }}"
                                class="form-input {{ $errors->has('app_url') ? 'border-red-500' : '' }}"
                                placeholder="https://yourdomain.com"

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Step 5: Website Configuration - Apartment CMS Installer</title>
-    @vite('resources/css/app.css')
+    <link rel="stylesheet" href="{{ asset('build/assets/app-DciKFhTV.css') }}">
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -80,8 +80,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Website Name *
                         </label>
-                        <input type="text" 
-                               name="site_name" 
+                        <input type="text"
+                               name="site_name"
                                value="{{ old('site_name') }}"
                                class="form-input {{ $errors->has('site_name') ? 'border-red-500' : '' }}"
                                placeholder="My Apartment Website"
@@ -93,8 +93,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Tagline (Optional)
                         </label>
-                        <input type="text" 
-                               name="site_tagline" 
+                        <input type="text"
+                               name="site_tagline"
                                value="{{ old('site_tagline') }}"
                                class="form-input {{ $errors->has('site_tagline') ? 'border-red-500' : '' }}"
                                placeholder="Quality Living in Premium Location">
@@ -105,8 +105,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Contact Email
                         </label>
-                        <input type="email" 
-                               name="email" 
+                        <input type="email"
+                               name="email"
                                value="{{ old('email') }}"
                                class="form-input {{ $errors->has('email') ? 'border-red-500' : '' }}"
                                placeholder="info@yourdomain.com">
@@ -117,8 +117,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Contact Phone
                         </label>
-                        <input type="tel" 
-                               name="phone" 
+                        <input type="tel"
+                               name="phone"
                                value="{{ old('phone') }}"
                                class="form-input {{ $errors->has('phone') ? 'border-red-500' : '' }}"
                                placeholder="081234567890">
@@ -129,8 +129,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             WhatsApp Number
                         </label>
-                        <input type="tel" 
-                               name="whatsapp" 
+                        <input type="tel"
+                               name="whatsapp"
                                value="{{ old('whatsapp') }}"
                                class="form-input {{ $errors->has('whatsapp') ? 'border-red-500' : '' }}"
                                placeholder="6281234567890">
@@ -142,7 +142,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Address (Optional)
                         </label>
-                        <textarea name="address" 
+                        <textarea name="address"
                                   rows="3"
                                   class="form-input {{ $errors->has('address') ? 'border-red-500' : '' }}"
                                   placeholder="Jalan Example No 123, City, Province">{{ old('address') }}</textarea>
@@ -157,12 +157,12 @@
                                     Primary Color *
                                 </label>
                                 <div class="flex items-center space-x-2">
-                                    <input type="color" 
-                                           name="primary_color" 
+                                    <input type="color"
+                                           name="primary_color"
                                            value="{{ old('primary_color', '#3B82F6') }}"
                                            class="w-12 h-10 rounded cursor-pointer">
-                                    <input type="text" 
-                                           name="primary_color" 
+                                    <input type="text"
+                                           name="primary_color"
                                            value="{{ old('primary_color', '#3B82F6') }}"
                                            class="form-input {{ $errors->has('primary_color') ? 'border-red-500' : '' }}"
                                            placeholder="#3B82F6">
@@ -174,12 +174,12 @@
                                     Secondary Color *
                                 </label>
                                 <div class="flex items-center space-x-2">
-                                    <input type="color" 
-                                           name="secondary_color" 
+                                    <input type="color"
+                                           name="secondary_color"
                                            value="{{ old('secondary_color', '#10B981') }}"
                                            class="w-12 h-10 rounded cursor-pointer">
-                                    <input type="text" 
-                                           name="secondary_color" 
+                                    <input type="text"
+                                           name="secondary_color"
                                            value="{{ old('secondary_color', '#10B981') }}"
                                            class="form-input {{ $errors->has('secondary_color') ? 'border-red-500' : '' }}"
                                            placeholder="#10B981">
@@ -191,12 +191,12 @@
                                     Accent Color *
                                 </label>
                                 <div class="flex items-center space-x-2">
-                                    <input type="color" 
-                                           name="accent_color" 
+                                    <input type="color"
+                                           name="accent_color"
                                            value="{{ old('accent_color', '#F59E0B') }}"
                                            class="w-12 h-10 rounded cursor-pointer">
-                                    <input type="text" 
-                                           name="accent_color" 
+                                    <input type="text"
+                                           name="accent_color"
                                            value="{{ old('accent_color', '#F59E0B') }}"
                                            class="form-input {{ $errors->has('accent_color') ? 'border-red-500' : '' }}"
                                            placeholder="#F59E0B">

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('from_url')->unique();
             $table->string('to_url');
-            $table->unsignedTinyInteger('status_code')->default(301);
+            $table->unsignedSmallInteger('status_code')->default(301);
             $table->timestamps();
         });
     }

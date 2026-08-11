@@ -43,7 +43,17 @@ class InstallerController extends Controller
             abort(404);
         }
 
-        return view('install.step', compact('step'));
+        $data = ['step' => $step, 'steps' => $this->steps];
+
+        if ($step === 1) {
+            $data['phpVersion'] = $this->checkPhpVersion();
+            $data['requiredPhpVersion'] = '8.3';
+            $data['extensions'] = $this->checkExtensions();
+            $data['permissions'] = $this->checkPermissions();
+        }
+
+        $viewName = 'install.' . $this->steps[$step - 1];
+        return view($viewName, $data);
     }
 
     public function processStep(Request $request, $step)
@@ -79,7 +89,7 @@ class InstallerController extends Controller
             return $this->testRequirements();
         }
 
-        return view('install.requirements');
+        return redirect()->route('install.step', 2);
     }
 
     protected function testRequirements()
@@ -130,7 +140,7 @@ class InstallerController extends Controller
             'storage/app/public' => storage_path('app/public'),
             'storage/framework' => storage_path('framework'),
             'storage/logs' => storage_path('logs'),
-            'bootstrap/cache' => bootstrap_path('cache'),
+            'bootstrap/cache' => base_path('bootstrap/cache'),
         ];
 
         $permissions = [];
@@ -295,9 +305,9 @@ class InstallerController extends Controller
                 'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
             ]);
 
-            // Assign super admin role
+            // Assign super admin role via pivot table
             $superAdminRole = Role::firstOrCreate(['slug' => 'super-admin', 'name' => 'Super Admin']);
-            $user->assignRole($superAdminRole);
+            $user->roles()->attach($superAdminRole->id, ['model_type' => User::class]);
 
             // Log in user
             \Illuminate\Support\Facades\Auth::login($user);
@@ -319,9 +329,9 @@ class InstallerController extends Controller
                 'phone' => 'nullable|string|max:20',
                 'whatsapp' => 'nullable|string|max:20',
                 'address' => 'nullable|string|max:500',
-                'primary_color' => 'required|color_code|#3B82F6',
-                'secondary_color' => 'required|color_code|#10B981',
-                'accent_color' => 'required|color_code|#F59E0B',
+                'primary_color' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
+                'secondary_color' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
+                'accent_color' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
             ]);
 
             // Store settings
@@ -363,7 +373,7 @@ class InstallerController extends Controller
             Artisan::call('route:clear');
             Artisan::call('view:clear');
 
-            return redirect()->route('admin');
+            return redirect()->route('dashboard');
         }
 
         return view('install.finish');

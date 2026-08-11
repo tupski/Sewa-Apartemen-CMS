@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Step 6: Finish Installation - Apartment CMS Installer</title>
-    @vite('resources/css/app.css')
+    <link rel="stylesheet" href="{{ asset('build/assets/app-DciKFhTV.css') }}">
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -72,13 +72,13 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                         </svg>
                     </div>
-                    
+
                     <h2 class="text-2xl font-bold text-gray-900 mb-4">Installation Complete!</h2>
-                    
+
                     <p class="text-gray-600 mb-6">
                         Your Apartment Rental CMS has been successfully installed.
                     </p>
-                    
+
                     <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-6">
                         <h3 class="font-semibold text-blue-900 mb-2">Next Steps:</h3>
                         <ul class="text-sm text-blue-700 space-y-1">

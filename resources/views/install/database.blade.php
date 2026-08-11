@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Step 3: Database Configuration - Apartment CMS Installer</title>
-    @vite('resources/css/app.css')
+    <link rel="stylesheet" href="{{ asset('build/assets/app-DciKFhTV.css') }}">
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -64,91 +65,95 @@
                     </div>
                 @endif
 
-                <div class="mb-6">
-                    <div class="flex items-center justify-between">
-                        <label class="block text-sm font-medium text-gray-700">
-                            Database Host
+                <form method="POST" action="{{ route('install.database') }}" id="database-form">
+                    @csrf
+
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-sm font-medium text-gray-700">
+                                Database Host
+                            </label>
+                            <button type="button"
+                                    class="text-blue-600 hover:text-blue-800 text-sm"
+                                    id="test-connection-btn">
+                                Test Connection
+                            </button>
+                        </div>
+                        <input type="text"
+                               id="db_host"
+                               name="db_host"
+                               value="{{ old('db_host', 'localhost') }}"
+                               class="form-input {{ $errors->has('db_host') ? 'border-red-500' : '' }}"
+                               placeholder="localhost">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Database Port
                         </label>
-                        <button type="button" 
-                                class="text-blue-600 hover:text-blue-800 text-sm"
-                                id="test-connection-btn">
-                            Test Connection
+                        <input type="number"
+                               id="db_port"
+                               name="db_port"
+                               value="{{ old('db_port', '3306') }}"
+                               class="form-input {{ $errors->has('db_port') ? 'border-red-500' : '' }}"
+                               placeholder="3306"
+                               min="1" max="65535">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Database Name *
+                        </label>
+                        <input type="text"
+                               id="db_database"
+                               name="db_database"
+                               value="{{ old('db_database') }}"
+                               class="form-input {{ $errors->has('db_database') ? 'border-red-500' : '' }}"
+                               placeholder="apartment_cms"
+                               required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Username *
+                        </label>
+                        <input type="text"
+                               id="db_username"
+                               name="db_username"
+                               value="{{ old('db_username') }}"
+                               class="form-input {{ $errors->has('db_username') ? 'border-red-500' : '' }}"
+                               placeholder="root"
+                               required>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Password
+                        </label>
+                        <input type="password"
+                               id="db_password"
+                               name="db_password"
+                               value="{{ old('db_password') }}"
+                               class="form-input {{ $errors->has('db_password') ? 'border-red-500' : '' }}"
+                               placeholder="Password">
+                    </div>
+
+                    <!-- Connection Status -->
+                    <div id="connection-status" class="mb-6 hidden p-4 rounded-lg"></div>
+
+                    <!-- Actions -->
+                    <div class="flex space-x-3">
+                        <a href="{{ route('install.step', 2) }}" class="flex-1 bg-gray-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-gray-700 transition text-center">
+                            Back
+                        </a>
+                        <button type="submit"
+                                class="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition"
+                                id="proceed-btn"
+                                disabled>
+                            Proceed to Next Step
                         </button>
                     </div>
-                    <input type="text" 
-                           id="db_host" 
-                           name="db_host" 
-                           value="{{ old('db_host', 'localhost') }}"
-                           class="form-input {{ $errors->has('db_host') ? 'border-red-500' : '' }}"
-                           placeholder="localhost">
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Database Port
-                    </label>
-                    <input type="number" 
-                           id="db_port" 
-                           name="db_port" 
-                           value="{{ old('db_port', '3306') }}"
-                           class="form-input {{ $errors->has('db_port') ? 'border-red-500' : '' }}"
-                           placeholder="3306"
-                           min="1" max="65535">
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Database Name *
-                    </label>
-                    <input type="text" 
-                           id="db_database" 
-                           name="db_database" 
-                           value="{{ old('db_database') }}"
-                           class="form-input {{ $errors->has('db_database') ? 'border-red-500' : '' }}"
-                           placeholder="apartment_cms"
-                           required>
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Username *
-                    </label>
-                    <input type="text" 
-                           id="db_username" 
-                           name="db_username" 
-                           value="{{ old('db_username') }}"
-                           class="form-input {{ $errors->has('db_username') ? 'border-red-500' : '' }}"
-                           placeholder="root"
-                           required>
-                </div>
-
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Password
-                    </label>
-                    <input type="password" 
-                           id="db_password" 
-                           name="db_password" 
-                           value="{{ old('db_password') }}"
-                           class="form-input {{ $errors->has('db_password') ? 'border-red-500' : '' }}"
-                           placeholder="Password">
-                </div>
-
-                <!-- Connection Status -->
-                <div id="connection-status" class="mb-6 hidden p-4 rounded-lg"></div>
-
-                <!-- Actions -->
-                <div class="flex space-x-3">
-                    <a href="{{ route('install.step', 2) }}" class="flex-1 bg-gray-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-gray-700 transition text-center">
-                        Back
-                    </a>
-                    <button type="submit" 
-                            class="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition"
-                            id="proceed-btn"
-                            disabled>
-                        Proceed to Next Step
-                    </button>
-                </div>
+                </form>
             </div>
         </div>
     </div>
@@ -158,6 +163,7 @@
             const testBtn = document.getElementById('test-connection-btn');
             const statusDiv = document.getElementById('connection-status');
             const proceedBtn = document.getElementById('proceed-btn');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
             testBtn.addEventListener('click', function() {
                 const data = {
@@ -166,18 +172,19 @@
                     db_database: document.getElementById('db_database').value,
                     db_username: document.getElementById('db_username').value,
                     db_password: document.getElementById('db_password').value,
-                    _token: document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    test: true
                 };
 
-                statusDiv.className = 'mb-6 p-4 rounded-lg hidden';
+                statusDiv.className = 'mb-6 p-4 rounded-lg';
                 statusDiv.innerHTML = '<p class="text-blue-600">Testing connection...</p>';
-                statusDiv.classList.remove('hidden', 'bg-green-50', 'bg-red-50', 'border-l-4', 'border-green-500', 'border-red-500');
+                statusDiv.classList.add('bg-blue-50');
 
-                fetch('/install/database/test-connection', {
+                fetch('{{ route("install.database.test") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': data._token
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
                     },
                     body: JSON.stringify(data)
                 })
