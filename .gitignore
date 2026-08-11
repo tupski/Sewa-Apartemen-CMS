@@ -1,0 +1,71 @@
+# Environment files
+.env
+.env.backup
+.env.local
+.env.*.local
+
+# Production files
+.env.production
+.env.staging
+
+# IDE and editor files
+/.codex
+/.cursor/
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+
+# Composer
+/vendor
+composer.lock
+
+# NPM
+/node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build outputs
+/public/build
+/public/hot
+/public/manifest.json
+/public/*.hot
+
+# Storage files
+/storage/*.key
+/storage/pail
+storage/app/private
+storage/app/public/*
+!storage/app/public/.gitignore
+storage/app/backup
+storage/app/temp
+
+# Logs
+*.log
+storage/logs/laravel.log
+
+# Cache and temporary files
+bootstrap/cache/*
+!bootstrap/cache/.gitignore
+database/cache/*
+!database/cache/.gitignore
+
+# IDE helper files
+_ide_helper.php
+_ide_helper.phpstorm.php
+
+#Homestead files
+Homestead.json
+Homestead.yaml
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Soft deletes files
+/.delete-*
+
