@@ -28,6 +28,11 @@
                         class="py-4 px-6 border-b-2 font-medium text-sm transition">
                     SEO
                 </button>
+                <button @click="activeTab = 'integrations'"
+                        :class="activeTab === 'integrations' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        class="py-4 px-6 border-b-2 font-medium text-sm transition">
+                    Integrations
+                </button>
             </nav>
 
             <!-- Settings Form -->
@@ -482,6 +487,99 @@
                                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">{{ old('seo_facebook_pixel', $settings['seo_facebook_pixel'] ?? '') }}</textarea>
                             <p class="text-xs text-gray-500 mt-1">Paste your complete Facebook Pixel code</p>
                             @error('seo_facebook_pixel')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Integrations Tab -->
+                <div x-show="activeTab === 'integrations'" class="p-6" style="display: none;">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-6">Analytics & Integrations</h3>
+                    <p class="text-sm text-gray-500 mb-6">Enter your tracking IDs to enable analytics and marketing integrations. Leave blank to disable.</p>
+
+                    <div class="space-y-6">
+                        <!-- Google Analytics 4 -->
+                        <div>
+                            <label for="google_analytics_id" class="block text-sm font-medium text-gray-700 mb-2">
+                                Google Analytics 4 Measurement ID
+                            </label>
+                            <input type="text"
+                                   name="google_analytics_id"
+                                   id="google_analytics_id"
+                                   value="{{ old('google_analytics_id', $settings['google_analytics_id'] ?? '') }}"
+                                   placeholder="G-XXXXXXXXXX"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">Format: G-XXXXXXXXXX</p>
+                            @error('google_analytics_id')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Google Tag Manager -->
+                        <div>
+                            <label for="google_tag_manager_id" class="block text-sm font-medium text-gray-700 mb-2">
+                                Google Tag Manager Container ID
+                            </label>
+                            <input type="text"
+                                   name="google_tag_manager_id"
+                                   id="google_tag_manager_id"
+                                   value="{{ old('google_tag_manager_id', $settings['google_tag_manager_id'] ?? '') }}"
+                                   placeholder="GTM-XXXXXXX"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">Format: GTM-XXXXXXX</p>
+                            @error('google_tag_manager_id')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Meta Pixel -->
+                        <div>
+                            <label for="meta_pixel_id" class="block text-sm font-medium text-gray-700 mb-2">
+                                Meta Pixel ID
+                            </label>
+                            <input type="text"
+                                   name="meta_pixel_id"
+                                   id="meta_pixel_id"
+                                   value="{{ old('meta_pixel_id', $settings['meta_pixel_id'] ?? '') }}"
+                                   placeholder="XXXXXXXXXXXXXXXX"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">Your Facebook/Meta Pixel numeric ID</p>
+                            @error('meta_pixel_id')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Search Console Verification -->
+                        <div>
+                            <label for="search_console_token" class="block text-sm font-medium text-gray-700 mb-2">
+                                Google Search Console Verification Token
+                            </label>
+                            <input type="text"
+                                   name="search_console_token"
+                                   id="search_console_token"
+                                   value="{{ old('search_console_token', $settings['search_console_token'] ?? '') }}"
+                                   placeholder="Verification token from GSC"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">The content value from the HTML tag verification method</p>
+                            @error('search_console_token')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Microsoft Clarity -->
+                        <div>
+                            <label for="microsoft_clarity_id" class="block text-sm font-medium text-gray-700 mb-2">
+                                Microsoft Clarity Project ID
+                            </label>
+                            <input type="text"
+                                   name="microsoft_clarity_id"
+                                   id="microsoft_clarity_id"
+                                   value="{{ old('microsoft_clarity_id', $settings['microsoft_clarity_id'] ?? '') }}"
+                                   placeholder="clarity-project-id"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">Your Microsoft Clarity project ID</p>
+                            @error('microsoft_clarity_id')
                                 <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>

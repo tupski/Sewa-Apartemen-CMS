@@ -56,6 +56,13 @@ class SettingsController extends Controller
                 'google_analytics' => $this->settingsService->get('google_analytics'),
                 'facebook_pixel' => $this->settingsService->get('facebook_pixel'),
             ],
+            'integrations' => [
+                'google_analytics_id' => $this->settingsService->get('google_analytics_id'),
+                'google_tag_manager_id' => $this->settingsService->get('google_tag_manager_id'),
+                'meta_pixel_id' => $this->settingsService->get('meta_pixel_id'),
+                'search_console_token' => $this->settingsService->get('search_console_token'),
+                'microsoft_clarity_id' => $this->settingsService->get('microsoft_clarity_id'),
+            ],
         ];
 
         return view('admin.settings.index', compact('settings'));
@@ -95,6 +102,11 @@ class SettingsController extends Controller
                 'meta_keywords' => 'nullable|string',
                 'google_analytics' => 'nullable|string',
                 'facebook_pixel' => 'nullable|string',
+                'google_analytics_id' => 'nullable|string|max:255',
+                'google_tag_manager_id' => 'nullable|string|max:255',
+                'meta_pixel_id' => 'nullable|string|max:255',
+                'search_console_token' => 'nullable|string|max:255',
+                'microsoft_clarity_id' => 'nullable|string|max:255',
             ]);
 
             if ($validator->fails()) {
@@ -137,6 +149,8 @@ class SettingsController extends Controller
             return 'theme';
         } elseif (in_array($key, ['meta_description', 'meta_keywords', 'google_analytics', 'facebook_pixel'])) {
             return 'seo';
+        } elseif (in_array($key, ['google_analytics_id', 'google_tag_manager_id', 'meta_pixel_id', 'search_console_token', 'microsoft_clarity_id'])) {
+            return 'integrations';
         }
         return 'general';
     }

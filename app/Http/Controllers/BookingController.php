@@ -33,9 +33,21 @@ class BookingController extends Controller
             // Create booking
             $booking = BookingService::create($data);
 
+            // Flash analytics conversion data
+            $analyticsEvent = [
+                'event' => 'booking_completed',
+                'booking_id' => $booking->id,
+                'booking_code' => $booking->code,
+                'unit_name' => $booking->unit?->name,
+                'property_name' => $booking->property?->name ?? $booking->unit?->property?->name,
+                'value' => (float) $booking->total_price,
+                'currency' => 'IDR',
+            ];
+
             return redirect()
                 ->route('bookings.success', $booking)
-                ->with('success', 'Booking request submitted successfully! We will contact you shortly.');
+                ->with('success', 'Booking request submitted successfully! We will contact you shortly.')
+                ->with('analytics_event', $analyticsEvent);
         } catch (\Exception $e) {
             return back()
                 ->withInput()

@@ -15,8 +15,15 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
 
         @stack('head')
+
+        {{-- Analytics & Integrations --}}
+        @if(\App\Services\AnalyticsService::hasAny())
+            @include('components.analytics')
+        @endif
     </head>
     <body class="font-sans antialiased">
+        @stack('body_start')
+
         <div class="min-h-screen bg-gray-100">
             @include('layouts.navigation')
 
@@ -31,8 +38,11 @@
 
             <!-- Page Content -->
             <main>
-                {{ $slot }}
+                {{ $slot ?? '' }}
+                @yield('content')
             </main>
         </div>
+
+        @stack('scripts')
     </body>
 </html>

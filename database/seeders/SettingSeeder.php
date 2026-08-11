@@ -58,6 +58,15 @@ class SettingSeeder extends Seeder
             'facebook_pixel' => '',
         ];
 
+        // Integrations Settings
+        $integrationSettings = [
+            'google_analytics_id' => '',
+            'google_tag_manager_id' => '',
+            'meta_pixel_id' => '',
+            'search_console_token' => '',
+            'microsoft_clarity_id' => '',
+        ];
+
         // Insert general settings
         foreach ($generalSettings as $key => $value) {
             Setting::updateOrCreate(
@@ -98,6 +107,17 @@ class SettingSeeder extends Seeder
                 [
                     'value' => $value,
                     'group' => 'seo',
+                ]
+            );
+        }
+
+        // Insert integration settings
+        foreach ($integrationSettings as $key => $value) {
+            Setting::updateOrCreate(
+                ['key' => $key],
+                [
+                    'value' => $value,
+                    'group' => 'integrations',
                 ]
             );
         }

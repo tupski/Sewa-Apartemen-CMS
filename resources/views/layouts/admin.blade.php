@@ -18,6 +18,8 @@
     @stack('head')
 </head>
 <body class="font-sans antialiased bg-gray-100">
+    @stack('body_start')
+
     <div x-data="{ sidebarOpen: false }" class="min-h-screen">
         <!-- Sidebar -->
         <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"

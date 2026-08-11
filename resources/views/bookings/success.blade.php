@@ -20,7 +20,7 @@
         <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
             <h2 class="text-lg font-semibold text-gray-800">Booking Details</h2>
         </div>
-        
+
         <div class="p-6">
             <!-- Booking Code -->
             <div class="mb-6">
@@ -152,9 +152,9 @@
 
     <!-- Actions -->
     <div class="flex flex-col sm:flex-row gap-4">
-        <a href="{{ route('properties.index') }}"
+        <a href="{{ url('/') }}"
            class="flex-1 py-3 px-6 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 text-center transition">
-            Back to Properties
+            Back to Home
         </a>
         <a href="/"
            class="flex-1 py-3 px-6 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 text-center transition">
@@ -171,6 +171,28 @@ function copyBookingCode() {
         alert('Booking code copied to clipboard!');
     });
 }
+
+@if(session('analytics_event'))
+// GA4 / GTM dataLayer push for conversion
+window.dataLayer = window.dataLayer || [];
+window.dataLayer.push({
+    event: '{{ session('analytics_event')['event'] }}',
+    booking_id: '{{ session('analytics_event')['booking_id'] }}',
+    booking_code: '{{ session('analytics_event')['booking_code'] }}',
+    unit_name: '{{ session('analytics_event')['unit_name'] }}',
+    property_name: '{{ session('analytics_event')['property_name'] }}',
+    value: {{ session('analytics_event')['value'] }},
+    currency: '{{ session('analytics_event')['currency'] }}'
+});
+
+// Meta Pixel conversion
+if (typeof fbq !== 'undefined') {
+    fbq('track', 'Purchase', {
+        value: {{ session('analytics_event')['value'] }},
+        currency: '{{ session('analytics_event')['currency'] }}'
+    });
+}
+@endif
 </script>
 @endpush
 @endsection
