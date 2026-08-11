@@ -20,6 +20,11 @@
 <body class="font-sans antialiased bg-gray-100">
     @stack('body_start')
 
+    <!-- Skip to content -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-blue-600 focus:text-white focus:px-4 focus:py-2 focus:rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+        Skip to content
+    </a>
+
     <div x-data="{ sidebarOpen: false }" class="min-h-screen">
         <!-- Sidebar -->
         <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
@@ -28,15 +33,15 @@
                 <a href="{{ route('dashboard') }}" class="text-white text-xl font-bold">
                     CMS Admin
                 </a>
-                <button @click="sidebarOpen = false" class="text-gray-400 hover:text-white lg:hidden">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button @click="sidebarOpen = false" class="text-gray-400 hover:text-white lg:hidden focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1" aria-label="Close sidebar">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 </button>
             </div>
 
             <!-- Navigation -->
-            <nav class="px-4 py-6 space-y-2">
+            <nav class="px-4 py-6 space-y-2" role="navigation" aria-label="Sidebar navigation">
                 <!-- Dashboard -->
                 <a href="{{ route('dashboard') }}"
                    class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('dashboard') ? 'bg-gray-700 text-white' : '' }}">
@@ -189,8 +194,8 @@
             <header class="bg-white shadow-sm sticky top-0 z-40">
                 <div class="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
                     <!-- Mobile menu button -->
-                    <button @click="sidebarOpen = true" class="text-gray-500 hover:text-gray-700 lg:hidden">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button @click="sidebarOpen = true" class="text-gray-500 hover:text-gray-700 lg:hidden focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1" aria-label="Open sidebar menu">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
@@ -202,7 +207,7 @@
 
                     <!-- User Dropdown -->
                     <div x-data="{ dropdownOpen: false }" class="relative">
-                        <button @click="dropdownOpen = !dropdownOpen" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900">
+                        <button @click="dropdownOpen = !dropdownOpen" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1" aria-label="User menu" aria-expanded="false" :aria-expanded="dropdownOpen">
                             <span class="text-sm font-medium">{{ Auth::user()->name }}</span>
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -268,7 +273,7 @@
             </div>
 
             <!-- Main Content -->
-            <main class="flex-1 px-4 sm:px-6 lg:px-8 py-6">
+            <main id="main-content" class="flex-1 px-4 sm:px-6 lg:px-8 py-6" role="main">
                 @yield('content')
             </main>
 

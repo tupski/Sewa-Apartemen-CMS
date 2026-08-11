@@ -6,6 +6,7 @@ use App\Models\Post;
 use App\Models\Category;
 use App\Models\Tag;
 use App\Services\SettingsService;
+use Illuminate\Support\Facades\Cache;
 
 class BlogController extends Controller
 {
@@ -16,11 +17,9 @@ class BlogController extends Controller
                     ->orderBy('published_at', 'desc')
                     ->paginate(12);
 
-        $recentPosts = Post::published()->latest('published_at')->limit(5)->get();
-        $categories = Category::withCount(['posts' => fn($q) => $q->published()])->orderBy('name')->get();
-        $tags = Tag::withCount(['posts' => fn($q) => $q->published()])->orderBy('name')->get();
+        $sidebarData = $this->getSidebarData();
 
-        return view('blog.index', compact('posts', 'recentPosts', 'categories', 'tags'));
+        return view('blog.index', array_merge(compact('posts'), $sidebarData));
     }
 
     public function show(string $slug)
@@ -33,9 +32,7 @@ class BlogController extends Controller
             abort(404);
         }
 
-        $recentPosts = Post::published()->latest('published_at')->limit(5)->get();
-        $categories = Category::withCount(['posts' => fn($q) => $q->published()])->orderBy('name')->get();
-        $tags = Tag::withCount(['posts' => fn($q) => $q->published()])->orderBy('name')->get();
+        $sidebarData = $this->getSidebarData();
 
         $relatedPosts = Post::published()
                             ->where('category_id', $post->category_id)
@@ -44,7 +41,7 @@ class BlogController extends Controller
                             ->limit(3)
                             ->get();
 
-        return view('blog.show', compact('post', 'recentPosts', 'categories', 'tags', 'relatedPosts'));
+        return view('blog.show', array_merge(compact('post', 'relatedPosts'), $sidebarData));
     }
 
     public function category(string $slug)
@@ -57,11 +54,9 @@ class BlogController extends Controller
                     ->orderBy('published_at', 'desc')
                     ->paginate(12);
 
-        $recentPosts = Post::published()->latest('published_at')->limit(5)->get();
-        $categories = Category::withCount(['posts' => fn($q) => $q->published()])->orderBy('name')->get();
-        $tags = Tag::withCount(['posts' => fn($q) => $q->published()])->orderBy('name')->get();
+        $sidebarData = $this->getSidebarData();
 
-        return view('blog.index', compact('posts', 'recentPosts', 'categories', 'tags', 'category'));
+        return view('blog.index', array_merge(compact('posts', 'category'), $sidebarData));
     }
 
     public function tag(string $slug)
@@ -74,10 +69,19 @@ class BlogController extends Controller
                     ->orderBy('published_at', 'desc')
                     ->paginate(12);
 
-        $recentPosts = Post::published()->latest('published_at')->limit(5)->get();
-        $categories = Category::withCount(['posts' => fn($q) => $q->published()])->orderBy('name')->get();
-        $tags = Tag::withCount(['posts' => fn($q) => $q->published()])->orderBy('name')->get();
+        $sidebarData = $this->getSidebarData();
 
-        return view('blog.index', compact('posts', 'recentPosts', 'categories', 'tags', 'tag'));
+        return view('blog.index', array_merge(compact('posts', 'tag'), $sidebarData));
+    }
+
+    protected function getSidebarData(): array
+    {
+        return Cache::remember('blog_sidebar', now()->addHour(), function () {
+            return [
+                'recentPosts' => Post::published()->latest('published_at')->limit(5)->get(),
+                'categories' => Category::withCount(['posts' => fn($q) => $q->published()])->orderBy('name')->get(),
+                'tags' => Tag::withCount(['posts' => fn($q) => $q->published()])->orderBy('name')->get(),
+            ];
+        });
     }
 }

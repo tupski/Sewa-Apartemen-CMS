@@ -111,10 +111,12 @@ class Unit extends Model
     {
         static::saved(function () {
             \Illuminate\Support\Facades\Cache::forget('sitemap.xml');
+            \Illuminate\Support\Facades\Cache::forget('dashboard_stats');
         });
 
         static::deleted(function () {
             \Illuminate\Support\Facades\Cache::forget('sitemap.xml');
+            \Illuminate\Support\Facades\Cache::forget('dashboard_stats');
         });
     }
 }
