@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Post;
 use App\Models\Property;
-use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -18,7 +17,7 @@ class DashboardController extends Controller
     {
         $stats = Cache::remember('dashboard_stats', now()->addMinutes(5), function () {
             $totalProperties = Property::count();
-            $totalUnits = Unit::count();
+            $totalUnits = Property::get()->sum(fn ($p) => count($p->unit_types ?? []));
             $totalBookings = Booking::count();
             $totalUsers = User::count();
             $totalPosts = Post::where('status', 'published')->count();
@@ -51,7 +50,7 @@ class DashboardController extends Controller
             );
         });
 
-        $recentBookings = Booking::with(['unit.property'])->latest()->take(5)->get();
+        $recentBookings = Booking::with('property')->latest()->take(5)->get();
         $recentPosts = Post::with('category')->latest()->take(5)->get();
         $recentProperties = Property::latest()->take(5)->get();
 

@@ -48,6 +48,20 @@ class PropertyRequest extends FormRequest
             'order' => ['nullable', 'integer', 'min:0'],
             'amenities' => ['nullable', 'array'],
             'amenities.*' => ['integer', 'exists:amenities,id'],
+            'unit_types' => ['nullable', 'array'],
+            'unit_types.*' => ['string', Rule::in(array_keys(\App\Models\Property::UNIT_TYPES))],
+            'weekend_days' => ['nullable', 'array'],
+            'weekend_days.*' => ['integer', 'between:0,6'],
+            'prices' => ['nullable', 'array'],
+            'prices.*.*' => ['nullable', 'numeric', 'min:0'],
+            'photo_categories' => ['nullable'],
+            'gallery_uploads' => ['nullable', 'array'],
+            'gallery_uploads.*' => ['array'],
+            'gallery_uploads.*.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
+            'gallery_media' => ['nullable', 'array'],
+            'gallery_media.*' => ['array'],
+            'gallery_media.*.*' => ['integer', 'exists:media,id'],
+            'deleted_photo_ids' => ['nullable'],
         ];
     }
 

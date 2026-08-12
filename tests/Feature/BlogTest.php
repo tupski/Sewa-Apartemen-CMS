@@ -19,6 +19,9 @@ class BlogTest extends TestCase
     {
         parent::setUp();
         $this->user = User::factory()->create();
+
+        $role = \App\Models\Role::updateOrCreate(['slug' => 'super-admin'], ['name' => 'Super Admin']);
+        $this->user->roles()->syncWithoutDetaching([$role->id => ['model_type' => User::class]]);
     }
 
     // ==================== Post CRUD ====================

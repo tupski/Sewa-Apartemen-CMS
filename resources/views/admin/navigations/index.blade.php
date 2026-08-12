@@ -3,7 +3,7 @@
 @section('page-title', 'Navigation Menus')
 
 @section('content')
-<div class="max-w-7xl mx-auto">
+<div class="w-full">
     <!-- Header with Actions -->
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

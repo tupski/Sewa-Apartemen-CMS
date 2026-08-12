@@ -53,7 +53,9 @@ class BlockController extends Controller
      */
     public function create()
     {
-        return view('admin.blocks.create');
+        $pages = \App\Models\Page::orderBy('title')->get();
+
+        return view('admin.blocks.create', compact('pages'));
     }
 
     /**
@@ -89,7 +91,9 @@ class BlockController extends Controller
      */
     public function edit(Block $block)
     {
-        return view('admin.blocks.edit', compact('block'));
+        $pages = \App\Models\Page::orderBy('title')->get();
+
+        return view('admin.blocks.edit', compact('block', 'pages'));
     }
 
     /**

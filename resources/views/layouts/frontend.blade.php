@@ -1,5 +1,8 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}"
+      x-data="{ dark: document.documentElement.classList.contains('dark') }"
+      x-init="$watch('dark', v => { document.documentElement.classList.toggle('dark', v); localStorage.setItem('theme', v ? 'dark' : 'light'); })"
+      class="scroll-smooth">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,19 +17,20 @@
         $contactPhone = \App\Services\SettingsService::get('contact_phone', '');
         $contactAddress = \App\Services\SettingsService::get('contact_address', '');
         $whatsapp = \App\Services\SettingsService::get('whatsapp_default', '');
+        $enableDark = \App\Services\SettingsService::get('enable_dark_mode', false);
 
         $mainMenu = \App\Models\Navigation::active()->inLocation('main')->rootItems()->ordered()->get();
         if ($mainMenu->isEmpty()) {
             $mainMenu = collect([
-                (object) ['title' => 'Beranda', 'url' => url('/')],
-                (object) ['title' => 'Apartemen', 'url' => url('/apartments')],
+                (object) ['title' => __('nav.home'), 'url' => url('/')],
+                (object) ['title' => __('nav.find_apartments'), 'url' => url('/apartments')],
                 (object) ['title' => 'Blog', 'url' => url('/blog')],
             ]);
         }
         $footerMenu = \App\Models\Navigation::active()->inLocation('footer')->rootItems()->ordered()->get();
         if ($footerMenu->isEmpty()) {
             $footerMenu = collect([
-                (object) ['title' => 'Apartemen', 'url' => url('/apartments')],
+                (object) ['title' => __('nav.find_apartments'), 'url' => url('/apartments')],
                 (object) ['title' => 'Blog', 'url' => url('/blog')],
             ]);
         }
@@ -41,9 +45,22 @@
         @endif
     @endif
 
+    <!-- Apply dark mode before first paint (no flash) -->
+    <script>
+        (function () {
+            var stored = localStorage.getItem('theme');
+            var dark = stored ? stored === 'dark' : {{ $enableDark ? 'true' : 'false' }};
+            if (dark) document.documentElement.classList.add('dark');
+        })();
+    </script>
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet" />
+
+    <!-- Font Awesome 6 (free) — amenity icons; loaded async so CDN slowness doesn't block render -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css"></noscript>
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -55,24 +72,24 @@
         @include('components.analytics')
     @endif
 </head>
-<body class="font-sans antialiased bg-white text-gray-900">
+<body class="font-sans antialiased bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">
 
     <!-- Header -->
-    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100 shadow-sm">
+    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100 shadow-sm dark:bg-gray-900/95 dark:border-gray-800">
         <div x-data="{ open: false }" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16 md:h-20">
                 <!-- Brand -->
                 <a href="{{ url('/') }}" class="flex items-center space-x-2">
                     <span class="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold"
                           style="background-color: {{ $primaryColor }}">{{ mb_substr($siteName, 0, 1) }}</span>
-                    <span class="text-lg md:text-xl font-bold text-gray-900">{{ $siteName }}</span>
+                    <span class="text-lg md:text-xl font-bold text-gray-900 dark:text-white">{{ $siteName }}</span>
                 </a>
 
                 <!-- Desktop Nav -->
                 <nav class="hidden lg:flex items-center space-x-8" aria-label="Main navigation">
                     @foreach ($mainMenu as $item)
                         <a href="{{ $item->url ?? '#' }}" @if(($item->target ?? '') === '_blank') target="_blank" rel="noopener" @endif
-                           class="text-sm font-medium text-gray-700 hover:text-gray-900 transition {{ request()->url() === ($item->url ?? '') ? 'text-gray-900 font-semibold' : '' }}">
+                           class="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition {{ request()->url() === ($item->url ?? '') ? 'text-gray-900 font-semibold dark:text-white' : '' }}">
                             {{ $item->title }}
                         </a>
                     @endforeach
@@ -80,6 +97,14 @@
 
                 <!-- Actions -->
                 <div class="hidden lg:flex items-center space-x-4">
+                    <!-- Dark mode toggle -->
+                    <button @click="dark = !dark"
+                            class="p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 transition"
+                            aria-label="Toggle dark mode" :title="dark ? 'Light mode' : 'Dark mode'">
+                        <svg x-show="!dark" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                        <svg x-show="dark" class="w-5 h-5" style="display: none;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                    </button>
+
                     @if ($whatsapp)
                         <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}" target="_blank" rel="noopener"
                            class="inline-flex items-center px-5 py-2.5 rounded-full text-sm font-semibold text-white transition hover:opacity-90"
@@ -87,29 +112,38 @@
                             <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                             </svg>
-                            WhatsApp
+                            {{ __('nav.whatsapp') }}
                         </a>
                     @endif
                     <a href="{{ url('/apartments') }}" class="inline-flex items-center px-5 py-2.5 rounded-full text-sm font-semibold text-white transition hover:opacity-90"
                        style="background-color: {{ $primaryColor }}">
-                        Cari Apartemen
+                        {{ __('nav.find_apartments') }}
                     </a>
                 </div>
 
                 <!-- Mobile toggle -->
-                <button @click="open = !open" class="lg:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none" aria-label="Toggle menu" :aria-expanded="open.toString()">
-                    <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                        <path :class="{'hidden': open, 'inline-flex': !open}" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                        <path :class="{'hidden': !open, 'inline-flex': open}" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
+                <div class="flex lg:hidden items-center space-x-2">
+                    <!-- Dark mode toggle (mobile) -->
+                    <button @click="dark = !dark"
+                            class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 focus:outline-none"
+                            aria-label="Toggle dark mode" :title="dark ? 'Light mode' : 'Dark mode'">
+                        <svg x-show="!dark" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                        <svg x-show="dark" class="h-5 w-5" style="display: none;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                    </button>
+                    <button @click="open = !open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 focus:outline-none" aria-label="Toggle menu" :aria-expanded="open.toString()">
+                        <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                            <path :class="{'hidden': open, 'inline-flex': !open}" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                            <path :class="{'hidden': !open, 'inline-flex': open}" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <!-- Mobile Nav -->
-            <div :class="{'block': open, 'hidden': !open}" class="hidden lg:hidden pb-4 space-y-1">
+            <div :class="{'block': open, 'hidden': !open}" class="hidden lg:hidden pb-4 space-y-1 dark:bg-gray-900">
                 @foreach ($mainMenu as $item)
                     <a href="{{ $item->url ?? '#' }}" @if(($item->target ?? '') === '_blank') target="_blank" rel="noopener" @endif
-                       class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
+                       class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800">
                         {{ $item->title }}
                     </a>
                 @endforeach
@@ -117,12 +151,12 @@
                     @if ($whatsapp)
                         <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}" target="_blank" rel="noopener"
                            class="flex-1 text-center px-4 py-2.5 rounded-full text-sm font-semibold text-white" style="background-color: #25d366">
-                            WhatsApp
+                            {{ __('nav.whatsapp') }}
                         </a>
                     @endif
                     <a href="{{ url('/apartments') }}" class="flex-1 text-center px-4 py-2.5 rounded-full text-sm font-semibold text-white"
                        style="background-color: {{ $primaryColor }}">
-                        Cari Apartemen
+                        {{ __('nav.find_apartments') }}
                     </a>
                 </div>
             </div>
@@ -153,19 +187,19 @@
                         @if ($whatsapp)
                             <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}" target="_blank" rel="noopener"
                                class="inline-flex items-center px-4 py-2 rounded-full text-white text-xs font-semibold hover:opacity-90 transition" style="background-color: #25d366">
-                                WhatsApp Kami
+                                {{ __('footer.whatsapp_us') }}
                             </a>
                         @endif
                         <a href="{{ url('/apartments') }}" class="inline-flex items-center px-4 py-2 rounded-full text-xs font-semibold text-white hover:opacity-90 transition"
                            style="background-color: {{ $primaryColor }}">
-                            Lihat Apartemen
+                            {{ __('footer.view_apartments') }}
                         </a>
                     </div>
                 </div>
 
                 <!-- Menu -->
                 <div>
-                    <h3 class="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Menu</h3>
+                    <h3 class="text-white font-semibold mb-4 text-sm uppercase tracking-wider">{{ __('footer.menu') }}</h3>
                     <ul class="space-y-2 text-sm">
                         @foreach ($footerMenu as $item)
                             <li>
@@ -180,7 +214,7 @@
 
                 <!-- Contact -->
                 <div>
-                    <h3 class="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Kontak</h3>
+                    <h3 class="text-white font-semibold mb-4 text-sm uppercase tracking-wider">{{ __('footer.contact') }}</h3>
                     <ul class="space-y-3 text-sm text-gray-400">
                         @if ($contactAddress)
                             <li class="flex items-start space-x-2">
@@ -205,11 +239,31 @@
             </div>
 
             <div class="border-t border-gray-800 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500">
-                <p>&copy; {{ date('Y') }} {{ $siteName }}. All rights reserved.</p>
-                <p>Sewa apartemen harian &amp; transit</p>
+                <p>&copy; {{ date('Y') }} {{ $siteName }}. {{ __('footer.rights') }}</p>
+                <p>{{ __('footer.tagline') }}</p>
             </div>
         </div>
     </footer>
+
+    <!-- Scroll to top -->
+    <button id="scroll-top" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+            class="hidden fixed bottom-6 right-6 z-50 w-11 h-11 rounded-full shadow-lg items-center justify-center text-white hover:opacity-90 transition"
+            style="background-color: {{ $primaryColor }}" aria-label="Scroll to top">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+    </button>
+    <script>
+        window.addEventListener('scroll', function () {
+            var btn = document.getElementById('scroll-top');
+            if (!btn) return;
+            if (window.scrollY > 300) {
+                btn.classList.remove('hidden');
+                btn.classList.add('inline-flex');
+            } else {
+                btn.classList.add('hidden');
+                btn.classList.remove('inline-flex');
+            }
+        });
+    </script>
 
     @stack('scripts')
 </body>

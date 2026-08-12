@@ -13,7 +13,7 @@
             <div class="flex flex-col lg:flex-row gap-8">
                 <!-- Main Content -->
                 <div class="flex-1">
-                    <article class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <article class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
                         @if($post->featured_image)
                             <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($post->featured_image) }}"
                                  alt="{{ $post->title }}"
@@ -21,7 +21,7 @@
                         @endif
 
                         <div class="p-6 md:p-8">
-                            <div class="flex items-center gap-3 text-sm text-gray-500 mb-4">
+                            <div class="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 mb-4">
                                 @if($post->category)
                                     <a href="{{ route('blog.category', $post->category->slug) }}"
                                        class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-200 text-xs font-medium">
@@ -32,19 +32,19 @@
                                 <span>by {{ $post->author->name ?? 'Unknown' }}</span>
                             </div>
 
-                            <h1 class="text-3xl font-bold text-gray-900 mb-6">{{ $post->title }}</h1>
+                            <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">{{ $post->title }}</h1>
 
-                            <div class="prose max-w-none text-gray-700">
+                            <div class="prose max-w-none text-gray-700 dark:text-gray-300">
                                 {!! $post->content !!}
                             </div>
 
                             @if($post->tags->count() > 0)
-                                <div class="mt-8 pt-6 border-t border-gray-200">
+                                <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                                     <div class="flex flex-wrap items-center gap-2">
-                                        <span class="text-sm text-gray-500 font-medium">Tags:</span>
+                                        <span class="text-sm text-gray-500 dark:text-gray-400 font-medium">Tags:</span>
                                         @foreach($post->tags as $t)
                                             <a href="{{ route('blog.tag', $t->slug) }}"
-                                               class="bg-gray-100 hover:bg-blue-100 hover:text-blue-700 text-gray-600 text-sm px-3 py-1 rounded-full transition">
+                                               class="bg-gray-100 hover:bg-blue-100 hover:text-blue-700 text-gray-600 dark:text-gray-400 text-sm px-3 py-1 rounded-full transition">
                                                 {{ $t->name }}
                                             </a>
                                         @endforeach
@@ -53,9 +53,9 @@
                             @endif
 
                             <!-- Share Buttons -->
-                            <div class="mt-6 pt-6 border-t border-gray-200">
+                            <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
                                 <div class="flex items-center gap-4">
-                                    <span class="text-sm text-gray-500 font-medium">Share:</span>
+                                    <span class="text-sm text-gray-500 dark:text-gray-400 font-medium">Share:</span>
                                     @php
                                         $shareUrl = urlencode(route('blog.show', $post->slug));
                                         $shareTitle = urlencode($post->title);
@@ -86,7 +86,7 @@
                             <h3 class="text-xl font-bold text-gray-800 mb-4">Related Posts</h3>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 @foreach($relatedPosts as $relatedPost)
-                                    <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition">
+                                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden hover:shadow-md transition">
                                         @if($relatedPost->featured_image)
                                             <a href="{{ route('blog.show', $relatedPost->slug) }}">
                                                 <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($relatedPost->featured_image) }}"
@@ -100,7 +100,7 @@
                                                     {{ $relatedPost->title }}
                                                 </a>
                                             </h4>
-                                            <p class="text-xs text-gray-500">{{ $relatedPost->published_at?->format('M d, Y') }}</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $relatedPost->published_at?->format('M d, Y') }}</p>
                                         </div>
                                     </div>
                                 @endforeach

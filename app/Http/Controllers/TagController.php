@@ -55,6 +55,14 @@ class TagController extends Controller
         return view('admin.tags.edit', compact('tag'));
     }
 
+    /**
+     * Display the specified tag (redirect to edit form).
+     */
+    public function show(Tag $tag)
+    {
+        return redirect()->route('admin.tags.edit', $tag);
+    }
+
     public function update(Request $request, Tag $tag)
     {
         $validated = $request->validate([

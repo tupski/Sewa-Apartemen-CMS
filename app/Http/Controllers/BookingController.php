@@ -5,30 +5,18 @@ namespace App\Http\Controllers;
 use App\Http\Requests\BookingRequest;
 use App\Models\Booking;
 use App\Models\Property;
-use App\Models\Unit;
 use App\Services\BookingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class BookingController extends Controller
 {
     /**
-     * Show the booking form.
+     * Store a newly created booking (from the property page popup).
      */
-    public function create(Unit $unit): View
-    {
-        $unit->load('property');
-
-        return view('bookings.create', compact('unit'));
-    }
-
-    /**
-     * Store a newly created booking.
-     */
-    public function store(BookingRequest $request): RedirectResponse
+    public function store(BookingRequest $request)
     {
         try {
             $data = $request->validated();
@@ -41,17 +29,32 @@ class BookingController extends Controller
                 'event' => 'booking_completed',
                 'booking_id' => $booking->id,
                 'booking_code' => $booking->code,
-                'unit_name' => $booking->unit?->name,
-                'property_name' => $booking->property?->name ?? $booking->unit?->property?->name,
+                'property_name' => $booking->property?->name,
                 'value' => (float) $booking->total_price,
                 'currency' => 'IDR',
             ];
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'code' => $booking->code,
+                    'total' => (float) $booking->total_price,
+                    'message' => 'Permintaan booking berhasil dikirim!',
+                ]);
+            }
 
             return redirect()
                 ->route('bookings.success', $booking)
                 ->with('success', 'Booking request submitted successfully! We will contact you shortly.')
                 ->with('analytics_event', $analyticsEvent);
         } catch (\Exception $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
+
             return back()
                 ->withInput()
                 ->with('error', $e->getMessage());
@@ -59,11 +62,11 @@ class BookingController extends Controller
     }
 
     /**
-     * Show the booking success page.
+     * Show the booking success page (non-JS fallback).
      */
     public function success(Booking $booking): View
     {
-        $booking->load('unit.property');
+        $booking->load('property');
 
         return view('bookings.success', compact('booking'));
     }
@@ -73,19 +76,23 @@ class BookingController extends Controller
      */
     public function index(Request $request): View
     {
-        $query = Booking::with(['unit.property', 'property']);
+        $query = Booking::with('property');
 
         if ($search = $request->get('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('code', 'like', "%{$search}%")
                   ->orWhere('customer_name', 'like', "%{$search}%")
-                  ->orWhereHas('unit', fn ($u) => $u->where('name', 'like', "%{$search}%"))
+                  ->orWhere('unit_type', 'like', "%{$search}%")
                   ->orWhereHas('property', fn ($p) => $p->where('name', 'like', "%{$search}%"));
             });
         }
 
         if ($status = $request->get('status')) {
             $query->where('status', $status);
+        }
+
+        if ($bookingType = $request->get('booking_type')) {
+            $query->where('booking_type', $bookingType);
         }
 
         if ($propertyId = $request->get('property_id')) {
@@ -110,7 +117,7 @@ class BookingController extends Controller
      */
     public function show(Booking $booking): View
     {
-        $booking->load(['unit.property', 'property']);
+        $booking->load('property');
 
         return view('admin.bookings.show', compact('booking'));
     }
@@ -168,9 +175,9 @@ class BookingController extends Controller
     /**
      * Export bookings as CSV.
      */
-    public function export(Request $request): \Illuminate\Http\Response
+    public function export(Request $request): Response
     {
-        $query = Booking::with(['unit.property', 'property']);
+        $query = Booking::with('property');
 
         if ($status = $request->get('status')) {
             $query->where('status', $status);
@@ -183,7 +190,7 @@ class BookingController extends Controller
             'Content-Disposition' => 'attachment; filename="bookings-' . now()->format('Ymd') . '.csv"',
         ];
 
-        $columns = ['Code', 'Customer', 'Email', 'Phone', 'Unit', 'Property', 'Check-in', 'Check-out', 'Guests', 'Total', 'Status', 'Notes', 'Created'];
+        $columns = ['Code', 'Customer', 'Email', 'Phone', 'Property', 'Room Type', 'Booking Type', 'Check-in', 'Check-out', 'Guests', 'Total', 'Status', 'Notes', 'Created'];
 
         $fp = fopen('php://temp', 'r+');
         fputcsv($fp, $columns);
@@ -194,10 +201,11 @@ class BookingController extends Controller
                 $b->customer_name,
                 $b->customer_email,
                 $b->customer_phone,
-                $b->unit->name ?? '',
-                $b->property->name ?? $b->unit->property->name ?? '',
-                $b->check_in->format('Y-m-d'),
-                $b->check_out->format('Y-m-d'),
+                $b->property->name ?? '',
+                $b->property ? $b->property->typeLabel($b->unit_type) : $b->unit_type,
+                ucfirst($b->booking_type),
+                $b->check_in?->format('Y-m-d H:i'),
+                $b->check_out?->format('Y-m-d H:i'),
                 $b->guests,
                 $b->total_price,
                 $b->status,

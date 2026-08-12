@@ -3,7 +3,7 @@
 @section('page-title', 'Tags')
 
 @section('content')
-<div class="max-w-7xl mx-auto">
+<div class="w-full">
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
             <h2 class="text-2xl font-bold text-gray-800">Tags</h2>

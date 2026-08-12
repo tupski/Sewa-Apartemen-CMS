@@ -89,6 +89,8 @@ class SeoTest extends TestCase
     public function test_seo_metadata_saved_via_property_store(): void
     {
         $user = User::factory()->create();
+        $role = \App\Models\Role::updateOrCreate(['slug' => 'super-admin'], ['name' => 'Super Admin']);
+        $user->roles()->syncWithoutDetaching([$role->id => ['model_type' => User::class]]);
         $this->actingAs($user);
 
         $response = $this->post(route('admin.properties.store'), [

@@ -3,7 +3,8 @@
 namespace App\Services;
 
 use App\Models\Booking;
-use App\Models\Unit;
+use App\Models\Property;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class BookingService
@@ -12,178 +13,163 @@ class BookingService
      * Generate a unique booking code.
      *
      * Format: BK-YYYYMMDD-XXXX (where XXXX is a 4-digit sequence number)
-     *
-     * @return string
      */
     public static function generateCode(): string
     {
-        $date = now();
-        $datePrefix = $date->format('Ymd');
-        
-        // Get the last booking code for today
+        $datePrefix = now()->format('Ymd');
+
         $lastBooking = Booking::where('code', 'like', "BK-{$datePrefix}-%")
             ->orderBy('code', 'desc')
             ->first();
-        
+
         if ($lastBooking) {
-            // Extract the sequence number
             $lastNumber = (int) substr($lastBooking->code, -4);
             $newNumber = $lastNumber + 1;
         } else {
             $newNumber = 1;
         }
-        
+
         return "BK-{$datePrefix}-" . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
     }
 
     /**
-     * Create a new booking with all related data.
+     * Create a new booking with pricing.
      *
-     * @param array $data
+     * @param array $data expected keys: property_id, booking_type, unit_type,
+     *                    duration_hours (transit), check_in, check_out (nullable),
+     *                    customer_name, customer_email, customer_phone,
+     *                    customer_whatsapp, guests, message
      * @return Booking
      * @throws \Exception
      */
     public static function create(array $data): Booking
     {
         return DB::transaction(function () use ($data) {
-            // Validate unit availability
-            self::validateUnitAvailability(
-                $data['unit_id'],
-                $data['check_in'],
-                $data['check_out']
+            $property = Property::findOrFail($data['property_id']);
+
+            if (!$property->hasType($data['unit_type'])) {
+                throw new \Exception('Tipe kamar tidak tersedia di properti ini.');
+            }
+
+            $checkIn = Carbon::parse($data['check_in']);
+            $checkOut = !empty($data['check_out']) ? Carbon::parse($data['check_out']) : null;
+
+            // Transit keeps check_out null unless a start time is known; price is by bucket
+            $pricing = app(BookingPricingService::class)->calculate(
+                $property,
+                $data['unit_type'],
+                $data['booking_type'],
+                $checkIn,
+                $checkOut,
+                $data['duration_hours'] ?? null,
             );
-            
-            // Calculate pricing
-            $unit = Unit::findOrFail($data['unit_id']);
-            $pricePerNight = $unit->price_per_night ?? 0;
-            $numNights = now($data['check_in'])->diffInDays($data['check_out']);
-            $totalPrice = $pricePerNight * $numNights;
-            $depositAmount = $totalPrice * 0.3; // 30% deposit
-            
-            // Create the booking
+
+            if ($pricing['total'] <= 0) {
+                throw new \Exception('Harga untuk tipe sewa ini belum diatur. Silakan hubungi admin.');
+            }
+
+            self::validateAvailability($property->id, $data['unit_type'], $checkIn, $checkOut, $data['booking_type']);
+
+            $totalPrice = $pricing['total'];
+            $depositAmount = round($totalPrice * 0.3, 2);
+
+            // Transit bookings: store the exact window when a start time is provided
+            $effectiveCheckOut = $data['booking_type'] === 'transit'
+                ? $checkIn->copy()->addHours((int) ($data['duration_hours'] ?? 3))
+                : $checkOut;
+
             $booking = Booking::create([
-                'unit_id' => $data['unit_id'],
-                'property_id' => $data['property_id'],
+                'property_id' => $property->id,
+                'booking_type' => $data['booking_type'],
+                'unit_type' => $data['unit_type'],
+                'duration_hours' => $data['booking_type'] === 'transit' ? ($data['duration_hours'] ?? 3) : null,
                 'customer_name' => $data['customer_name'],
                 'customer_email' => $data['customer_email'] ?? null,
                 'customer_phone' => $data['customer_phone'],
                 'customer_whatsapp' => $data['customer_whatsapp'] ?? null,
-                'check_in' => $data['check_in'],
-                'check_out' => $data['check_out'],
+                'check_in' => $checkIn,
+                'check_out' => $effectiveCheckOut,
                 'guests' => $data['guests'] ?? 1,
                 'code' => self::generateCode(),
                 'message' => $data['message'] ?? null,
                 'status' => 'pending',
                 'total_price' => $totalPrice,
                 'deposit_amount' => $depositAmount,
+                'price_breakdown' => $pricing,
                 'metadata' => [
-                    'num_nights' => $numNights,
-                    'price_per_night' => $pricePerNight,
+                    'booking_type' => $data['booking_type'],
+                    'unit_type' => $data['unit_type'],
+                    'nights' => $pricing['nights'],
+                    'hours' => $pricing['hours'],
                 ],
             ]);
-            
-            // Mark unit as booked
-            $unit->update(['status' => 'booked']);
-            
+
+            // Outbound notification must never roll the booking back; dispatch after commit.
+            DB::afterCommit(function () use ($booking) {
+                BookingNotificationService::send(BookingNotificationService::EVENT_CREATED, $booking);
+            });
+
             return $booking;
         });
     }
 
     /**
-     * Validate unit availability for the requested dates.
-     *
-     * @param int $unitId
-     * @param string $checkIn
-     * @param string $checkOut
-     * @return bool
-     * @throws \Exception
+     * Prevent overlapping bookings for the same property + room type.
      */
-    protected static function validateUnitAvailability(int $unitId, string $checkIn, string $checkOut): bool
+    protected static function validateAvailability(int $propertyId, string $unitType, Carbon $checkIn, ?Carbon $checkOut, string $bookingType): void
     {
-        // Check for conflicting bookings
-        $conflicting = Booking::where('unit_id', $unitId)
+        if ($bookingType === 'transit') {
+            return; // transit windows are short; manual handling
+        }
+
+        if (!$checkOut) {
+            return;
+        }
+
+        $conflicting = Booking::where('property_id', $propertyId)
+            ->where('unit_type', $unitType)
             ->where('status', '!=', 'cancelled')
-            ->where(function ($query) use ($checkIn, $checkOut) {
-                $query->where(function ($q) use ($checkIn, $checkOut) {
-                    // New booking starts during existing booking
-                    $q->where('check_in', '<=', $checkIn)
-                      ->where('check_out', '>', $checkIn);
-                })->orWhere(function ($q) use ($checkIn, $checkOut) {
-                    // New booking ends during existing booking
-                    $q->where('check_in', '<', $checkOut)
-                      ->where('check_out', '>=', $checkOut);
-                })->orWhere(function ($q) use ($checkIn, $checkOut) {
-                    // New booking completely contains existing booking
-                    $q->where('check_in', '>=', $checkIn)
-                      ->where('check_out', '<=', $checkOut);
-                });
+            ->where(function ($q) use ($checkIn, $checkOut) {
+                $q->where('check_in', '<', $checkOut)
+                  ->where('check_out', '>', $checkIn);
             })
             ->exists();
-        
+
         if ($conflicting) {
-            throw new \Exception('Unit is not available for the selected dates.');
+            throw new \Exception('Tipe kamar ini sudah dibooking pada tanggal tersebut.');
         }
-        
-        return true;
     }
 
     /**
      * Confirm a booking.
-     *
-     * @param Booking $booking
-     * @return Booking
      */
     public static function confirm(Booking $booking): Booking
     {
-        return DB::transaction(function () use ($booking) {
-            $booking->update([
-                'status' => 'confirmed',
-            ]);
-            
-            // Mark unit as booked
-            $booking->unit->update(['status' => 'booked']);
-            
-            return $booking;
-        });
+        $booking->update(['status' => 'confirmed']);
+        BookingNotificationService::send(BookingNotificationService::EVENT_CONFIRMED, $booking);
+
+        return $booking;
     }
 
     /**
      * Cancel a booking.
-     *
-     * @param Booking $booking
-     * @return Booking
      */
     public static function cancel(Booking $booking): Booking
     {
-        return DB::transaction(function () use ($booking) {
-            $booking->update([
-                'status' => 'cancelled',
-            ]);
-            
-            // Mark unit as available again
-            $booking->unit->update(['status' => 'available']);
-            
-            return $booking;
-        });
+        $booking->update(['status' => 'cancelled']);
+        BookingNotificationService::send(BookingNotificationService::EVENT_CANCELLED, $booking);
+
+        return $booking;
     }
 
     /**
      * Complete a booking (after stay is finished).
-     *
-     * @param Booking $booking
-     * @return Booking
      */
     public static function complete(Booking $booking): Booking
     {
-        return DB::transaction(function () use ($booking) {
-            $booking->update([
-                'status' => 'completed',
-            ]);
-            
-            // Mark unit as available
-            $booking->unit->update(['status' => 'available']);
-            
-            return $booking;
-        });
+        $booking->update(['status' => 'completed']);
+        BookingNotificationService::send(BookingNotificationService::EVENT_COMPLETED, $booking);
+
+        return $booking;
     }
 }

@@ -3,7 +3,7 @@
 @section('page-title', 'Users')
 
 @section('content')
-<div class="max-w-7xl mx-auto">
+<div class="w-full">
     <div class="mb-6 flex items-center justify-between">
         <div>
             <h2 class="text-2xl font-bold text-gray-800">Users</h2>

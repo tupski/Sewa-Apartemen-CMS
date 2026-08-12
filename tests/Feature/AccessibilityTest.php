@@ -10,9 +10,17 @@ class AccessibilityTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function makeAdmin(User $user): User
+    {
+        $role = \App\Models\Role::updateOrCreate(['slug' => 'super-admin'], ['name' => 'Super Admin']);
+        $user->roles()->syncWithoutDetaching([$role->id => ['model_type' => User::class]]);
+
+        return $user;
+    }
+
     public function test_admin_dashboard_has_skip_nav_link(): void
     {
-        $admin = User::factory()->create();
+$admin = $this->makeAdmin(User::factory()->create());
         $this->actingAs($admin);
 
         $response = $this->get(route('dashboard'));
@@ -22,7 +30,7 @@ class AccessibilityTest extends TestCase
 
     public function test_admin_pages_have_main_landmark(): void
     {
-        $admin = User::factory()->create();
+$admin = $this->makeAdmin(User::factory()->create());
         $this->actingAs($admin);
 
         $routes = [
@@ -43,7 +51,7 @@ class AccessibilityTest extends TestCase
 
     public function test_admin_pages_have_h1(): void
     {
-        $admin = User::factory()->create();
+$admin = $this->makeAdmin(User::factory()->create());
         $this->actingAs($admin);
 
         $response = $this->get(route('dashboard'));
@@ -53,7 +61,7 @@ class AccessibilityTest extends TestCase
 
     public function test_admin_layout_has_lang_attribute(): void
     {
-        $admin = User::factory()->create();
+$admin = $this->makeAdmin(User::factory()->create());
         $this->actingAs($admin);
 
         $response = $this->get(route('dashboard'));
@@ -63,7 +71,7 @@ class AccessibilityTest extends TestCase
 
     public function test_sidebar_nav_has_role_navigation(): void
     {
-        $admin = User::factory()->create();
+$admin = $this->makeAdmin(User::factory()->create());
         $this->actingAs($admin);
 
         $response = $this->get(route('dashboard'));

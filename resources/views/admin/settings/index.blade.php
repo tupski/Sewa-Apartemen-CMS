@@ -3,7 +3,7 @@
 @section('page-title', 'CMS Settings')
 
 @section('content')
-<div class="max-w-7xl mx-auto">
+<div class="w-full">
     <div class="bg-white rounded-lg shadow-sm">
         <!-- Tabs Navigation -->
         <div x-data="{ activeTab: 'general' }" class="border-b border-gray-200">
@@ -38,6 +38,12 @@
             <!-- Settings Form -->
             <form method="POST" action="{{ route('admin.settings.update') }}" enctype="multipart/form-data">
                 @csrf
+
+                <div class="px-6 pt-4">
+                    <p class="text-sm text-gray-500">
+                        Kolom bertanda <span class="text-red-500 font-bold">*</span> wajib diisi, sisanya opsional.
+                    </p>
+                </div>
 
                 <!-- General Tab -->
                 <div x-show="activeTab === 'general'" class="p-6">
@@ -124,13 +130,14 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label for="contact_email" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Contact Email
+                                    Contact Email <span class="text-red-500">*</span>
                                 </label>
                                 <input type="email"
                                        name="contact_email"
                                        id="contact_email"
                                        value="{{ old('contact_email', $settings['contact_email'] ?? '') }}"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                       required>
                                 @error('contact_email')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
@@ -138,14 +145,31 @@
 
                             <div>
                                 <label for="contact_phone" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Contact Phone
+                                    Contact Phone <span class="text-red-500">*</span>
                                 </label>
                                 <input type="tel"
                                        name="contact_phone"
                                        id="contact_phone"
                                        value="{{ old('contact_phone', $settings['contact_phone'] ?? '') }}"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                       required>
                                 @error('contact_phone')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label for="whatsapp_default" class="block text-sm font-medium text-gray-700 mb-2">
+                                    WhatsApp Number
+                                </label>
+                                <input type="tel"
+                                       name="whatsapp_default"
+                                       id="whatsapp_default"
+                                       value="{{ old('whatsapp_default', $settings['whatsapp_default'] ?? '') }}"
+                                       placeholder="6281234567890"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <p class="text-xs text-gray-500 mt-1">Format internasional tanpa + atau spasi. Dipakai untuk tombol chat WhatsApp.</p>
+                                @error('whatsapp_default')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -329,43 +353,43 @@
                         <!-- Color Settings -->
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
-                                <label for="theme_primary_color" class="block text-sm font-medium text-gray-700 mb-2">
+                                <label for="primary_color" class="block text-sm font-medium text-gray-700 mb-2">
                                     Primary Color
                                 </label>
                                 <input type="color"
-                                       name="theme_primary_color"
-                                       id="theme_primary_color"
-                                       value="{{ old('theme_primary_color', $settings['theme_primary_color'] ?? '#3B82F6') }}"
+                                       name="primary_color"
+                                       id="primary_color"
+                                       value="{{ old('primary_color', $settings['primary_color'] ?? '#3B82F6') }}"
                                        class="w-full h-12 px-2 py-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                                @error('theme_primary_color')
+                                @error('primary_color')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
 
                             <div>
-                                <label for="theme_secondary_color" class="block text-sm font-medium text-gray-700 mb-2">
+                                <label for="secondary_color" class="block text-sm font-medium text-gray-700 mb-2">
                                     Secondary Color
                                 </label>
                                 <input type="color"
-                                       name="theme_secondary_color"
-                                       id="theme_secondary_color"
-                                       value="{{ old('theme_secondary_color', $settings['theme_secondary_color'] ?? '#6B7280') }}"
+                                       name="secondary_color"
+                                       id="secondary_color"
+                                       value="{{ old('secondary_color', $settings['secondary_color'] ?? '#6B7280') }}"
                                        class="w-full h-12 px-2 py-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                                @error('theme_secondary_color')
+                                @error('secondary_color')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
 
                             <div>
-                                <label for="theme_accent_color" class="block text-sm font-medium text-gray-700 mb-2">
+                                <label for="accent_color" class="block text-sm font-medium text-gray-700 mb-2">
                                     Accent Color
                                 </label>
                                 <input type="color"
-                                       name="theme_accent_color"
-                                       id="theme_accent_color"
-                                       value="{{ old('theme_accent_color', $settings['theme_accent_color'] ?? '#10B981') }}"
+                                       name="accent_color"
+                                       id="accent_color"
+                                       value="{{ old('accent_color', $settings['accent_color'] ?? '#10B981') }}"
                                        class="w-full h-12 px-2 py-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                                @error('theme_accent_color')
+                                @error('accent_color')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -374,33 +398,33 @@
                         <!-- Layout Settings -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label for="theme_header_layout" class="block text-sm font-medium text-gray-700 mb-2">
+                                <label for="header_layout" class="block text-sm font-medium text-gray-700 mb-2">
                                     Header Layout
                                 </label>
-                                <select name="theme_header_layout"
-                                        id="theme_header_layout"
+                                <select name="header_layout"
+                                        id="header_layout"
                                         class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="default" {{ ($settings['theme_header_layout'] ?? 'default') == 'default' ? 'selected' : '' }}>Default</option>
-                                    <option value="centered" {{ ($settings['theme_header_layout'] ?? '') == 'centered' ? 'selected' : '' }}>Centered</option>
-                                    <option value="minimal" {{ ($settings['theme_header_layout'] ?? '') == 'minimal' ? 'selected' : '' }}>Minimal</option>
+                                    <option value="default" {{ ($settings['header_layout'] ?? 'default') == 'default' ? 'selected' : '' }}>Default</option>
+                                    <option value="centered" {{ ($settings['header_layout'] ?? '') == 'centered' ? 'selected' : '' }}>Centered</option>
+                                    <option value="minimal" {{ ($settings['header_layout'] ?? '') == 'minimal' ? 'selected' : '' }}>Minimal</option>
                                 </select>
-                                @error('theme_header_layout')
+                                @error('header_layout')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
 
                             <div>
-                                <label for="theme_footer_layout" class="block text-sm font-medium text-gray-700 mb-2">
+                                <label for="footer_layout" class="block text-sm font-medium text-gray-700 mb-2">
                                     Footer Layout
                                 </label>
-                                <select name="theme_footer_layout"
-                                        id="theme_footer_layout"
+                                <select name="footer_layout"
+                                        id="footer_layout"
                                         class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="default" {{ ($settings['theme_footer_layout'] ?? 'default') == 'default' ? 'selected' : '' }}>Default</option>
-                                    <option value="columns" {{ ($settings['theme_footer_layout'] ?? '') == 'columns' ? 'selected' : '' }}>Columns</option>
-                                    <option value="minimal" {{ ($settings['theme_footer_layout'] ?? '') == 'minimal' ? 'selected' : '' }}>Minimal</option>
+                                    <option value="default" {{ ($settings['footer_layout'] ?? 'default') == 'default' ? 'selected' : '' }}>Default</option>
+                                    <option value="columns" {{ ($settings['footer_layout'] ?? '') == 'columns' ? 'selected' : '' }}>Columns</option>
+                                    <option value="minimal" {{ ($settings['footer_layout'] ?? '') == 'minimal' ? 'selected' : '' }}>Minimal</option>
                                 </select>
-                                @error('theme_footer_layout')
+                                @error('footer_layout')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -409,12 +433,12 @@
                         <!-- Dark Mode -->
                         <div class="flex items-center">
                             <input type="checkbox"
-                                   name="theme_dark_mode"
-                                   id="theme_dark_mode"
+                                   name="enable_dark_mode"
+                                   id="enable_dark_mode"
                                    value="1"
-                                   {{ old('theme_dark_mode', $settings['theme_dark_mode'] ?? false) ? 'checked' : '' }}
+                                   {{ old('enable_dark_mode', $settings['enable_dark_mode'] ?? false) ? 'checked' : '' }}
                                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                            <label for="theme_dark_mode" class="ml-2 text-sm font-medium text-gray-700">
+                            <label for="enable_dark_mode" class="ml-2 text-sm font-medium text-gray-700">
                                 Enable Dark Mode
                             </label>
                         </div>
@@ -428,65 +452,65 @@
                     <div class="space-y-6">
                         <!-- Meta Description -->
                         <div>
-                            <label for="seo_meta_description" class="block text-sm font-medium text-gray-700 mb-2">
+                            <label for="meta_description" class="block text-sm font-medium text-gray-700 mb-2">
                                 Meta Description
                             </label>
-                            <textarea name="seo_meta_description"
-                                      id="seo_meta_description"
+                            <textarea name="meta_description"
+                                      id="meta_description"
                                       rows="3"
                                       placeholder="A brief description of your website for search engines"
-                                      class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">{{ old('seo_meta_description', $settings['seo_meta_description'] ?? '') }}</textarea>
+                                      class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">{{ old('meta_description', $settings['meta_description'] ?? '') }}</textarea>
                             <p class="text-xs text-gray-500 mt-1">Recommended: 150-160 characters</p>
-                            @error('seo_meta_description')
+                            @error('meta_description')
                                 <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <!-- Meta Keywords -->
                         <div>
-                            <label for="seo_meta_keywords" class="block text-sm font-medium text-gray-700 mb-2">
+                            <label for="meta_keywords" class="block text-sm font-medium text-gray-700 mb-2">
                                 Meta Keywords
                             </label>
                             <input type="text"
-                                   name="seo_meta_keywords"
-                                   id="seo_meta_keywords"
-                                   value="{{ old('seo_meta_keywords', $settings['seo_meta_keywords'] ?? '') }}"
+                                   name="meta_keywords"
+                                   id="meta_keywords"
+                                   value="{{ old('meta_keywords', $settings['meta_keywords'] ?? '') }}"
                                    placeholder="keyword1, keyword2, keyword3"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                             <p class="text-xs text-gray-500 mt-1">Separate keywords with commas</p>
-                            @error('seo_meta_keywords')
+                            @error('meta_keywords')
                                 <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <!-- Google Analytics -->
                         <div>
-                            <label for="seo_google_analytics" class="block text-sm font-medium text-gray-700 mb-2">
+                            <label for="google_analytics" class="block text-sm font-medium text-gray-700 mb-2">
                                 Google Analytics Code
                             </label>
-                            <textarea name="seo_google_analytics"
-                                      id="seo_google_analytics"
+                            <textarea name="google_analytics"
+                                      id="google_analytics"
                                       rows="6"
                                       placeholder="<!-- Google Analytics tracking code -->"
-                                      class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">{{ old('seo_google_analytics', $settings['seo_google_analytics'] ?? '') }}</textarea>
+                                      class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">{{ old('google_analytics', $settings['google_analytics'] ?? '') }}</textarea>
                             <p class="text-xs text-gray-500 mt-1">Paste your complete Google Analytics tracking code</p>
-                            @error('seo_google_analytics')
+                            @error('google_analytics')
                                 <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <!-- Facebook Pixel -->
                         <div>
-                            <label for="seo_facebook_pixel" class="block text-sm font-medium text-gray-700 mb-2">
+                            <label for="facebook_pixel" class="block text-sm font-medium text-gray-700 mb-2">
                                 Facebook Pixel Code
                             </label>
-                            <textarea name="seo_facebook_pixel"
-                                      id="seo_facebook_pixel"
+                            <textarea name="facebook_pixel"
+                                      id="facebook_pixel"
                                       rows="6"
                                       placeholder="<!-- Facebook Pixel Code -->"
-                                      class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">{{ old('seo_facebook_pixel', $settings['seo_facebook_pixel'] ?? '') }}</textarea>
+                                      class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">{{ old('facebook_pixel', $settings['facebook_pixel'] ?? '') }}</textarea>
                             <p class="text-xs text-gray-500 mt-1">Paste your complete Facebook Pixel code</p>
-                            @error('seo_facebook_pixel')
+                            @error('facebook_pixel')
                                 <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                             @enderror
                         </div>
@@ -582,6 +606,79 @@
                             @error('microsoft_clarity_id')
                                 <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                             @enderror
+                        </div>
+                    </div>
+
+                    <!-- Owner Notification Webhook -->
+                    <div class="border-t border-gray-200 pt-6 mt-6">
+                        <h4 class="text-md font-semibold text-gray-700 mb-2">Owner Notification Webhook</h4>
+                        <p class="text-sm text-gray-500 mb-4">
+                            Kirim event booking (created / confirmed / cancelled / completed) ke URL eksternal.
+                            Kosongkan untuk nonaktif. Cocok untuk Fonnte, Wablas, OneSender, n8n, Make, atau
+                            endpoint JSON apa pun. Setiap event juga tercatat di log aplikasi.
+                        </p>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label for="notification_webhook" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Webhook URL
+                                </label>
+                                <input type="url"
+                                       name="notification_webhook"
+                                       id="notification_webhook"
+                                       value="{{ old('notification_webhook', $settings['notification_webhook'] ?? '') }}"
+                                       placeholder="https://api.fonnte.com/send"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">
+                                <p class="text-xs text-gray-500 mt-1">POST endpoint yang menerima JSON. Akan dipanggil dengan timeout 5 detik (1 retry pada 5xx).</p>
+                                @error('notification_webhook')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label for="notification_webhook_secret" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Webhook Secret (opsional)
+                                </label>
+                                <input type="text"
+                                       name="notification_webhook_secret"
+                                       id="notification_webhook_secret"
+                                       value="{{ old('notification_webhook_secret', $settings['notification_webhook_secret'] ?? '') }}"
+                                       placeholder="shared-secret-string"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">
+                                <p class="text-xs text-gray-500 mt-1">Jika diisi, payload akan dikirim bersama header <code>X-Webhook-Signature: sha256=...</code> (HMAC-SHA256). Receiver bisa verifikasi integritas.</p>
+                                @error('notification_webhook_secret')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <details class="bg-gray-50 border border-gray-200 rounded-md p-3">
+                                <summary class="text-sm font-medium text-gray-700 cursor-pointer">Contoh payload JSON</summary>
+<pre class="mt-3 text-xs text-gray-700 overflow-x-auto"><code>{
+  "event": "booking.created",
+  "sent_at": "2026-08-12T19:30:00+07:00",
+  "booking": {
+    "id": 42,
+    "code": "BK-20260812-0001",
+    "status": "pending",
+    "booking_type": "daily",
+    "unit_type": "studio",
+    "unit_label": "Studio",
+    "check_in": "2026-08-15T14:00:00+07:00",
+    "check_out": "2026-08-17T12:00:00+07:00",
+    "guests": 2,
+    "total_price": 850000,
+    "deposit_amount": 255000,
+    "currency": "IDR",
+    "customer": {
+      "name": "Budi",
+      "phone": "6281234567890",
+      "whatsapp": "6281234567890"
+    },
+    "property": { "id": 1, "name": "Kakarama Room Sudirman" },
+    "admin_url": "/admin/bookings/42"
+  }
+}</code></pre>
+                            </details>
                         </div>
                     </div>
                 </div>

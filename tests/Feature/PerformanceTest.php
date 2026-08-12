@@ -11,6 +11,14 @@ class PerformanceTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function makeAdmin(User $user): User
+    {
+        $role = \App\Models\Role::updateOrCreate(['slug' => 'super-admin'], ['name' => 'Super Admin']);
+        $user->roles()->syncWithoutDetaching([$role->id => ['model_type' => User::class]]);
+
+        return $user;
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -19,7 +27,7 @@ class PerformanceTest extends TestCase
 
     public function test_dashboard_caches_stats(): void
     {
-        $admin = User::factory()->create();
+$admin = $this->makeAdmin(User::factory()->create());
         $this->actingAs($admin);
 
         $this->get(route('dashboard'))->assertStatus(200);

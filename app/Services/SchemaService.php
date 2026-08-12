@@ -89,25 +89,6 @@ class SchemaService
     }
 
     /**
-     * Offer schema for a Unit.
-     */
-    public static function offer($unit): array
-    {
-        $price = $unit->price_per_month ?? $unit->price_per_night ?? $unit->price_per_year ?? 0;
-        $currency = SettingsService::get('currency', 'IDR');
-
-        return [
-            '@context' => 'https://schema.org',
-            '@type' => 'Offer',
-            'name' => $unit->name ?? '',
-            'description' => \Illuminate\Support\Str::limit(strip_tags($unit->description ?? ''), 300),
-            'price' => (string) $price,
-            'priceCurrency' => $currency,
-            'availability' => 'https://schema.org/InStock',
-        ];
-    }
-
-    /**
      * BreadcrumbList schema.
      */
     public static function breadcrumbList(array $items): array

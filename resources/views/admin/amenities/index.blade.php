@@ -3,7 +3,7 @@
 @section('page-title', 'Amenities')
 
 @section('content')
-<div class="max-w-7xl mx-auto">
+<div class="w-full">
     <!-- Header with Actions -->
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -112,7 +112,11 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="text-sm text-gray-500 font-mono">{{ $amenity->icon ?? '-' }}</span>
+                                    @if($amenity->icon)
+                                        <i class="fa-solid {{ $amenity->icon }} text-gray-600 text-lg" title="{{ $amenity->icon }}"></i>
+                                    @else
+                                        <span class="text-sm text-gray-400">-</span>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     @if($amenity->is_active)

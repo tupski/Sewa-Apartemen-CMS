@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Models\Booking;
 use App\Models\Property;
-use App\Models\Unit;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class BookingFactory extends Factory
@@ -21,8 +20,9 @@ class BookingFactory extends Factory
         $checkOut = (clone $checkIn)->modify('+' . $this->faker->numberBetween(1, 14) . ' days');
 
         return [
-            'unit_id' => Unit::factory(),
             'property_id' => Property::factory(),
+            'booking_type' => 'daily',
+            'unit_type' => 'studio',
             'customer_name' => $this->faker->name(),
             'customer_email' => $this->faker->safeEmail(),
             'customer_phone' => $this->faker->phoneNumber(),

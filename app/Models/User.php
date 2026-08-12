@@ -36,7 +36,26 @@ class User extends Authenticatable
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'model_has_roles', 'model_id', 'role_id')
-            ->wherePivot('model_type', self::class);
+                    ->wherePivot('model_type', self::class)
+                    ->withPivot('model_type');
+    }
+
+    /**
+     * Whether the user holds any of the given role slugs.
+     */
+    public function hasRole(string|array $slugs): bool
+    {
+        $slugs = (array) $slugs;
+
+        return $this->roles->pluck('slug')->intersect($slugs)->isNotEmpty();
+    }
+
+    /**
+     * Whether the user may access the admin panel.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('super-admin');
     }
 
     public function activityLogs(): HasMany

@@ -100,7 +100,7 @@
         <textarea name="content"
                   id="content"
                   rows="10"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">{{ old('content', $block->content ?? '') }}</textarea>
+                  class="wysiwyg w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">{{ old('content', $block->content ?? '') }}</textarea>
         <p class="text-xs text-gray-500 mt-1">HTML, JSON, or plain text depending on block type</p>
         @error('content')
             <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
@@ -150,10 +150,10 @@
             <div class="space-y-2 max-h-48 overflow-y-auto border border-gray-300 rounded-md p-4">
                 <div class="flex items-center">
                     <input type="checkbox"
-                           name="display_pages[]"
+                           name="pages[]"
                            value="all"
                            id="page_all"
-                           {{ old('display_all', isset($block) && empty($block->display_pages) ? 'checked' : '') }}
+                           {{ old('pages', isset($block) && empty($block->pages) ? 'checked' : '') }}
                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                     <label for="page_all" class="ml-2 text-sm text-gray-700">
                         All Pages
@@ -163,11 +163,11 @@
                 @foreach($pages ?? [] as $page)
                     <div class="flex items-center">
                         <input type="checkbox"
-                               name="display_pages[]"
+                               name="pages[]"
                                value="{{ $page->id }}"
                                id="page_{{ $page->id }}"
-                               {{ old('display_pages') && in_array($page->id, old('display_pages')) ? 'checked' : '' }}
-                               {{ isset($block) && is_array($block->display_pages) && in_array($page->id, $block->display_pages) ? 'checked' : '' }}
+                               {{ old('pages') && in_array($page->id, old('pages')) ? 'checked' : '' }}
+                               {{ isset($block) && is_array($block->pages) && in_array($page->id, $block->pages) ? 'checked' : '' }}
                                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                         <label for="page_{{ $page->id }}" class="ml-2 text-sm text-gray-700">
                             {{ $page->title }}

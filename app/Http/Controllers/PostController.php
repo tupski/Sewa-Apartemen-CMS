@@ -49,7 +49,7 @@ class PostController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:posts,slug',
+            'slug' => 'nullable|string|max:255|unique:posts,slug',
             'content' => 'required|string',
             'excerpt' => 'nullable|string',
             'status' => 'required|in:draft,published',
@@ -106,11 +106,19 @@ class PostController extends Controller
         return view('admin.posts.edit', compact('post', 'categories', 'tags', 'postTags'));
     }
 
+    /**
+     * Display the specified post (redirect to edit form).
+     */
+    public function show(Post $post)
+    {
+        return redirect()->route('admin.posts.edit', $post);
+    }
+
     public function update(Request $request, Post $post)
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:posts,slug,' . $post->id,
+            'slug' => 'nullable|string|max:255|unique:posts,slug,' . $post->id,
             'content' => 'required|string',
             'excerpt' => 'nullable|string',
             'status' => 'required|in:draft,published',

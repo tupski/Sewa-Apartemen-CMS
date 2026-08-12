@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Post;
 use App\Models\Property;
-use App\Models\Unit;
 use App\Services\SeoService;
 use App\Services\SettingsService;
 use Illuminate\Http\Request;
@@ -26,7 +25,7 @@ class HomeController extends Controller
 
         $properties = Property::published()
             ->featured()
-            ->with(['featuredImage', 'units' => fn ($q) => $q->available()])
+            ->with('featuredImage')
             ->orderBy('order')
             ->orderBy('created_at', 'desc')
             ->take(6)
@@ -35,7 +34,7 @@ class HomeController extends Controller
         // Fall back to the latest published properties when none are featured yet
         if ($properties->isEmpty()) {
             $properties = Property::published()
-                ->with(['featuredImage', 'units' => fn ($q) => $q->available()])
+                ->with('featuredImage')
                 ->orderBy('order')
                 ->orderBy('created_at', 'desc')
                 ->take(6)
@@ -50,7 +49,7 @@ class HomeController extends Controller
 
         $stats = [
             'properties' => Property::published()->count(),
-            'units' => Unit::where('status', 'available')->count(),
+            'units' => Property::published()->get()->sum(fn ($p) => count($p->unit_types ?? [])),
             'cities' => Property::published()->distinct()->count('city'),
         ];
 

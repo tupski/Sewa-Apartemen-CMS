@@ -15,7 +15,6 @@ use App\Http\Controllers\RedirectController;
 use App\Http\Controllers\SeoController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TagController;
-use App\Http\Controllers\UnitController;
 use Illuminate\Support\Facades\Route;
 
 // Homepage
@@ -35,8 +34,11 @@ Route::get('/blog/tag/{slug}', [BlogController::class, 'tag'])->name('blog.tag')
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('sitemap');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('robots');
 
+// Public CMS Pages
+Route::get('/pages/{page:slug}', [PageController::class, 'publicShow'])->name('pages.show');
+
 Route::get('/dashboard', ['App\Http\Controllers\Admin\DashboardController', 'index'])
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth', 'verified', 'admin'])
     ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
@@ -46,12 +48,11 @@ Route::middleware('auth')->group(function () {
 });
 
 // Public Booking Routes
-Route::get('/units/{unit:slug}/booking', [BookingController::class, 'create'])->name('bookings.create');
-Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
+Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store')->middleware('throttle:10,1');
 Route::get('/bookings/{booking}/success', [BookingController::class, 'success'])->name('bookings.success');
 
-// Admin CMS Routes (require authentication)
-Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
+// Admin CMS Routes (require authentication + admin role)
+Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.')->group(function () {
 
     // Media Management
     Route::resource('media', MediaController::class);
@@ -78,10 +79,6 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
     // Property Management
     Route::resource('properties', PropertyController::class);
     Route::patch('properties/{property}/status', [PropertyController::class, 'updateStatus'])->name('properties.status');
-
-    // Unit Management
-    Route::resource('units', UnitController::class);
-    Route::patch('units/{unit}/status', [UnitController::class, 'updateStatus'])->name('units.status');
 
     // Amenity Management
     Route::resource('amenities', AmenityController::class);

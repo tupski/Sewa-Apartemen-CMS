@@ -40,7 +40,7 @@
         <textarea name="content"
                   id="content"
                   rows="12"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">{{ old('content', $page->content ?? '') }}</textarea>
+                  class="wysiwyg w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">{{ old('content', $page->content ?? '') }}</textarea>
         @error('content')
             <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
         @enderror

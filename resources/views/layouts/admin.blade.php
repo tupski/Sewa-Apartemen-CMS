@@ -8,16 +8,35 @@
 
     <title>{{ config('app.name', 'Laravel') }} - Admin Panel</title>
 
+    @php $adminEnableDark = \App\Services\SettingsService::get('enable_dark_mode', false); @endphp
+
+    <!-- Apply dark mode before first paint (no flash) -->
+    <script>
+        (function () {
+            var stored = localStorage.getItem('admin.theme');
+            var dark = stored ? stored === 'dark' : {{ $adminEnableDark ? 'true' : 'false' }};
+            if (dark) document.documentElement.classList.add('dark');
+        })();
+    </script>
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+
+    <!-- Font Awesome 6 (free) — loaded async so CDN slowness doesn't block render -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css"></noscript>
+
+    <!-- Quill 2 WYSIWYG (free, MIT) — loaded async -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css"></noscript>
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     @stack('head')
 </head>
-<body class="font-sans antialiased bg-gray-100">
+<body class="font-sans antialiased bg-gray-100 dark:bg-gray-950">
     @stack('body_start')
 
     <!-- Skip to content -->
@@ -25,212 +44,204 @@
         Skip to content
     </a>
 
-    <div x-data="{ sidebarOpen: false }" class="min-h-screen lg:flex">
+    <div x-data="{ sidebarOpen: false, sidebarCollapsed: localStorage.getItem('admin.sidebar') === 'collapsed', dark: document.documentElement.classList.contains('dark') }"
+         x-init="$watch('sidebarCollapsed', v => localStorage.setItem('admin.sidebar', v ? 'collapsed' : 'expanded'));
+                 $watch('dark', v => { document.documentElement.classList.toggle('dark', v); localStorage.setItem('admin.theme', v ? 'dark' : 'light'); })"
+         class="min-h-screen lg:flex">
         <!-- Sidebar -->
-        <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-               class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 lg:shrink-0">
-            <div class="flex items-center justify-between h-16 px-6 bg-gray-900">
-                <a href="{{ route('dashboard') }}" class="text-white text-xl font-bold">
-                    CMS Admin
+        <aside :class="[sidebarOpen ? 'translate-x-0' : '-translate-x-full', sidebarCollapsed ? 'lg:w-20' : 'lg:w-64']"
+               class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 lg:shrink-0 flex flex-col">
+            <div class="flex items-center justify-between h-16 px-4 bg-gray-900 shrink-0">
+                <a href="{{ route('dashboard') }}" class="text-white text-xl font-bold flex items-center gap-2 overflow-hidden">
+                    <i class="fa-solid fa-building text-blue-400 shrink-0"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''" class="truncate">CMS Admin</span>
                 </a>
-                <button @click="sidebarOpen = false" class="text-gray-400 hover:text-white lg:hidden focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1" aria-label="Close sidebar">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
+                <div class="flex items-center gap-1">
+                    <!-- Collapse toggle (desktop) -->
+                    <button @click="sidebarCollapsed = !sidebarCollapsed" class="hidden lg:inline-flex text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1.5 transition" aria-label="Toggle sidebar" :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+                        <svg class="w-5 h-5 transition-transform duration-300" :class="sidebarCollapsed ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
+                        </svg>
+                    </button>
+                    <!-- Close (mobile) -->
+                    <button @click="sidebarOpen = false" class="text-gray-400 hover:text-white lg:hidden focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1.5" aria-label="Close sidebar">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <!-- Navigation -->
-            <nav class="px-4 py-6 space-y-2" role="navigation" aria-label="Sidebar navigation">
+            <nav class="py-4 flex-1 overflow-y-auto" role="navigation" aria-label="Sidebar navigation">
                 <!-- Dashboard -->
                 <a href="{{ route('dashboard') }}"
-                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('dashboard') ? 'bg-gray-700 text-white' : '' }}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-                    </svg>
-                    Dashboard
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('dashboard') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-solid fa-gauge-high w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Dashboard</span>
                 </a>
 
                 <!-- CMS Section -->
-                <div class="pt-4 pb-2">
-                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase">Content Management</p>
-                </div>
+                <p class="px-4 pt-5 pb-2 text-xs font-semibold text-gray-400 uppercase" :class="sidebarCollapsed ? 'lg:hidden' : ''">Content</p>
 
                 <a href="{{ route('admin.pages.index') }}"
-                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.pages.*') ? 'bg-gray-700 text-white' : '' }}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                    </svg>
-                    Pages
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.pages.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-regular fa-file-lines w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Pages</span>
                 </a>
 
                 <a href="{{ route('admin.blocks.index') }}"
-                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.blocks.*') ? 'bg-gray-700 text-white' : '' }}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"></path>
-                    </svg>
-                    Blocks
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.blocks.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-solid fa-cubes w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Blocks</span>
                 </a>
 
                 <a href="{{ route('admin.media.index') }}"
-                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.media.*') ? 'bg-gray-700 text-white' : '' }}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
-                    Media
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.media.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-regular fa-images w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Media</span>
                 </a>
 
                 <a href="{{ route('admin.navigations.index') }}"
-                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.navigations.*') ? 'bg-gray-700 text-white' : '' }}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                    </svg>
-                    Navigation
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.navigations.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-solid fa-bars-staggered w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Navigation</span>
                 </a>
 
                 <a href="{{ route('admin.properties.index') }}"
-                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.properties.*') ? 'bg-gray-700 text-white' : '' }}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                    </svg>
-                    Properties
-                </a>
-
-                <a href="{{ route('admin.units.index') }}"
-                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.units.*') ? 'bg-gray-700 text-white' : '' }}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                    </svg>
-                    Units
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.properties.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-solid fa-building w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Properties</span>
                 </a>
 
                 <a href="{{ route('admin.amenities.index') }}"
-                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.amenities.*') ? 'bg-gray-700 text-white' : '' }}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
-                    </svg>
-                    Amenities
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.amenities.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-solid fa-spa w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Amenities</span>
                 </a>
 
                 <!-- Blog Section -->
-                <div class="pt-4 pb-2">
-                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase">Blog</p>
-                </div>
+                <p class="px-4 pt-5 pb-2 text-xs font-semibold text-gray-400 uppercase" :class="sidebarCollapsed ? 'lg:hidden' : ''">Blog</p>
 
                 <a href="{{ route('admin.posts.index') }}"
-                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.posts.*') ? 'bg-gray-700 text-white' : '' }}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path>
-                    </svg>
-                    Posts
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.posts.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-regular fa-newspaper w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Posts</span>
                 </a>
 
                 <a href="{{ route('admin.categories.index') }}"
-                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.categories.*') ? 'bg-gray-700 text-white' : '' }}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h-1v2h1V7zm0 4h-1v2h1v-2zm0 4h-1v2h1v-2zM17 7h-1v2h1V7zm0 4h-1v2h1v-2zm0 4h-1v2h1v-2zM5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5c0-1.1.9-2 2-2z"></path>
-                    </svg>
-                    Categories
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.categories.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-solid fa-folder-tree w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Categories</span>
                 </a>
 
                 <a href="{{ route('admin.tags.index') }}"
-                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.tags.*') ? 'bg-gray-700 text-white' : '' }}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10M7 11h10M7 15h5"></path>
-                    </svg>
-                    Tags
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.tags.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-solid fa-tags w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Tags</span>
                 </a>
 
-                <!-- Bookings Section -->
+                <!-- Bookings -->
+                <p class="px-4 pt-5 pb-2 text-xs font-semibold text-gray-400 uppercase" :class="sidebarCollapsed ? 'lg:hidden' : ''">Booking</p>
+
                 <a href="{{ route('admin.bookings.index') }}"
-                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.bookings.*') ? 'bg-gray-700 text-white' : '' }}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                    </svg>
-                    Bookings
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.bookings.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-regular fa-calendar-check w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Bookings</span>
                 </a>
 
-                <!-- Users Section -->
+                <!-- Users -->
                 <a href="{{ route('admin.users.index') }}"
-                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.users.*') ? 'bg-gray-700 text-white' : '' }}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                    </svg>
-                    Users
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.users.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-solid fa-users w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Users</span>
                 </a>
 
                 <!-- SEO Section -->
-                <div class="pt-4 pb-2">
-                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase">SEO</p>
-                </div>
+                <p class="px-4 pt-5 pb-2 text-xs font-semibold text-gray-400 uppercase" :class="sidebarCollapsed ? 'lg:hidden' : ''">SEO</p>
 
                 <a href="{{ route('admin.redirects.index') }}"
-                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.redirects.*') ? 'bg-gray-700 text-white' : '' }}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-                    </svg>
-                    Redirects
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.redirects.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-solid fa-arrow-right-arrow-left w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Redirects</span>
                 </a>
 
-                <!-- Settings Section -->
-                <div class="pt-4 pb-2">
-                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase">System</p>
-                </div>
-
+                <!-- Settings -->
                 <a href="{{ route('admin.settings.index') }}"
-                   class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition {{ request()->routeIs('admin.settings.*') ? 'bg-gray-700 text-white' : '' }}">
-                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
-                    Settings
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.settings.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-solid fa-gear w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Settings</span>
                 </a>
             </nav>
         </aside>
 
         <!-- Main Content Area -->
-        <div class="lg:flex-1 flex flex-col min-h-screen">
+        <div class="lg:flex-1 flex flex-col min-h-screen min-w-0">
             <!-- Header -->
-            <header class="bg-white shadow-sm sticky top-0 z-40">
+            <header class="bg-white shadow-sm sticky top-0 z-40 dark:bg-gray-900 dark:border-b dark:border-gray-800">
                 <div class="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
                     <!-- Mobile menu button -->
-                    <button @click="sidebarOpen = true" class="text-gray-500 hover:text-gray-700 lg:hidden focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1" aria-label="Open sidebar menu">
+                    <button @click="sidebarOpen = true" class="text-gray-500 hover:text-gray-700 lg:hidden focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1 dark:text-gray-300 dark:hover:text-white" aria-label="Open sidebar menu">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
 
                     <!-- Page Title -->
-                    <h1 class="text-xl font-semibold text-gray-800">
+                    <h1 class="text-xl font-semibold text-gray-800 dark:text-gray-100">
                         @yield('page-title', 'Admin Panel')
                     </h1>
 
-                    <!-- User Dropdown -->
-                    <div x-data="{ dropdownOpen: false }" class="relative">
-                        <button @click="dropdownOpen = !dropdownOpen" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1" aria-label="User menu" aria-expanded="false" :aria-expanded="dropdownOpen">
-                            <span class="text-sm font-medium">{{ Auth::user()->name }}</span>
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                            </svg>
+                    <div class="flex items-center space-x-3">
+                        <!-- Dark mode toggle -->
+                        <button @click="dark = !dark"
+                                class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800"
+                                aria-label="Toggle dark mode" :title="dark ? 'Light mode' : 'Dark mode'">
+                            <svg x-show="!dark" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                            <svg x-show="dark" class="w-5 h-5" style="display: none;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                         </button>
 
-                        <div x-show="dropdownOpen"
-                             @click.away="dropdownOpen = false"
-                             x-transition:enter="transition ease-out duration-100"
-                             x-transition:enter-start="transform opacity-0 scale-95"
-                             x-transition:enter-end="transform opacity-100 scale-100"
-                             x-transition:leave="transition ease-in duration-75"
-                             x-transition:leave-start="transform opacity-100 scale-100"
-                             x-transition:leave-end="transform opacity-0 scale-95"
-                             class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5"
-                             style="display: none;">
-                            <a href="{{ route('profile.edit') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</a>
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    Log Out
-                                </button>
-                            </form>
+                        <!-- User Dropdown -->
+                        <div x-data="{ dropdownOpen: false }" class="relative">
+                            <button @click="dropdownOpen = !dropdownOpen" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1 dark:text-gray-200 dark:hover:text-white" aria-label="User menu" aria-expanded="false" :aria-expanded="dropdownOpen">
+                                <span class="text-sm font-medium">{{ Auth::user()->name }}</span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+
+                            <div x-show="dropdownOpen"
+                                 @click.away="dropdownOpen = false"
+                                 x-transition:enter="transition ease-out duration-100"
+                                 x-transition:enter-start="transform opacity-0 scale-95"
+                                 x-transition:enter-end="transform opacity-100 scale-100"
+                                 x-transition:leave="transition ease-in duration-75"
+                                 x-transition:leave-start="transform opacity-100 scale-100"
+                                 x-transition:leave-end="transform opacity-0 scale-95"
+                                 class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 dark:bg-gray-800"
+                                 style="display: none;">
+                                <a href="{{ route('profile.edit') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700">Profile</a>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700">
+                                        Log Out
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -273,13 +284,13 @@
             </div>
 
             <!-- Main Content -->
-            <main id="main-content" class="flex-1 px-4 sm:px-6 lg:px-8 py-6" role="main">
+            <main id="main-content" class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6" role="main">
                 @yield('content')
             </main>
 
             <!-- Footer -->
-            <footer class="bg-white border-t border-gray-200 py-4 px-4 sm:px-6 lg:px-8">
-                <div class="flex items-center justify-between text-sm text-gray-600">
+            <footer class="bg-white border-t border-gray-200 py-4 px-4 sm:px-6 lg:px-8 dark:bg-gray-900 dark:border-gray-800">
+                <div class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
                     <p>&copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
                     <p>Version 1.0.0</p>
                 </div>
@@ -299,6 +310,58 @@
              style="display: none;">
         </div>
     </div>
+
+    <!-- Quill WYSIWYG: auto-init on any textarea with .wysiwyg -->
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof Quill === 'undefined') return;
+            document.querySelectorAll('textarea.wysiwyg').forEach(function (ta) {
+                var holder = document.createElement('div');
+                holder.classList.add('wysiwyg-container', 'bg-white', 'rounded-md', 'border', 'border-gray-300');
+                ta.parentNode.insertBefore(holder, ta);
+                var form = ta.closest('form');
+
+                var quill = new Quill(holder, {
+                    theme: 'snow',
+                    placeholder: 'Tulis konten di sini...'
+                });
+
+                // Load existing HTML content
+                if (ta.value) {
+                    try {
+                        quill.clipboard.dangerouslyPasteHTML(0, ta.value);
+                    } catch (e) { /* keep empty */ }
+                }
+
+                // Keep hidden textarea in sync (Quill outputs full HTML)
+                function sync() { ta.value = quill.root.innerHTML; }
+                quill.on('text-change', sync);
+                if (form) form.addEventListener('submit', sync);
+                ta.style.display = 'none';
+            });
+        });
+    </script>
+
+    <!-- Scroll to top -->
+    <button id="scroll-top" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+            class="hidden fixed bottom-6 right-6 z-50 w-11 h-11 rounded-full shadow-lg items-center justify-center text-white hover:opacity-90 transition bg-blue-600"
+            aria-label="Scroll to top">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+    </button>
+    <script>
+        window.addEventListener('scroll', function () {
+            var btn = document.getElementById('scroll-top');
+            if (!btn) return;
+            if (window.scrollY > 300) {
+                btn.classList.remove('hidden');
+                btn.classList.add('inline-flex');
+            } else {
+                btn.classList.add('hidden');
+                btn.classList.remove('inline-flex');
+            }
+        });
+    </script>
 
     @stack('scripts')
 </body>

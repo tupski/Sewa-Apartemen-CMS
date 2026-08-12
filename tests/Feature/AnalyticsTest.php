@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Booking;
 use App\Models\Property;
-use App\Models\Unit;
 use App\Services\SettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -132,20 +131,10 @@ class AnalyticsTest extends TestCase
             'status' => 'published',
         ]);
 
-        $unit = Unit::create([
-            'property_id' => $property->id,
-            'name' => 'Test Unit',
-            'slug' => 'test-unit',
-            'unit_type' => 'Studio',
-            'status' => 'available',
-            'price_per_night' => 500000,
-            'bedrooms' => 1,
-            'bathrooms' => 1,
-        ]);
-
         $booking = Booking::create([
-            'unit_id' => $unit->id,
             'property_id' => $property->id,
+            'booking_type' => 'daily',
+            'unit_type' => 'studio',
             'customer_name' => 'John Doe',
             'customer_phone' => '081234567890',
             'check_in' => now()->addDays(1)->format('Y-m-d'),
@@ -161,7 +150,6 @@ class AnalyticsTest extends TestCase
             'event' => 'booking_completed',
             'booking_id' => $booking->id,
             'booking_code' => $booking->code,
-            'unit_name' => $unit->name,
             'property_name' => $property->name,
             'value' => 1000000.0,
             'currency' => 'IDR',

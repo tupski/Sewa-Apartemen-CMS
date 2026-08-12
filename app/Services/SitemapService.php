@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Page;
 use App\Models\Property;
-use App\Models\Unit;
 use Illuminate\Support\Facades\Cache;
 
 class SitemapService
@@ -67,20 +66,10 @@ class SitemapService
         // Properties
         foreach (Property::where('status', 'published')->get() as $property) {
             $urls[] = [
-                'loc' => url('/'),
+                'loc' => url('/apartments/' . $property->slug),
                 'lastmod' => $property->updated_at->toIso8601String(),
                 'changefreq' => 'weekly',
                 'priority' => '0.8',
-            ];
-        }
-
-        // Units
-        foreach (Unit::where('status', 'available')->get() as $unit) {
-            $urls[] = [
-                'loc' => url('/'),
-                'lastmod' => $unit->updated_at->toIso8601String(),
-                'changefreq' => 'weekly',
-                'priority' => '0.7',
             ];
         }
 

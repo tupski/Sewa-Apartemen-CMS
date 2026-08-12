@@ -16,8 +16,10 @@ class Booking extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'unit_id',
         'property_id',
+        'booking_type',
+        'unit_type',
+        'duration_hours',
         'customer_name',
         'customer_email',
         'customer_phone',
@@ -32,6 +34,7 @@ class Booking extends Model
         'whatsapp_sent_at',
         'total_price',
         'deposit_amount',
+        'price_breakdown',
         'metadata',
     ];
 
@@ -41,22 +44,16 @@ class Booking extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'check_in' => 'date',
-        'check_out' => 'date',
+        'check_in' => 'datetime',
+        'check_out' => 'datetime',
         'guests' => 'integer',
+        'duration_hours' => 'integer',
         'total_price' => 'decimal:2',
         'deposit_amount' => 'decimal:2',
+        'price_breakdown' => 'json',
         'metadata' => 'json',
         'whatsapp_sent_at' => 'datetime',
     ];
-
-    /**
-     * Get the unit that owns the booking.
-     */
-    public function unit()
-    {
-        return $this->belongsTo(Unit::class);
-    }
 
     /**
      * Get the property that owns the booking.

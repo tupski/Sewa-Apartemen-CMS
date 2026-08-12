@@ -3,7 +3,7 @@
 @section('page-title', 'Properties')
 
 @section('content')
-<div class="max-w-7xl mx-auto">
+<div class="w-full">
     <!-- Header with Actions -->
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -106,7 +106,7 @@
                                     <span class="text-sm text-gray-500">{{ $property->city ?? '-' }}</span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="text-sm text-gray-500">{{ $property->units_count ?? $property->units()->count() }} units</span>
+                                    <span class="text-sm text-gray-500">{{ count($property->unit_types ?? []) }} room types</span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     @if($property->status === 'published')

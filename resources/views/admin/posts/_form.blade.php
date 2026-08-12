@@ -58,7 +58,7 @@
     <div>
         <label for="content" class="block text-sm font-medium text-gray-700 mb-2">Content <span class="text-red-500">*</span></label>
         <textarea name="content" id="content" rows="20"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                  class="wysiwyg w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
                   required>{{ old('content', $post->content ?? '') }}</textarea>
         <p class="text-xs text-gray-500 mt-1">HTML is supported. Use <h2>, <p>, <strong>, <em>, <ul>, <ol>, <li>, <a>, <img>, <blockquote></p>
         @error('content') <p class="text-red-500 text-sm mt-1">{{ $message }}</p> @enderror

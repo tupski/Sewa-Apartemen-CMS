@@ -86,7 +86,21 @@ class PageController extends Controller
     }
 
     /**
-     * Display the specified page.
+     * Public detail page for a published CMS page.
+     */
+    public function publicShow(Page $page)
+    {
+        abort_unless($page->status === 'published', 404);
+
+        $blocks = \App\Models\Block::where('status', 'active')->get()
+            ->filter(fn ($block) => $block->appearsOnPage($page->id))
+            ->groupBy('area');
+
+        return view('pages.show', compact('page', 'blocks'));
+    }
+
+    /**
+     * Display the specified page (redirect to edit form).
      */
     public function show(Page $page)
     {

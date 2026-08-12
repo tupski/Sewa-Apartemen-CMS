@@ -85,6 +85,14 @@ class AmenityController extends Controller
     }
 
     /**
+     * Display the specified amenity (redirect to edit form).
+     */
+    public function show(Amenity $amenity)
+    {
+        return redirect()->route('admin.amenities.edit', $amenity);
+    }
+
+    /**
      * Show the form for editing the specified amenity.
      */
     public function edit(Amenity $amenity)
@@ -123,14 +131,38 @@ class AmenityController extends Controller
     }
 
     /**
+     * Update amenity active status (AJAX).
+     */
+    public function updateStatus(Request $request, Amenity $amenity)
+    {
+        try {
+            $validated = $request->validate([
+                'is_active' => 'required|boolean',
+            ]);
+
+            $amenity->update(['is_active' => $validated['is_active']]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Amenity status updated successfully.',
+                'is_active' => $amenity->is_active,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update amenity status: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Remove the specified amenity.
      */
     public function destroy(Amenity $amenity)
     {
         try {
-            // Detach from properties and units before deleting
+            // Detach from properties before deleting
             $amenity->properties()->detach();
-            $amenity->units()->detach();
             $amenity->delete();
 
             return redirect()

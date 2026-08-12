@@ -84,8 +84,8 @@ class SitemapTest extends TestCase
         $this->assertStringContainsString('about-us', $response->getContent());
     }
 
-    /** Sitemap contains available units */
-    public function test_sitemap_contains_available_units(): void
+    /** Sitemap contains property URLs */
+    public function test_sitemap_contains_property_url(): void
     {
         $property = Property::create([
             'name' => 'Prop',
@@ -93,22 +93,11 @@ class SitemapTest extends TestCase
             'status' => 'published',
         ]);
 
-        Unit::create([
-            'property_id' => $property->id,
-            'name' => 'Apt 101',
-            'slug' => 'apt-101',
-            'unit_type' => 'Studio',
-            'status' => 'available',
-            'price_per_night' => 300000,
-            'bedrooms' => 1,
-            'bathrooms' => 1,
-        ]);
-
         $response = $this->get(route('sitemap'));
 
         $response->assertStatus(200);
-        // The sitemap includes unit URLs (<loc>)
-        $this->assertStringContainsString('<loc>', $response->getContent());
+        // The sitemap includes property URLs
+        $this->assertStringContainsString('/apartments/prop', $response->getContent());
     }
 
     /** Sitemap contains blog URL if post model exists */

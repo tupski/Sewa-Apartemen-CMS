@@ -223,9 +223,6 @@ class SeoService
 
         if ($class === \App\Models\Property::class) {
             $schemas[] = SchemaService::realEstateListing($model);
-        } elseif ($class === \App\Models\Unit::class) {
-            $schemas[] = SchemaService::realEstateListing($model->property ?? $model);
-            $schemas[] = SchemaService::offer($model);
         }
 
         return $schemas;

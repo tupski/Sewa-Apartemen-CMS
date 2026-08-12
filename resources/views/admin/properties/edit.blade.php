@@ -3,7 +3,7 @@
 @section('page-title', 'Edit Property')
 
 @section('content')
-<div class="max-w-4xl mx-auto">
+<div class="max-w-7xl mx-auto">
     <!-- Header -->
     <div class="mb-6">
         <div class="flex items-center gap-2 text-sm text-gray-600 mb-2">
@@ -220,6 +220,12 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Room Types & Pricing -->
+                    @include('admin.properties._pricing', ['property' => $property])
+
+                    <!-- Photo Gallery -->
+                    @include('admin.properties._photos', ['property' => $property])
 
                     <!-- Amenities -->
                     <div class="pb-6">

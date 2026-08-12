@@ -3,7 +3,7 @@
 @section('page-title', 'Booking Details - ' . $booking->code)
 
 @section('content')
-<div class="max-w-7xl mx-auto">
+<div class="w-full">
     <!-- Header -->
     <div class="mb-6">
         <div class="flex items-center gap-2 text-sm text-gray-600 mb-2">
@@ -38,7 +38,7 @@
                     </svg>
                     <div>
                         <p class="text-sm font-medium text-green-800">Booking Confirmed</p>
-                        <p class="text-sm text-green-700">Customer has been notified and unit is reserved.</p>
+                        <p class="text-sm text-green-700">Customer has been notified and the room is reserved.</p>
                     </div>
                 </div>
             </div>
@@ -49,16 +49,16 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left Column (Booking Info) -->
         <div class="lg:col-span-2 space-y-6">
-            <!-- Unit Information -->
+            <!-- Property & Room Information -->
             <div class="bg-white rounded-lg shadow-sm overflow-hidden">
                 <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-800">Unit Information</h3>
+                    <h3 class="text-lg font-semibold text-gray-800">Property & Room</h3>
                 </div>
                 <div class="p-6">
                     <div class="flex gap-4">
-                        @if($booking->unit->featuredImage)
-                            <img src="{{ $booking->unit->featuredImage->url }}"
-                                 alt="{{ $booking->unit->name }}"
+                        @if($booking->property?->featuredImage)
+                            <img src="{{ $booking->property->featuredImage->url }}"
+                                 alt="{{ $booking->property->name }}"
                                  class="w-32 h-32 object-cover rounded-lg">
                         @else
                             <div class="w-32 h-32 bg-gray-200 rounded-lg flex items-center justify-center">
@@ -68,21 +68,16 @@
                             </div>
                         @endif
                         <div class="flex-1">
-                            <h4 class="text-xl font-semibold text-gray-900">{{ $booking->unit->name }}</h4>
-                            <p class="text-gray-600">{{ $booking->unit->property->name }}</p>
+                            <h4 class="text-xl font-semibold text-gray-900">{{ $booking->property?->name ?? '-' }}</h4>
+                            <p class="text-gray-600">{{ $booking->property?->city ?? '' }}</p>
 
                             <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
-                                @if($booking->unit->unit_type)
-                                    <div><span class="font-medium text-gray-500">Type:</span> {{ $booking->unit->unit_type }}</div>
-                                @endif
-                                @if($booking->unit->size_sqm)
-                                    <div><span class="font-medium text-gray-500">Size:</span> {{ $booking->unit->size_sqm }} m²</div>
-                                @endif
-                                @if($booking->unit->bedrooms)
-                                    <div><span class="font-medium text-gray-500">Bedrooms:</span> {{ $booking->unit->bedrooms }}</div>
-                                @endif
-                                @if($booking->unit->bathrooms)
-                                    <div><span class="font-medium text-gray-500">Bathrooms:</span> {{ $booking->unit->bathrooms }}</div>
+                                <div><span class="font-medium text-gray-500">Room Type:</span> {{ $booking->property?->typeLabel($booking->unit_type) ?? $booking->unit_type }}</div>
+                                <div><span class="font-medium text-gray-500">Booking Type:</span> {{ ucfirst($booking->booking_type) }}</div>
+                                @if($booking->booking_type === 'transit')
+                                    <div><span class="font-medium text-gray-500">Duration:</span> {{ $booking->duration_hours }} jam</div>
+                                @else
+                                    <div><span class="font-medium text-gray-500">Nights:</span> {{ $booking->metadata['nights'] ?? '-' }}</div>
                                 @endif
                             </div>
                         </div>
@@ -175,9 +170,15 @@
                         </div>
                     </div>
                     <div class="mt-4 text-center">
-                        <span class="inline-block px-4 py-2 bg-gray-100 rounded-lg text-gray-700 font-medium">
-                            {{ \Carbon\Carbon::parse($booking->check_in)->diffInDays($booking->check_out) }} nights total
-                        </span>
+                        @if($booking->booking_type === 'transit')
+                            <span class="inline-block px-4 py-2 bg-gray-100 rounded-lg text-gray-700 font-medium">
+                                Transit {{ $booking->duration_hours }} jam
+                            </span>
+                        @else
+                            <span class="inline-block px-4 py-2 bg-gray-100 rounded-lg text-gray-700 font-medium">
+                                {{ \Carbon\Carbon::parse($booking->check_in)->diffInDays($booking->check_out) }} nights total
+                            </span>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -242,14 +243,30 @@
                     <h3 class="text-lg font-semibold text-gray-800">Pricing Summary</h3>
                 </div>
                 <div class="p-6 space-y-3">
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-600">Nightly Rate</span>
-                        <span class="font-medium">Rp{{ number_format($booking->total_price / \Carbon\Carbon::parse($booking->check_in)->diffInDays($booking->check_out)) }}</span>
-                    </div>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-600">Number of Nights</span>
-                        <span class="font-medium">{{ \Carbon\Carbon::parse($booking->check_in)->diffInDays($booking->check_out) }}</span>
-                    </div>
+                    @if($booking->booking_type === 'transit')
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Transit Rate ({{ $booking->duration_hours }} jam)</span>
+                            <span class="font-medium">Rp{{ number_format((float) ($booking->price_breakdown['rate'] ?? 0)) }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Rate Type</span>
+                            <span class="font-medium">{{ !empty($booking->price_breakdown['is_weekend']) ? 'Weekend' : 'Weekday' }}</span>
+                        </div>
+                    @elseif(in_array($booking->booking_type, ['weekly', 'monthly']))
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">{{ ucfirst($booking->booking_type) }} Rate</span>
+                            <span class="font-medium">Rp{{ number_format((float) ($booking->price_breakdown['rate'] ?? 0)) }}</span>
+                        </div>
+                    @else
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Nightly Rate (avg)</span>
+                            <span class="font-medium">Rp{{ number_format((float) ($booking->total_price / max(1, (int) ($booking->metadata['nights'] ?? 1)))) }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Number of Nights</span>
+                            <span class="font-medium">{{ $booking->metadata['nights'] ?? \Carbon\Carbon::parse($booking->check_in)->diffInDays($booking->check_out) }}</span>
+                        </div>
+                    @endif
                     <div class="border-t border-gray-200 pt-2 flex justify-between text-sm">
                         <span class="text-gray-600">Total Price</span>
                         <span class="font-medium">Rp{{ number_format($booking->total_price) }}</span>

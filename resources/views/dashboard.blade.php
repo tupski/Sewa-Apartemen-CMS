@@ -18,10 +18,10 @@
             </div>
         </a>
 
-        <a href="{{ route('admin.units.index') }}" class="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition border-l-4 border-green-500">
+        <a href="{{ route('admin.properties.index') }}" class="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition border-l-4 border-green-500">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-500 font-medium">Units</p>
+                    <p class="text-sm text-gray-500 font-medium">Room Types</p>
                     <p class="text-2xl font-bold text-gray-800">{{ $totalUnits }}</p>
                 </div>
                 <svg class="w-10 h-10 text-green-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,10 +75,6 @@
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 Create Property
             </a>
-            <a href="{{ route('admin.units.index') }}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                Create Unit
-            </a>
             <a href="{{ route('admin.bookings.index') }}" class="inline-flex items-center px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-md hover:bg-yellow-700 transition">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
                 View Bookings
@@ -101,7 +97,7 @@
             <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Occupancy Rate</h3>
             <div class="text-center">
                 <p class="text-4xl font-bold text-gray-800">{{ $occupancyRate }}%</p>
-                <p class="text-sm text-gray-500 mt-1">Active / Total Units</p>
+                <p class="text-sm text-gray-500 mt-1">Confirmed / Room Types</p>
                 <div class="w-full bg-gray-200 rounded-full h-3 mt-4">
                     <div class="bg-green-500 h-3 rounded-full" style="width: {{ $occupancyRate }}%"></div>
                 </div>
@@ -143,7 +139,7 @@
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Room</th>
                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Guest</th>
                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                             </tr>
@@ -154,7 +150,7 @@
                                     <td class="px-4 py-2 whitespace-nowrap">
                                         <a href="{{ route('admin.bookings.show', $booking) }}" class="text-sm font-mono text-blue-600">{{ $booking->code }}</a>
                                     </td>
-                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{{ $booking->unit->name ?? '-' }}</td>
+                                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{{ $booking->property?->typeLabel($booking->unit_type) ?? '-' }} · {{ $booking->property?->name }}</td>
                                     <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{{ $booking->customer_name }}</td>
                                     <td class="px-4 py-2 whitespace-nowrap">
                                         @if($booking->status === 'pending')

@@ -20,7 +20,18 @@ class CrudTest extends TestCase
 
     protected function authenticate(): void
     {
+        $role = \App\Models\Role::updateOrCreate(['slug' => 'super-admin'], ['name' => 'Super Admin']);
+        $this->user->roles()->syncWithoutDetaching([$role->id => ['model_type' => \App\Models\User::class]]);
+
         $this->actingAs($this->user);
+    }
+
+    public function test_non_admin_user_cannot_access_admin(): void
+    {
+        // Regular user WITHOUT the super-admin role
+        $this->actingAs($this->user);
+        $this->get(route('admin.properties.index'))->assertForbidden();
+        $this->get(route('dashboard'))->assertForbidden();
     }
 
     public function test_admin_properties_index_returns_200(): void
@@ -29,10 +40,39 @@ class CrudTest extends TestCase
         $this->get(route('admin.properties.index'))->assertStatus(200);
     }
 
-    public function test_admin_units_index_returns_200(): void
+    public function test_property_gallery_media_linking_works(): void
     {
         $this->authenticate();
-        $this->get(route('admin.units.index'))->assertStatus(200);
+
+        $media = \App\Models\Media::create([
+            'user_id' => $this->user->id,
+            'disk' => 'public',
+            'directory' => 'properties/1/lobby',
+            'filename' => 'lobby-1.jpg',
+            'original_filename' => 'lobby-1.jpg',
+            'mime_type' => 'image/jpeg',
+            'extension' => 'jpg',
+            'size' => 1024,
+            'type' => 'image',
+        ]);
+
+        $response = $this->post(route('admin.properties.store'), [
+            'name' => 'Gallery Property',
+            'slug' => 'gallery-property',
+            'status' => 'published',
+            'photo_categories' => json_encode(['Lobby', 'Bedroom']),
+            'gallery_media' => [0 => [$media->id]],
+        ]);
+
+        $response->assertRedirect(route('admin.properties.index'));
+
+        $property = \App\Models\Property::where('slug', 'gallery-property')->firstOrFail();
+        $this->assertEquals(['Lobby', 'Bedroom'], $property->photoCategories());
+
+        $photo = $property->photos()->first();
+        $this->assertNotNull($photo);
+        $this->assertEquals('Lobby', $photo->category);
+        $this->assertEquals($media->id, $photo->media_id);
     }
 
     public function test_admin_amenities_index_returns_200(): void
@@ -112,11 +152,6 @@ class CrudTest extends TestCase
     public function test_guest_cannot_access_properties_index(): void
     {
         $this->get(route('admin.properties.index'))->assertRedirect(route('login'));
-    }
-
-    public function test_guest_cannot_access_units_index(): void
-    {
-        $this->get(route('admin.units.index'))->assertRedirect(route('login'));
     }
 
     public function test_guest_cannot_access_amenities_index(): void

@@ -42,15 +42,6 @@ class Amenity extends Model
     }
 
     /**
-     * Get the units that have this amenity.
-     */
-    public function units()
-    {
-        return $this->belongsToMany(Unit::class, 'amenity_unit')
-                    ->withTimestamps();
-    }
-
-    /**
      * Scope a query to only include active amenities.
      */
     public function scopeActive($query)

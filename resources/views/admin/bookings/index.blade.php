@@ -3,7 +3,7 @@
 @section('page-title', 'Bookings')
 
 @section('content')
-<div class="max-w-7xl mx-auto">
+<div class="w-full">
     <!-- Header with Actions -->
     <div class="mb-6 flex items-center justify-between">
         <div>
@@ -20,8 +20,17 @@
         <form method="GET" action="{{ route('admin.bookings.index') }}" class="space-y-3">
             <div class="flex flex-col md:flex-row gap-4">
                 <div class="flex-1">
-                    <input type="text" name="search" placeholder="Search by code, name, or unit..." value="{{ request('search') }}"
+                    <input type="text" name="search" placeholder="Search by code, name, or room type..." value="{{ request('search') }}"
                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="w-full md:w-40">
+                    <select name="booking_type" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All Types</option>
+                        <option value="daily" {{ request('booking_type') == 'daily' ? 'selected' : '' }}>Daily</option>
+                        <option value="transit" {{ request('booking_type') == 'transit' ? 'selected' : '' }}>Transit</option>
+                        <option value="weekly" {{ request('booking_type') == 'weekly' ? 'selected' : '' }}>Weekly</option>
+                        <option value="monthly" {{ request('booking_type') == 'monthly' ? 'selected' : '' }}>Monthly</option>
+                    </select>
                 </div>
                 <div class="w-full md:w-48">
                     <select name="status" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
@@ -53,7 +62,7 @@
                            class="px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <button type="submit" class="px-6 py-2 bg-gray-600 text-white font-medium rounded-md hover:bg-gray-700 transition">Filter</button>
-                @if(request()->hasAny(['search', 'status', 'property_id', 'date_from', 'date_to']))
+                @if(request()->hasAny(['search', 'status', 'property_id', 'booking_type', 'date_from', 'date_to']))
                     <a href="{{ route('admin.bookings.index') }}" class="px-6 py-2 bg-gray-200 text-gray-700 font-medium rounded-md hover:bg-gray-300 transition text-center">Reset</a>
                 @endif
             </div>
@@ -69,7 +78,7 @@
                         <tr>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking Code</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room / Property</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -87,12 +96,16 @@
                                     <div class="text-sm text-gray-500">{{ $booking->customer_phone }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">{{ $booking->unit->name ?? '-' }}</div>
-                                    <div class="text-sm text-gray-500">{{ $booking->unit->property->name ?? '-' }}</div>
+                                    <div class="text-sm text-gray-900">{{ $booking->property?->typeLabel($booking->unit_type) ?? '-' }}</div>
+                                    <div class="text-sm text-gray-500">{{ $booking->property->name ?? '-' }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">{{ \Carbon\Carbon::parse($booking->check_in)->format('M d') }} - {{ \Carbon\Carbon::parse($booking->check_out)->format('M d, Y') }}</div>
-                                    <div class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($booking->check_in)->diffInDays($booking->check_out) }} nights</div>
+                                    @if($booking->booking_type === 'transit')
+                                        <div class="text-sm text-gray-900">{{ \Carbon\Carbon::parse($booking->check_in)->format('M d, Y H:i') }} · {{ $booking->duration_hours }}h</div>
+                                    @else
+                                        <div class="text-sm text-gray-900">{{ \Carbon\Carbon::parse($booking->check_in)->format('M d') }} - {{ \Carbon\Carbon::parse($booking->check_out)->format('M d, Y') }}</div>
+                                        <div class="text-xs text-gray-500">{{ ucfirst($booking->booking_type) }} · {{ \Carbon\Carbon::parse($booking->check_in)->diffInDays($booking->check_out) }} nights</div>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm font-medium text-gray-900">Rp{{ number_format($booking->total_price) }}</div>

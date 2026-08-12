@@ -6,7 +6,6 @@ use App\Models\Booking;
 use App\Models\Post;
 use App\Models\Property;
 use App\Models\Role;
-use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -28,14 +27,15 @@ class DashboardTest extends TestCase
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
 
-        $role = Role::where('slug', 'super-admin')->first();
-        if ($role) {
-            DB::table('model_has_roles')->insert([
+        $role = Role::updateOrCreate(['slug' => 'super-admin'], ['name' => 'Super Admin']);
+        DB::table('model_has_roles')->updateOrInsert(
+            [
                 'role_id' => $role->id,
                 'model_type' => User::class,
                 'model_id' => $user->id,
-            ]);
-        }
+            ],
+            ['model_type' => User::class]
+        );
 
         return $user;
     }
@@ -123,16 +123,13 @@ class DashboardTest extends TestCase
         $user = $this->createAdminUser();
 
         $property = Property::factory()->create();
-        $unit = Unit::factory()->create(['property_id' => $property->id]);
 
         Booking::factory()->create([
-            'unit_id' => $unit->id,
             'property_id' => $property->id,
             'status' => 'pending',
             'customer_name' => 'Jane Doe',
         ]);
         Booking::factory()->create([
-            'unit_id' => $unit->id,
             'property_id' => $property->id,
             'status' => 'confirmed',
             'customer_name' => 'John Smith',
@@ -151,10 +148,8 @@ class DashboardTest extends TestCase
         $user = $this->createAdminUser();
 
         $property = Property::factory()->create();
-        $unit = Unit::factory()->create(['property_id' => $property->id]);
 
         $booking = Booking::factory()->create([
-            'unit_id' => $unit->id,
             'property_id' => $property->id,
             'status' => 'pending',
         ]);
@@ -179,10 +174,8 @@ class DashboardTest extends TestCase
         $user = $this->createAdminUser();
 
         $property = Property::factory()->create();
-        $unit = Unit::factory()->create(['property_id' => $property->id]);
 
         Booking::factory()->create([
-            'unit_id' => $unit->id,
             'property_id' => $property->id,
             'code' => 'BK-20260811-0001',
             'customer_name' => 'Export Test',

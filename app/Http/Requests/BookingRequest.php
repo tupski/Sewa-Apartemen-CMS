@@ -2,8 +2,11 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Property;
+use App\Services\BookingPricingService;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class BookingRequest extends FormRequest
 {
@@ -23,14 +26,16 @@ class BookingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'unit_id' => ['required', 'integer', 'exists:units,id'],
             'property_id' => ['required', 'integer', 'exists:properties,id'],
+            'booking_type' => ['required', 'string', Rule::in(['daily', 'transit', 'weekly', 'monthly'])],
+            'unit_type' => ['required', 'string', Rule::in(array_keys(Property::UNIT_TYPES))],
+            'duration_hours' => ['nullable', 'integer', Rule::in(BookingPricingService::TRANSIT_BUCKETS)],
+            'check_in' => ['required', 'date'],
+            'check_out' => ['nullable', 'date', 'after_or_equal:check_in'],
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_email' => ['nullable', 'email', 'max:255'],
             'customer_phone' => ['required', 'string', 'max:20'],
             'customer_whatsapp' => ['nullable', 'string', 'max:20'],
-            'check_in' => ['required', 'date', 'after_or_equal:today'],
-            'check_out' => ['required', 'date', 'after_or_equal:check_in'],
             'guests' => ['required', 'integer', 'min:1', 'max:20'],
             'message' => ['nullable', 'string', 'max:1000'],
         ];
@@ -44,16 +49,18 @@ class BookingRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'unit_id' => 'unit',
             'property_id' => 'property',
-            'customer_name' => 'full name',
-            'customer_email' => 'email address',
-            'customer_phone' => 'phone number',
-            'customer_whatsapp' => 'WhatsApp number',
-            'check_in' => 'check-in date',
-            'check_out' => 'check-out date',
-            'guests' => 'number of guests',
-            'message' => 'message',
+            'booking_type' => 'jenis sewa',
+            'unit_type' => 'tipe kamar',
+            'duration_hours' => 'durasi transit',
+            'check_in' => 'tanggal check-in',
+            'check_out' => 'tanggal check-out',
+            'customer_name' => 'nama lengkap',
+            'customer_email' => 'email',
+            'customer_phone' => 'nomor telepon',
+            'customer_whatsapp' => 'nomor WhatsApp',
+            'guests' => 'jumlah tamu',
+            'message' => 'pesan',
         ];
     }
 
@@ -65,10 +72,11 @@ class BookingRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'check_in.after_or_equal' => 'The check-in date must be today or in the future.',
-            'check_out.after_or_equal' => 'The check-out date must be on or after the check-in date.',
-            'guests.min' => 'You must have at least 1 guest.',
-            'guests.max' => 'Maximum 20 guests allowed per booking.',
+            'duration_hours.in' => 'Durasi transit harus salah satu dari: 3, 6, 9, 12, atau 24 jam.',
+            'unit_type.in' => 'Tipe kamar tidak valid.',
+            'check_out.after_or_equal' => 'Tanggal check-out harus sama atau setelah tanggal check-in.',
+            'guests.min' => 'Minimal 1 tamu.',
+            'guests.max' => 'Maksimal 20 tamu per booking.',
         ];
     }
 }

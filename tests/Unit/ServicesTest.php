@@ -359,33 +359,6 @@ class ServicesTest extends TestCase
         $this->assertEquals('Jakarta', $schema['address']['addressLocality']);
     }
 
-    public function test_schema_offer_from_unit(): void
-    {
-        $property = Property::create([
-            'name' => 'Prop',
-            'slug' => 'prop',
-            'status' => 'published',
-        ]);
-
-        $unit = Unit::create([
-            'property_id' => $property->id,
-            'name' => 'Unit 01',
-            'slug' => 'unit-01',
-            'unit_type' => 'Studio',
-            'status' => 'available',
-            'price_per_night' => 500000,
-            'bedrooms' => 1,
-            'bathrooms' => 1,
-        ]);
-
-        $schema = SchemaService::offer($unit);
-
-        $this->assertEquals('Offer', $schema['@type']);
-        $this->assertEquals('Unit 01', $schema['name']);
-        $this->assertEquals('500000.00', $schema['price']);
-        $this->assertEquals('https://schema.org/InStock', $schema['availability']);
-    }
-
     public function test_schema_breadcrumb_list(): void
     {
         $items = [

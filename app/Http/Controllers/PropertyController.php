@@ -50,9 +50,7 @@ class PropertyController extends Controller
         $property->load([
             'featuredImage',
             'amenities',
-            'units' => fn ($q) => $q->orderBy('price_per_night')->orderBy('name'),
-            'units.amenities',
-            'units.featuredImage',
+            'photos.media',
         ]);
 
         return view('properties.show', compact('property'));
@@ -96,7 +94,9 @@ class PropertyController extends Controller
                                       ->orderBy('name')
                                       ->get();
 
-        return view('admin.properties.create', compact('amenities'));
+        $mediaImages = \App\Models\Media::where('type', 'image')->latest()->limit(60)->get();
+
+        return view('admin.properties.create', compact('amenities', 'mediaImages'));
     }
 
     /**
@@ -105,7 +105,7 @@ class PropertyController extends Controller
     public function store(PropertyRequest $request)
     {
         try {
-            $data = $request->validated();
+            $data = array_merge($request->validated(), $this->buildPricingData($request));
 
             // Auto-generate slug if empty
             if (empty($data['slug'])) {
@@ -118,6 +118,8 @@ class PropertyController extends Controller
             if ($request->has('amenities')) {
                 $property->amenities()->sync($request->amenities);
             }
+
+            $this->saveGallery($request, $property);
 
             // Save SEO metadata
             $property->seo()->updateOrCreate([], [
@@ -140,17 +142,27 @@ class PropertyController extends Controller
     }
 
     /**
+     * Display the specified property (redirect to edit form).
+     */
+    public function show(Property $property)
+    {
+        return redirect()->route('admin.properties.edit', $property);
+    }
+
+    /**
      * Show the form for editing the specified property.
      */
     public function edit(Property $property)
     {
-        $property->load('amenities');
+        $property->load(['amenities', 'photos.media']);
 
         $amenities = \App\Models\Amenity::where('is_active', true)
                                       ->orderBy('name')
                                       ->get();
 
-        return view('admin.properties.edit', compact('property', 'amenities'));
+        $mediaImages = \App\Models\Media::where('type', 'image')->latest()->limit(60)->get();
+
+        return view('admin.properties.edit', compact('property', 'amenities', 'mediaImages'));
     }
 
     /**
@@ -159,7 +171,7 @@ class PropertyController extends Controller
     public function update(PropertyRequest $request, Property $property)
     {
         try {
-            $data = $request->validated();
+            $data = array_merge($request->validated(), $this->buildPricingData($request));
 
             // Auto-generate slug if empty
             if (empty($data['slug'])) {
@@ -172,6 +184,8 @@ class PropertyController extends Controller
             if ($request->has('amenities')) {
                 $property->amenities()->sync($request->amenities);
             }
+
+            $this->saveGallery($request, $property);
 
             // Save SEO metadata
             $property->seo()->updateOrCreate([], [
@@ -191,6 +205,171 @@ class PropertyController extends Controller
                 ->withInput()
                 ->with('error', 'Failed to update property: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Update property status.
+     */
+    public function updateStatus(Request $request, Property $property)
+    {
+        try {
+            $validated = $request->validate([
+                'status' => 'required|string|in:published,draft',
+            ]);
+
+            $property->update(['status' => $validated['status']]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Property status updated successfully.',
+                'status' => $property->status,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update property status: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Save photo gallery: categories, uploads, media-library picks, deletions.
+     */
+    protected function saveGallery(Request $request, Property $property): void
+    {
+        // 1. Categories
+        $categories = $request->input('photo_categories', []);
+        if (is_string($categories)) {
+            $categories = json_decode($categories, true) ?: [];
+        }
+        $categories = array_values(array_unique(array_filter(array_map('trim', (array) $categories))));
+        if ($categories) {
+            $property->update(['photo_categories' => $categories]);
+        }
+
+        // 2. Photos picked from the Media library (no file move, just link + category)
+        foreach ((array) $request->input('gallery_media', []) as $index => $mediaIds) {
+            $category = $categories[(int) $index] ?? null;
+            if (!$category) {
+                continue;
+            }
+            foreach ((array) $mediaIds as $mediaId) {
+                if (!\App\Models\Media::whereKey($mediaId)->exists()) {
+                    continue;
+                }
+                $exists = $property->photos()->where('media_id', $mediaId)->where('category', $category)->exists();
+                if (!$exists) {
+                    $property->photos()->create([
+                        'media_id' => $mediaId,
+                        'category' => $category,
+                        'sort_order' => $property->photos()->count(),
+                    ]);
+                }
+            }
+        }
+
+        // 3. Direct uploads (stored under properties/{id}/{category-slug}/)
+        foreach ((array) $request->file('gallery_uploads', []) as $index => $files) {
+            $category = $categories[(int) $index] ?? null;
+            if (!$category) {
+                continue;
+            }
+            $catSlug = \Illuminate\Support\Str::slug($category, '_') ?: 'general';
+
+            foreach ((array) $files as $file) {
+                try {
+                    $originalName = $file->getClientOriginalName();
+                    $safeName = \Illuminate\Support\Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) ?: 'photo';
+                    $filename = $safeName . '-' . time() . '-' . \Illuminate\Support\Str::random(8) . '.' . $file->getClientOriginalExtension();
+                    $folder = "properties/{$property->id}/{$catSlug}";
+                    $path = $file->storeAs($folder, $filename, 'public');
+
+                    $media = \App\Models\Media::create([
+                        'user_id' => auth()->id(),
+                        'disk' => 'public',
+                        'directory' => $folder,
+                        'filename' => $filename,
+                        'original_filename' => $originalName,
+                        'mime_type' => $file->getMimeType(),
+                        'extension' => $file->getClientOriginalExtension(),
+                        'size' => $file->getSize(),
+                        'type' => 'image',
+                        'alt' => $category,
+                        'title' => $category,
+                    ]);
+
+                    $property->photos()->create([
+                        'media_id' => $media->id,
+                        'category' => $category,
+                        'sort_order' => $property->photos()->count(),
+                    ]);
+                } catch (\Exception $e) {
+                    // Skip unreadable file; keep the rest of the gallery intact
+                    continue;
+                }
+            }
+        }
+
+        // 4. Deletions (photo rows; file removed only when no longer referenced anywhere)
+        $deletedIds = $request->input('deleted_photo_ids', []);
+        if (is_string($deletedIds)) {
+            $deletedIds = array_filter(array_map('trim', explode(',', $deletedIds)));
+        }
+        foreach ((array) $deletedIds as $photoId) {
+            $photo = \App\Models\PropertyPhoto::find($photoId);
+            if (!$photo) {
+                continue;
+            }
+            $media = $photo->media;
+            $photo->delete();
+
+            if ($media && $this->mediaIsUnused($media)) {
+                $media->deleteFile();
+                $media->delete();
+            }
+        }
+    }
+
+    /**
+     * True when a media file is not referenced by any property photo or featured image.
+     */
+    protected function mediaIsUnused(\App\Models\Media $media): bool
+    {
+        $asPhoto = \App\Models\PropertyPhoto::where('media_id', $media->id)->exists();
+        $asFeatured = \App\Models\Property::where('featured_image_id', $media->id)->exists();
+
+        return !$asPhoto && !$asFeatured;
+    }
+
+    /**
+     * Build unit_types / weekend_days / prices arrays from the form.
+     */
+    protected function buildPricingData(Request $request): array
+    {
+        $types = $request->input('unit_types', []);
+        $types = array_values(array_intersect(array_keys(\App\Models\Property::UNIT_TYPES), (array) $types));
+
+        $weekendDays = $request->input('weekend_days', []);
+        $weekendDays = array_values(array_unique(array_map('intval', (array) $weekendDays)));
+
+        $priceKeys = ['night_wd', 'night_we', 't3_wd', 't3_we', 't6_wd', 't6_we', 't9_wd', 't9_we', 't12_wd', 't12_we', 't24_wd', 't24_we', 'weekly', 'monthly'];
+
+        $prices = [];
+        foreach ($types as $type) {
+            $typePrices = $request->input("prices.{$type}", []);
+            foreach ($priceKeys as $key) {
+                $value = $typePrices[$key] ?? null;
+                if ($value !== null && $value !== '') {
+                    $prices[$type][$key] = (float) $value;
+                }
+            }
+        }
+
+        return [
+            'unit_types' => $types,
+            'weekend_days' => $weekendDays ?: [6, 0],
+            'prices' => $prices,
+        ];
     }
 
     /**
