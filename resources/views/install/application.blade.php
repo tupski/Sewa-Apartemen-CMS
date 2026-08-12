@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Step 2: Application Configuration - Apartment CMS Installer</title>
-    <link rel="stylesheet" href="{{ asset('build/assets/app-DciKFhTV.css') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -69,7 +69,7 @@
                         <input type="text"
                                name="app_name"
                                value="{{ old('app_name', config('app.name', 'My Apartment')) }}"
-                               class="form-input {{ $errors->has('app_name') ? 'border-red-500' : '' }}"
+                               class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('app_name') ? 'border-red-500' : '' }}"
                                placeholder="e.g., My Apartment"
                                required>
                     </div>
@@ -82,7 +82,7 @@
                         <input type="url"
                                name="app_url"
                                value="{{ old('app_url', config('app.url', 'http://localhost')) }}"
-                               class="form-input {{ $errors->has('app_url') ? 'border-red-500' : '' }}"
+                               class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('app_url') ? 'border-red-500' : '' }}"
                                placeholder="https://yourdomain.com"
                                required>
                     </div>
@@ -92,7 +92,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Timezone *
                         </label>
-                        <select name="timezone" class="form-select {{ $errors->has('timezone') ? 'border-red-500' : '' }}" required>
+                        <select name="timezone" class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('timezone') ? 'border-red-500' : '' }}" required>
                             <option value="Asia/Jakarta" {{ old('timezone', 'Asia/Jakarta') == 'Asia/Jakarta' ? 'selected' : '' }}>Asia/Jakarta (WIB/WITA/WIT)</option>
                             <option value="Asia/Makassar" {{ old('timezone') == 'Asia/Makassar' ? 'selected' : '' }}>Asia/Makassar (WITA)</option>
                             <option value="Asia/Jayapura" {{ old('timezone') == 'Asia/Jayapura' ? 'selected' : '' }}>Asia/Jayapura (WIT)</option>
@@ -106,7 +106,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Locale *
                         </label>
-                        <select name="locale" class="form-select {{ $errors->has('locale') ? 'border-red-500' : '' }}" required>
+                        <select name="locale" class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('locale') ? 'border-red-500' : '' }}" required>
                             <option value="id" {{ old('locale', 'id') == 'id' ? 'selected' : '' }}>Indonesian (id)</option>
                             <option value="en" {{ old('locale') == 'en' ? 'selected' : '' }}>English (en)</option>
                             <option value="ja" {{ old('locale') == 'ja' ? 'selected' : '' }}>Japanese (ja)</option>
@@ -120,7 +120,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">
                             Currency *
                         </label>
-                        <select name="currency" class="form-select {{ $errors->has('currency') ? 'border-red-500' : '' }}" required>
+                        <select name="currency" class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('currency') ? 'border-red-500' : '' }}" required>
                             <option value="IDR" {{ old('currency', 'IDR') == 'IDR' ? 'selected' : '' }}>Indonesian Rupiah (IDR)</option>
                             <option value="USD" {{ old('currency') == 'USD' ? 'selected' : '' }}>US Dollar (USD)</option>
                             <option value="EUR" {{ old('currency') == 'EUR' ? 'selected' : '' }}>Euro (EUR)</option>

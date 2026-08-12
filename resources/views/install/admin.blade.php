@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Step 4: Create Admin Account - Apartment CMS Installer</title>
-    <link rel="stylesheet" href="{{ asset('build/assets/app-DciKFhTV.css') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -82,7 +82,7 @@
                         <input type="text"
                                name="name"
                                value="{{ old('name') }}"
-                               class="form-input {{ $errors->has('name') ? 'border-red-500' : '' }}"
+                               class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('name') ? 'border-red-500' : '' }}"
                                placeholder="Admin User"
                                required>
                         @if($errors->has('name'))
@@ -98,7 +98,7 @@
                         <input type="email"
                                name="email"
                                value="{{ old('email') }}"
-                               class="form-input {{ $errors->has('email') ? 'border-red-500' : '' }}"
+                               class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('email') ? 'border-red-500' : '' }}"
                                placeholder="admin@yourdomain.com"
                                required>
                         @if($errors->has('email'))
@@ -113,7 +113,7 @@
                         </label>
                         <input type="password"
                                name="password"
-                               class="form-input {{ $errors->has('password') ? 'border-red-500' : '' }}"
+                               class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('password') ? 'border-red-500' : '' }}"
                                placeholder="Minimum 8 characters"
                                required>
                         @if($errors->has('password'))
@@ -128,7 +128,7 @@
                         </label>
                         <input type="password"
                                name="password_confirmation"
-                               class="form-input {{ $errors->has('password_confirmation') ? 'border-red-500' : '' }}"
+                               class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('password_confirmation') ? 'border-red-500' : '' }}"
                                placeholder="Confirm your password"
                                required>
                         @if($errors->has('password_confirmation'))

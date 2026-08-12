@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Step 5: Website Configuration - Apartment CMS Installer</title>
-    <link rel="stylesheet" href="{{ asset('build/assets/app-DciKFhTV.css') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -83,7 +83,7 @@
                         <input type="text"
                                name="site_name"
                                value="{{ old('site_name') }}"
-                               class="form-input {{ $errors->has('site_name') ? 'border-red-500' : '' }}"
+                               class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('site_name') ? 'border-red-500' : '' }}"
                                placeholder="My Apartment Website"
                                required>
                     </div>
@@ -96,7 +96,7 @@
                         <input type="text"
                                name="site_tagline"
                                value="{{ old('site_tagline') }}"
-                               class="form-input {{ $errors->has('site_tagline') ? 'border-red-500' : '' }}"
+                               class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('site_tagline') ? 'border-red-500' : '' }}"
                                placeholder="Quality Living in Premium Location">
                     </div>
 
@@ -108,7 +108,7 @@
                         <input type="email"
                                name="email"
                                value="{{ old('email') }}"
-                               class="form-input {{ $errors->has('email') ? 'border-red-500' : '' }}"
+                               class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('email') ? 'border-red-500' : '' }}"
                                placeholder="info@yourdomain.com">
                     </div>
 
@@ -120,7 +120,7 @@
                         <input type="tel"
                                name="phone"
                                value="{{ old('phone') }}"
-                               class="form-input {{ $errors->has('phone') ? 'border-red-500' : '' }}"
+                               class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('phone') ? 'border-red-500' : '' }}"
                                placeholder="081234567890">
                     </div>
 
@@ -132,7 +132,7 @@
                         <input type="tel"
                                name="whatsapp"
                                value="{{ old('whatsapp') }}"
-                               class="form-input {{ $errors->has('whatsapp') ? 'border-red-500' : '' }}"
+                               class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('whatsapp') ? 'border-red-500' : '' }}"
                                placeholder="6281234567890">
                         <p class="text-sm text-gray-500 mt-1">Format: 6281234567890 (with country code)</p>
                     </div>
@@ -144,7 +144,7 @@
                         </label>
                         <textarea name="address"
                                   rows="3"
-                                  class="form-input {{ $errors->has('address') ? 'border-red-500' : '' }}"
+                                  class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('address') ? 'border-red-500' : '' }}"
                                   placeholder="Jalan Example No 123, City, Province">{{ old('address') }}</textarea>
                     </div>
 
@@ -164,7 +164,7 @@
                                     <input type="text"
                                            name="primary_color"
                                            value="{{ old('primary_color', '#3B82F6') }}"
-                                           class="form-input {{ $errors->has('primary_color') ? 'border-red-500' : '' }}"
+                                           class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('primary_color') ? 'border-red-500' : '' }}"
                                            placeholder="#3B82F6">
                                 </div>
                             </div>
@@ -181,7 +181,7 @@
                                     <input type="text"
                                            name="secondary_color"
                                            value="{{ old('secondary_color', '#10B981') }}"
-                                           class="form-input {{ $errors->has('secondary_color') ? 'border-red-500' : '' }}"
+                                           class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('secondary_color') ? 'border-red-500' : '' }}"
                                            placeholder="#10B981">
                                 </div>
                             </div>
@@ -198,7 +198,7 @@
                                     <input type="text"
                                            name="accent_color"
                                            value="{{ old('accent_color', '#F59E0B') }}"
-                                           class="form-input {{ $errors->has('accent_color') ? 'border-red-500' : '' }}"
+                                           class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('accent_color') ? 'border-red-500' : '' }}"
                                            placeholder="#F59E0B">
                                 </div>
                             </div>

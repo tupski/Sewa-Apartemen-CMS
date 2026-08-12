@@ -25,10 +25,10 @@
         Skip to content
     </a>
 
-    <div x-data="{ sidebarOpen: false }" class="min-h-screen">
+    <div x-data="{ sidebarOpen: false }" class="min-h-screen lg:flex">
         <!-- Sidebar -->
         <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-               class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0">
+               class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 lg:shrink-0">
             <div class="flex items-center justify-between h-16 px-6 bg-gray-900">
                 <a href="{{ route('dashboard') }}" class="text-white text-xl font-bold">
                     CMS Admin
@@ -189,7 +189,7 @@
         </aside>
 
         <!-- Main Content Area -->
-        <div class="lg:ml-64 flex flex-col min-h-screen">
+        <div class="lg:flex-1 flex flex-col min-h-screen">
             <!-- Header -->
             <header class="bg-white shadow-sm sticky top-0 z-40">
                 <div class="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">

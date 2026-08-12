@@ -14,7 +14,48 @@ class PropertyController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('auth');
+        $this->middleware('auth')->except(['publicIndex', 'publicShow']);
+    }
+
+    /**
+     * Public listing of published properties.
+     */
+    public function publicIndex(Request $request)
+    {
+        $query = Property::published()->with('featuredImage');
+
+        if ($request->has('search') && $request->search) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        if ($request->has('city') && $request->city) {
+            $query->where('city', 'like', '%' . $request->city . '%');
+        }
+
+        $properties = $query->orderBy('order', 'asc')
+                            ->orderBy('created_at', 'desc')
+                            ->paginate(12)
+                            ->withQueryString();
+
+        return view('properties.index', compact('properties'));
+    }
+
+    /**
+     * Public detail page for a published property.
+     */
+    public function publicShow(Property $property)
+    {
+        abort_unless($property->status === 'published', 404);
+
+        $property->load([
+            'featuredImage',
+            'amenities',
+            'units' => fn ($q) => $q->orderBy('price_per_night')->orderBy('name'),
+            'units.amenities',
+            'units.featuredImage',
+        ]);
+
+        return view('properties.show', compact('property'));
     }
 
     /**

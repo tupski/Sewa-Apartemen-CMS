@@ -35,6 +35,9 @@ class SettingsService
      */
     public static function set(string $key, $value, string $group = 'general'): void
     {
+        // settings.value is NOT NULL; normalize null (e.g. empty file inputs) to empty string.
+        $value = $value ?? '';
+
         $type = self::determineType($value);
 
         Setting::updateOrCreate(

@@ -9,6 +9,18 @@ class InstallerTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Route installer file writes (install_state.json, installed.lock)
+        // to a temp directory so tests never touch the real application
+        // storage (e.g. the user's in-progress installation state).
+        $storagePath = sys_get_temp_dir() . '/installer-test-storage-' . uniqid();
+        mkdir($storagePath, 0755, true);
+        $this->app->useStoragePath($storagePath);
+    }
+
     /** Installer index route */
     public function test_installer_index_route_exists(): void
     {
@@ -100,6 +112,8 @@ class InstallerTest extends TestCase
     {
         $response = $this->post('/install/finish');
 
-        $this->assertContains($response->status(), [302, 404, 422]);
+        // The finish endpoint returns JSON (200) on success/error since it
+        // runs the installation via AJAX from the finish page.
+        $this->assertContains($response->status(), [200, 302, 404, 422]);
     }
 }

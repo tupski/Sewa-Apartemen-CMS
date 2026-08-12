@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Step 3: Database Configuration - Apartment CMS Installer</title>
-    <link rel="stylesheet" href="{{ asset('build/assets/app-DciKFhTV.css') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -83,7 +83,7 @@
                                id="db_host"
                                name="db_host"
                                value="{{ old('db_host', 'localhost') }}"
-                               class="form-input {{ $errors->has('db_host') ? 'border-red-500' : '' }}"
+                               class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('db_host') ? 'border-red-500' : '' }}"
                                placeholder="localhost">
                     </div>
 
@@ -95,7 +95,7 @@
                                id="db_port"
                                name="db_port"
                                value="{{ old('db_port', '3306') }}"
-                               class="form-input {{ $errors->has('db_port') ? 'border-red-500' : '' }}"
+                               class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('db_port') ? 'border-red-500' : '' }}"
                                placeholder="3306"
                                min="1" max="65535">
                     </div>
@@ -108,7 +108,7 @@
                                id="db_database"
                                name="db_database"
                                value="{{ old('db_database') }}"
-                               class="form-input {{ $errors->has('db_database') ? 'border-red-500' : '' }}"
+                               class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('db_database') ? 'border-red-500' : '' }}"
                                placeholder="apartment_cms"
                                required>
                     </div>
@@ -121,7 +121,7 @@
                                id="db_username"
                                name="db_username"
                                value="{{ old('db_username') }}"
-                               class="form-input {{ $errors->has('db_username') ? 'border-red-500' : '' }}"
+                               class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('db_username') ? 'border-red-500' : '' }}"
                                placeholder="root"
                                required>
                     </div>
@@ -134,7 +134,7 @@
                                id="db_password"
                                name="db_password"
                                value="{{ old('db_password') }}"
-                               class="form-input {{ $errors->has('db_password') ? 'border-red-500' : '' }}"
+                               class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-sm {{ $errors->has('db_password') ? 'border-red-500' : '' }}"
                                placeholder="Password">
                     </div>
 

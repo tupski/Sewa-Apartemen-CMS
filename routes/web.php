@@ -18,9 +18,12 @@ use App\Http\Controllers\TagController;
 use App\Http\Controllers\UnitController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// Homepage
+Route::get('/', [\App\Http\Controllers\HomeController::class, 'index'])->name('home');
+
+// Public Property Routes
+Route::get('/apartments', [\App\Http\Controllers\PropertyController::class, 'publicIndex'])->name('properties.public.index');
+Route::get('/apartments/{property:slug}', [\App\Http\Controllers\PropertyController::class, 'publicShow'])->name('properties.public.show');
 
 // Public Blog Routes
 Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');

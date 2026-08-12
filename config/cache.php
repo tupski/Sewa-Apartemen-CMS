@@ -129,8 +129,11 @@ return [
     | storage. By default, no PHP classes will be unserialized from your
     | cache to prevent gadget chain attacks if your APP_KEY is leaked.
     |
+    | The application caches Eloquent models (e.g. the blog sidebar), so
+    | class unserialization must be enabled for cached models to work.
+    |
     */
 
-    'serializable_classes' => false,
+    'serializable_classes' => true,
 
 ];

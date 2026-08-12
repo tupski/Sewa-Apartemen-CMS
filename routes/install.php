@@ -27,4 +27,7 @@ Route::middleware('web')->group(function () {
 
     // Finish endpoint
     Route::post('/finish', [InstallerController::class, 'step6'])->name('install.finish');
+
+    // Fresh install (reset database)
+    Route::post('/fresh', [InstallerController::class, 'stepFresh'])->name('install.fresh');
 });

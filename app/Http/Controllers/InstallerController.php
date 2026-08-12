@@ -8,6 +8,7 @@ use App\Services\SettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -21,6 +22,51 @@ class InstallerController extends Controller
         'website',
         'finish',
     ];
+
+    // ─── State file helpers ───────────────────────────────────────────
+
+    protected function statePath(): string
+    {
+        return storage_path('app/install_state.json');
+    }
+
+    protected function readState(): array
+    {
+        $path = $this->statePath();
+        if (!file_exists($path)) {
+            return ['highest_step' => 0, 'data' => []];
+        }
+        return json_decode(file_get_contents($path), true) ?: ['highest_step' => 0, 'data' => []];
+    }
+
+    protected function writeState(array $state): void
+    {
+        $dir = dirname($this->statePath());
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        file_put_contents($this->statePath(), json_encode($state, JSON_PRETTY_PRINT));
+    }
+
+    protected function markStepComplete(int $step, array $data = []): void
+    {
+        $state = $this->readState();
+        $state['highest_step'] = max($state['highest_step'], $step);
+        foreach ($data as $key => $value) {
+            $state['data'][$key] = $value;
+        }
+        $this->writeState($state);
+    }
+
+    protected function clearState(): void
+    {
+        $path = $this->statePath();
+        if (file_exists($path)) {
+            unlink($path);
+        }
+    }
+
+    // ─── Route handlers ───────────────────────────────────────────────
 
     public function index()
     {
@@ -43,6 +89,13 @@ class InstallerController extends Controller
             abort(404);
         }
 
+        // Enforce sequential progress from persistent state
+        $state = $this->readState();
+        $maxAllowed = $state['highest_step'] + 1;
+        if ($step > $maxAllowed) {
+            return redirect()->route('install.step', $maxAllowed);
+        }
+
         $data = ['step' => $step, 'steps' => $this->steps];
 
         if ($step === 1) {
@@ -50,6 +103,11 @@ class InstallerController extends Controller
             $data['requiredPhpVersion'] = '8.3';
             $data['extensions'] = $this->checkExtensions();
             $data['permissions'] = $this->checkPermissions();
+        }
+
+        // Pre-fill forms from persisted state (survives server restart)
+        if (isset($state['data']) && is_array($state['data'])) {
+            $data['state'] = $state['data'];
         }
 
         $viewName = 'install.' . $this->steps[$step - 1];
@@ -82,12 +140,15 @@ class InstallerController extends Controller
         return file_exists(storage_path('installed.lock'));
     }
 
-    // Step 1: Requirements Check
+    // ─── Step 1: Requirements Check ───────────────────────────────────
+
     protected function step1(Request $request)
     {
         if ($request->has('test')) {
             return $this->testRequirements();
         }
+
+        $this->markStepComplete(1);
 
         return redirect()->route('install.step', 2);
     }
@@ -151,7 +212,10 @@ class InstallerController extends Controller
         return $permissions;
     }
 
-    // Step 2: Application Configuration
+    // ─── Step 2: Application Configuration ────────────────────────────
+    // Stores config in state file only. .env is written in step 6.
+    // SettingsService writes deferred to step 6 (single DB write point).
+
     protected function step2(Request $request)
     {
         if ($request->isMethod('POST')) {
@@ -163,31 +227,17 @@ class InstallerController extends Controller
                 'currency' => 'required|string|in:IDR,USD,EUR,GBP,JPY',
             ]);
 
-            // Update .env file
-            $envPath = base_path('.env');
-            $envContent = file_get_contents($envPath);
+            // Store in persistent state — .env write deferred to step 6
+            $this->markStepComplete(2, [
+                'app' => $validated,
+            ]);
 
-            $envContent = $this->updateEnvValue($envContent, 'APP_NAME', $validated['app_name']);
-            $envContent = $this->updateEnvValue($envContent, 'APP_URL', $validated['app_url']);
-            $envContent = $this->updateEnvValue($envContent, 'APP_TIMEZONE', $validated['timezone']);
-            $envContent = $this->updateEnvValue($envContent, 'APP_LOCALE', $validated['locale']);
-            $envContent = $this->updateEnvValue($envContent, 'APP_CURRENCY', $validated['currency']);
-
-            file_put_contents($envPath, $envContent);
-
-            // Update config cache
+            // Set in-memory config so the current request uses the values
             config(['app.name' => $validated['app_name']]);
             config(['app.url' => $validated['app_url']]);
             config(['app.timezone' => $validated['timezone']]);
             config(['app.locale' => $validated['locale']]);
             config(['app.currency' => $validated['currency']]);
-
-            // Store in settings table
-            SettingsService::set('site_name', $validated['app_name']);
-            SettingsService::set('site_url', $validated['app_url']);
-            SettingsService::set('timezone', $validated['timezone']);
-            SettingsService::set('locale', $validated['locale']);
-            SettingsService::set('currency', $validated['currency']);
 
             return redirect()->route('install.step', 3);
         }
@@ -195,19 +245,11 @@ class InstallerController extends Controller
         return view('install.application');
     }
 
-    protected function updateEnvValue(string $content, string $key, string $value): string
-    {
-        $pattern = "/^{$key}=.*/m";
-        $replacement = "{$key}=\"{$value}\"";
+    // ─── Step 3: Database Configuration ───────────────────────────────
+    // Validates connection, stores creds in state file, and runs migrations
+    // using the in-memory DB config (.env is not touched until step 6).
+    // Tables must exist before step 4/5 write users, roles and settings.
 
-        if (preg_match($pattern, $content)) {
-            return preg_replace($pattern, $replacement, $content);
-        }
-
-        return $content . "\n{$replacement}";
-    }
-
-    // Step 3: Database Configuration
     protected function step3(Request $request)
     {
         if ($request->has('test')) {
@@ -223,33 +265,34 @@ class InstallerController extends Controller
                 'db_password' => 'nullable|string',
             ]);
 
-            // Update .env file
-            $envPath = base_path('.env');
-            $envContent = file_get_contents($envPath);
+            // Store in persistent state — .env write deferred to step 6
+            $this->markStepComplete(3, [
+                'db' => $validated,
+            ]);
 
-            $envContent = $this->updateEnvValue($envContent, 'DB_HOST', $validated['db_host']);
-            $envContent = $this->updateEnvValue($envContent, 'DB_PORT', $validated['db_port']);
-            $envContent = $this->updateEnvValue($envContent, 'DB_DATABASE', $validated['db_database']);
-            $envContent = $this->updateEnvValue($envContent, 'DB_USERNAME', $validated['db_username']);
-            $envContent = $this->updateEnvValue($envContent, 'DB_PASSWORD', $validated['db_password']);
-
-            file_put_contents($envPath, $envContent);
-
-            // Update config
+            // Configure DB connection in-memory (no .env touch)
             config(['database.connections.mysql.host' => $validated['db_host']]);
             config(['database.connections.mysql.port' => $validated['db_port']]);
             config(['database.connections.mysql.database' => $validated['db_database']]);
             config(['database.connections.mysql.username' => $validated['db_username']]);
             config(['database.connections.mysql.password' => $validated['db_password']]);
 
-            // Run migrations
+            // Purge any cached connection and reconnect with new config
+            DB::purge('mysql');
+
+            // Run migrations now so steps 4-6 can use the tables.
+            // Seeding stays deferred to step 6 to avoid duplicate seeds.
             try {
                 Artisan::call('migrate', ['--force' => true]);
-
-                // Seed data
-                Artisan::call('db:seed');
             } catch (\Exception $e) {
-                return back()->withErrors(['db_error' => $e->getMessage()]);
+                $message = $e->getMessage();
+                $isTableExists = str_contains($message, '42S01') || stripos($message, 'already exists') !== false;
+
+                return back()->withErrors([
+                    'db_error' => $isTableExists
+                        ? 'Database already contains tables from a previous installation. Reset the database (drop all tables) and try again.'
+                        : $message,
+                ]);
             }
 
             return redirect()->route('install.step', 4);
@@ -258,7 +301,7 @@ class InstallerController extends Controller
         return view('install.database');
     }
 
-    protected function testDatabaseConnection(Request $request)
+    public function testDatabaseConnection(Request $request)
     {
         try {
             $host = $request->db_host ?? 'localhost';
@@ -267,11 +310,9 @@ class InstallerController extends Controller
             $username = $request->db_username ?? '';
             $password = $request->db_password ?? '';
 
-            // Try to connect
             $dsn = "mysql:host={$host};port={$port}";
             $pdo = new \PDO($dsn, $username, $password);
 
-            // Try to use database if specified
             if (!empty($database)) {
                 $pdo->exec("USE `{$database}`");
             }
@@ -288,9 +329,15 @@ class InstallerController extends Controller
         }
     }
 
-    // Step 4: Admin Creation
+    // ─── Step 4: Admin Creation ───────────────────────────────────────
+    // DB is available via in-memory config from step 3. No .env needed.
+
     protected function step4(Request $request)
     {
+        // Re-establish DB config from state in case server restarted
+        // between step 3 and step 4 (session survived, in-memory config lost).
+        $this->restoreDbConfigFromState();
+
         if ($request->isMethod('POST')) {
             $validated = $request->validate([
                 'name' => 'required|string|min:3|max:100',
@@ -298,19 +345,25 @@ class InstallerController extends Controller
                 'password' => 'required|string|min:8|confirmed',
             ]);
 
-            // Create admin user
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
-                'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
+                'password' => Hash::make($validated['password']),
             ]);
 
-            // Assign super admin role via pivot table
             $superAdminRole = Role::firstOrCreate(['slug' => 'super-admin', 'name' => 'Super Admin']);
             $user->roles()->attach($superAdminRole->id, ['model_type' => User::class]);
 
-            // Log in user
             \Illuminate\Support\Facades\Auth::login($user);
+
+            $this->markStepComplete(4, [
+                'admin_created' => true,
+                'admin' => [
+                    'name' => $validated['name'],
+                    'email' => $validated['email'],
+                    'password' => $validated['password'],
+                ],
+            ]);
 
             return redirect()->route('install.step', 5);
         }
@@ -318,9 +371,13 @@ class InstallerController extends Controller
         return view('install.admin');
     }
 
-    // Step 5: Website Configuration
+    // ─── Step 5: Website Configuration ────────────────────────────────
+    // Settings table exists (migrated in step 3). Can use SettingsService.
+
     protected function step5(Request $request)
     {
+        $this->restoreDbConfigFromState();
+
         if ($request->isMethod('POST')) {
             $validated = $request->validate([
                 'site_name' => 'required|string|max:100',
@@ -334,7 +391,6 @@ class InstallerController extends Controller
                 'accent_color' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
             ]);
 
-            // Store settings
             SettingsService::set('site_tagline', $validated['site_tagline'] ?? '');
             SettingsService::set('email', $validated['email'] ?? '');
             SettingsService::set('phone', $validated['phone'] ?? '');
@@ -344,11 +400,14 @@ class InstallerController extends Controller
             SettingsService::set('secondary_color', $validated['secondary_color']);
             SettingsService::set('accent_color', $validated['accent_color']);
 
-            // Store theme settings
             SettingsService::set('active_theme', 'modern');
             SettingsService::set('theme_primary_color', $validated['primary_color']);
             SettingsService::set('theme_secondary_color', $validated['secondary_color']);
             SettingsService::set('theme_accent_color', $validated['accent_color']);
+
+            $this->markStepComplete(5, [
+                'website' => $validated,
+            ]);
 
             return redirect()->route('install.step', 6);
         }
@@ -356,26 +415,256 @@ class InstallerController extends Controller
         return view('install.website');
     }
 
-    // Step 6: Finish Installation
+    // ─── Step 6: Finish Installation ──────────────────────────────────
+    // Runs migrations. Writes .env from accumulated state.
+    // Creates installed.lock FIRST (so retry succeeds).
+    // Returns JSON so frontend can show "complete → redirecting" message.
+
     protected function step6(Request $request)
     {
         if ($request->isMethod('POST')) {
-            // Create lock file
+            $state = $this->readState();
+            $data = $state['data'] ?? [];
+
+            // ── Restore DB config + run migrations ──
+            $this->restoreDbConfigFromState();
+
+            try {
+                Artisan::call('migrate', ['--force' => true]);
+                Artisan::call('db:seed');
+            } catch (\Exception $e) {
+                $message = $e->getMessage();
+                $isTableExists = str_contains($message, '42S01') || stripos($message, 'already exists') !== false;
+
+                return response()->json([
+                    'success' => false,
+                    'error' => $message,
+                    'fresh_install_available' => $isTableExists,
+                ]);
+            }
+
+            // Guard against databases migrated from an older code state where
+            // migrations were recorded but the schema drifted (e.g. missing
+            // settings.group column). migrate reports nothing pending, so we
+            // must verify the schema matches before writing settings.
+            if (!Schema::hasTable('settings') || !Schema::hasColumn('settings', 'group')) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'The database schema is out of sync with the application migrations (settings table is missing the group column). Reset the database to rebuild it.',
+                    'fresh_install_available' => true,
+                ]);
+            }
+
+            // ── Write deferred SettingsService values from step 2 ──
+            if (isset($data['app'])) {
+                SettingsService::set('site_name', $data['app']['app_name']);
+                SettingsService::set('site_url', $data['app']['app_url']);
+                SettingsService::set('timezone', $data['app']['timezone']);
+                SettingsService::set('locale', $data['app']['locale']);
+                SettingsService::set('currency', $data['app']['currency']);
+            }
+
+            // ── Write .env (all accumulated config) ──
+            $envPath = base_path('.env');
+            $envContent = file_exists($envPath) ? file_get_contents($envPath) : '';
+
+            if (isset($data['app'])) {
+                $envContent = $this->updateEnvValue($envContent, 'APP_NAME', $data['app']['app_name']);
+                $envContent = $this->updateEnvValue($envContent, 'APP_URL', $data['app']['app_url']);
+                $envContent = $this->updateEnvValue($envContent, 'APP_TIMEZONE', $data['app']['timezone']);
+                $envContent = $this->updateEnvValue($envContent, 'APP_LOCALE', $data['app']['locale']);
+                $envContent = $this->updateEnvValue($envContent, 'APP_CURRENCY', $data['app']['currency']);
+            }
+
+            if (isset($data['db'])) {
+                $envContent = $this->updateEnvValue($envContent, 'DB_HOST', $data['db']['db_host']);
+                $envContent = $this->updateEnvValue($envContent, 'DB_PORT', (string) $data['db']['db_port']);
+                $envContent = $this->updateEnvValue($envContent, 'DB_DATABASE', $data['db']['db_database']);
+                $envContent = $this->updateEnvValue($envContent, 'DB_USERNAME', $data['db']['db_username']);
+                $envContent = $this->updateEnvValue($envContent, 'DB_PASSWORD', $data['db']['db_password'] ?? '');
+            }
+
+            // ── Create installed.lock BEFORE .env write ──
+            // This ensures that even if the server restart kills this process
+            // mid-response, the next request sees the lock and bypasses installer.
             file_put_contents(storage_path('installed.lock'), json_encode([
                 'installed_at' => now()->toIso8601String(),
                 'version' => '1.0.0',
                 'locked' => true,
             ]));
 
-            // Clear cache
+            // ── Write .env — this triggers artisan serve restart ──
+            file_put_contents($envPath, $envContent);
+
+            // ── Clean up state file ──
+            $this->clearState();
+
+            // ── Clear caches ──
             Artisan::call('config:clear');
             Artisan::call('cache:clear');
             Artisan::call('route:clear');
             Artisan::call('view:clear');
 
-            return redirect()->route('dashboard');
+            // Return JSON — the response goes out before artisan serve
+            // detects the .env change and kills the process.
+            $isBuiltInServer = php_sapi_name() === 'cli-server';
+
+            return response()->json([
+                'success' => true,
+                'redirect' => route('dashboard'),
+                'restarting' => $isBuiltInServer,
+                'message' => $isBuiltInServer
+                    ? 'Installation complete! Server is restarting. Redirecting in 4 seconds…'
+                    : 'Installation complete! Redirecting…',
+            ]);
         }
 
         return view('install.finish');
+    }
+
+    // ─── Step Fresh: Reset database and reinstall ─────────────────────
+    // Called when migration fails due to table conflicts.
+    // Runs migrate:fresh, seeds, creates admin, writes .env, creates lock.
+
+    public function stepFresh(Request $request)
+    {
+        if ($this->isInstalled()) {
+            abort(403, 'Installation already completed.');
+        }
+
+        $state = $this->readState();
+        $data = $state['data'] ?? [];
+
+        $this->restoreDbConfigFromState();
+
+        try {
+            Artisan::call('migrate:fresh', ['--force' => true]);
+            Artisan::call('db:seed');
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // Re-create admin user if stored in state
+        $adminData = $data['admin'] ?? null;
+        if ($adminData && !empty($adminData['email']) && !empty($adminData['password'])) {
+            $user = User::create([
+                'name' => $adminData['name'] ?? 'Admin',
+                'email' => $adminData['email'],
+                'password' => Hash::make($adminData['password']),
+            ]);
+
+            $superAdminRole = Role::firstOrCreate(['slug' => 'super-admin', 'name' => 'Super Admin']);
+            $user->roles()->attach($superAdminRole->id, ['model_type' => User::class]);
+        }
+
+        // Write SettingsService values
+        if (isset($data['app'])) {
+            SettingsService::set('site_name', $data['app']['app_name']);
+            SettingsService::set('site_url', $data['app']['app_url']);
+            SettingsService::set('timezone', $data['app']['timezone']);
+            SettingsService::set('locale', $data['app']['locale']);
+            SettingsService::set('currency', $data['app']['currency']);
+        }
+
+        // Write .env
+        $envPath = base_path('.env');
+        $envContent = file_exists($envPath) ? file_get_contents($envPath) : '';
+
+        if (isset($data['app'])) {
+            $envContent = $this->updateEnvValue($envContent, 'APP_NAME', $data['app']['app_name']);
+            $envContent = $this->updateEnvValue($envContent, 'APP_URL', $data['app']['app_url']);
+            $envContent = $this->updateEnvValue($envContent, 'APP_TIMEZONE', $data['app']['timezone']);
+            $envContent = $this->updateEnvValue($envContent, 'APP_LOCALE', $data['app']['locale']);
+            $envContent = $this->updateEnvValue($envContent, 'APP_CURRENCY', $data['app']['currency']);
+        }
+
+        if (isset($data['db'])) {
+            $envContent = $this->updateEnvValue($envContent, 'DB_HOST', $data['db']['db_host']);
+            $envContent = $this->updateEnvValue($envContent, 'DB_PORT', (string) $data['db']['db_port']);
+            $envContent = $this->updateEnvValue($envContent, 'DB_DATABASE', $data['db']['db_database']);
+            $envContent = $this->updateEnvValue($envContent, 'DB_USERNAME', $data['db']['db_username']);
+            $envContent = $this->updateEnvValue($envContent, 'DB_PASSWORD', $data['db']['db_password'] ?? '');
+        }
+
+        // Write website settings if available
+        if (isset($data['website'])) {
+            $w = $data['website'];
+            SettingsService::set('site_tagline', $w['site_tagline'] ?? '');
+            SettingsService::set('email', $w['email'] ?? '');
+            SettingsService::set('phone', $w['phone'] ?? '');
+            SettingsService::set('whatsapp_default', $w['whatsapp'] ?? '');
+            SettingsService::set('address', $w['address'] ?? '');
+            SettingsService::set('primary_color', $w['primary_color']);
+            SettingsService::set('secondary_color', $w['secondary_color']);
+            SettingsService::set('accent_color', $w['accent_color']);
+            SettingsService::set('active_theme', 'modern');
+            SettingsService::set('theme_primary_color', $w['primary_color']);
+            SettingsService::set('theme_secondary_color', $w['secondary_color']);
+            SettingsService::set('theme_accent_color', $w['accent_color']);
+        }
+
+        // Create installed.lock
+        file_put_contents(storage_path('installed.lock'), json_encode([
+            'installed_at' => now()->toIso8601String(),
+            'version' => '1.0.0',
+            'locked' => true,
+        ]));
+
+        file_put_contents($envPath, $envContent);
+
+        $this->clearState();
+
+        Artisan::call('config:clear');
+        Artisan::call('cache:clear');
+        Artisan::call('route:clear');
+        Artisan::call('view:clear');
+
+        $isBuiltInServer = php_sapi_name() === 'cli-server';
+
+        return response()->json([
+            'success' => true,
+            'redirect' => route('dashboard'),
+            'restarting' => $isBuiltInServer,
+            'message' => $isBuiltInServer
+                ? 'Fresh install complete! Server is restarting. Redirecting in 4 seconds…'
+                : 'Fresh install complete! Redirecting…',
+        ]);
+    }
+
+    // ─── .env helper ──────────────────────────────────────────────────
+
+    protected function updateEnvValue(string $content, string $key, string $value): string
+    {
+        $escapedKey = preg_quote($key, '/');
+        $pattern = "/^{$escapedKey}=.*/m";
+        $replacement = "{$key}=\"{$value}\"";
+
+        if (preg_match($pattern, $content)) {
+            return preg_replace($pattern, $replacement, $content);
+        }
+
+        return $content . "\n{$replacement}";
+    }
+
+    // ─── Restore DB config from state file ────────────────────────────
+    // Called at the start of step 4 and step 5 to handle the case where
+    // the server restarted between steps and in-memory config was lost.
+
+    protected function restoreDbConfigFromState(): void
+    {
+        $state = $this->readState();
+        $db = $state['data']['db'] ?? null;
+
+        if ($db) {
+            config(['database.connections.mysql.host' => $db['db_host']]);
+            config(['database.connections.mysql.port' => $db['db_port']]);
+            config(['database.connections.mysql.database' => $db['db_database']]);
+            config(['database.connections.mysql.username' => $db['db_username']]);
+            config(['database.connections.mysql.password' => $db['db_password'] ?? '']);
+            DB::purge('mysql');
+        }
     }
 }
