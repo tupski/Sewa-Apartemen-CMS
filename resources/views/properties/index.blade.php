@@ -20,13 +20,10 @@
             <!-- Search / Filters -->
             <form action="{{ route('properties.public.index') }}" method="GET"
                   class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 flex flex-col md:flex-row gap-3 mb-8">
-                <div class="flex-1">
-                    <label for="search" class="sr-only">{{ __('home.search_name') }}</label>
-                    <input type="text" name="search" id="search" placeholder="{{ __('home.search_placeholder') }}"
-                           value="{{ request('search') }}"
-                           class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                           style="--tw-ring-color: {{ $primaryColor }}">
-                </div>
+                <x-search-input :label="__('home.search_name')"
+                                :placeholder="__('home.search_placeholder')"
+                                :value="request('search')"
+                                input-classes="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
                 <div class="md:w-56">
                     <label for="city" class="sr-only">{{ __('home.city_placeholder') }}</label>
                     <input type="text" name="city" id="city" placeholder="{{ __('home.city_placeholder') }}"

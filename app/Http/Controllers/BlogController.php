@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Tag;
 use App\Services\SettingsService;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class BlogController extends Controller
 {
@@ -19,7 +20,13 @@ class BlogController extends Controller
 
         $sidebarData = $this->getSidebarData();
 
-        return view('blog.index', array_merge(compact('posts'), $sidebarData));
+        $seo = \App\Services\SeoService::metaTags(
+            'Blog - ' . SettingsService::get('site_name', config('app.name')),
+            'Read our latest articles and updates',
+            url('/blog'),
+        );
+
+        return view('blog.index', array_merge(compact('posts', 'seo'), $sidebarData));
     }
 
     public function show(string $slug)
@@ -41,7 +48,17 @@ class BlogController extends Controller
                             ->limit(3)
                             ->get();
 
-        return view('blog.show', array_merge(compact('post', 'relatedPosts'), $sidebarData));
+        // Ponytail: bila post punya seo metadata kustom, dipakai langsung;
+        // fallback ke metaTags() dari title/excerpt bila kosong.
+        $seo = $post->seo
+            ? \App\Services\SeoService::metaTagsArray($post)
+            : \App\Services\SeoService::metaTags(
+                $post->title,
+                Str::limit(strip_tags($post->excerpt ?? $post->content), 160),
+                url('/blog/' . $post->slug),
+            );
+
+        return view('blog.show', array_merge(compact('post', 'relatedPosts', 'seo'), $sidebarData));
     }
 
     public function category(string $slug)
@@ -56,7 +73,13 @@ class BlogController extends Controller
 
         $sidebarData = $this->getSidebarData();
 
-        return view('blog.index', array_merge(compact('posts', 'category'), $sidebarData));
+        $seo = \App\Services\SeoService::metaTags(
+            'Category: ' . $category->name . ' - Blog',
+            'Posts in category ' . $category->name,
+            url('/blog/category/' . $category->slug),
+        );
+
+        return view('blog.index', array_merge(compact('posts', 'category', 'seo'), $sidebarData));
     }
 
     public function tag(string $slug)
@@ -71,7 +94,13 @@ class BlogController extends Controller
 
         $sidebarData = $this->getSidebarData();
 
-        return view('blog.index', array_merge(compact('posts', 'tag'), $sidebarData));
+        $seo = \App\Services\SeoService::metaTags(
+            'Tag: ' . $tag->name . ' - Blog',
+            'Posts tagged ' . $tag->name,
+            url('/blog/tag/' . $tag->slug),
+        );
+
+        return view('blog.index', array_merge(compact('posts', 'tag', 'seo'), $sidebarData));
     }
 
     protected function getSidebarData(): array

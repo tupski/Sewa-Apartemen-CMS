@@ -1,9 +1,6 @@
-<x-app-layout>
-    @push('head')
-        @php $siteName = \App\Services\SettingsService::get('site_name', config('app.name')); @endphp
-        @include('components.seo', ['pageTitle' => 'Blog - ' . $siteName, 'pageDescription' => 'Read our latest articles and updates'])
-    @endpush
+@extends('layouts.frontend')
 
+@section('content')
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="mb-8">
@@ -77,4 +74,4 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+@endsection

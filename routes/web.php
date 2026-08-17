@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AmenityController;
 use App\Http\Controllers\BlockController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CategoryController;
@@ -29,6 +30,11 @@ Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
 Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
 Route::get('/blog/category/{slug}', [BlogController::class, 'category'])->name('blog.category');
 Route::get('/blog/tag/{slug}', [BlogController::class, 'tag'])->name('blog.tag');
+
+// Public search suggestions (JSON, consumed by Alpine autocomplete)
+Route::get('/search/suggest', [SearchController::class, 'suggest'])
+    ->name('search.suggest')
+    ->middleware('throttle:30,1');
 
 // Public SEO routes
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('sitemap');

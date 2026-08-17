@@ -1,13 +1,6 @@
-<x-app-layout>
-    @push('head')
-        @if($post->seo)
-            @include('components.seo', ['model' => $post])
-        @else
-            @php $siteName = \App\Services\SettingsService::get('site_name', config('app.name')); @endphp
-            @include('components.seo', ['pageTitle' => $post->title . ' - ' . $siteName, 'pageDescription' => \Illuminate\Support\Str::limit(strip_tags($post->excerpt ?? $post->content), 160)])
-        @endif
-    @endpush
+@extends('layouts.frontend')
 
+@section('content')
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="flex flex-col lg:flex-row gap-8">
@@ -123,4 +116,4 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+@endsection
