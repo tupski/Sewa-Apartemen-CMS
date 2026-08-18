@@ -22,14 +22,10 @@ class PropertyController extends Controller
      */
     public function publicIndex(Request $request)
     {
-        $query = Property::published()->with('featuredImage');
+        $query = Property::published()->with(['featuredImage', 'amenities']);
 
         if ($request->has('search') && $request->search) {
             $query->where('name', 'like', '%' . $request->search . '%');
-        }
-
-        if ($request->has('city') && $request->city) {
-            $query->where('city', 'like', '%' . $request->city . '%');
         }
 
         $properties = $query->orderBy('order', 'asc')

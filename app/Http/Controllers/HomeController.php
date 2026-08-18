@@ -23,9 +23,19 @@ class HomeController extends Controller
         $secondaryColor = SettingsService::get('secondary_color', '#10b981');
         $accentColor = SettingsService::get('accent_color', '#f59e0b');
 
+        // Hero / CTA / features copy (editable from admin settings; empty => blade fallback)
+        $heroTitle = SettingsService::get('hero_title', '');
+        $heroSubtitle = SettingsService::get('hero_subtitle', '');
+        $ctaTitle = SettingsService::get('cta_title', '');
+        $ctaText = SettingsService::get('cta_text', '');
+        $ctaButtonLabel = SettingsService::get('cta_button_label', '');
+        $ctaButtonUrl = SettingsService::get('cta_button_url', '');
+        $featuresTitle = SettingsService::get('features_title', '');
+        $featuresSubtitle = SettingsService::get('features_subtitle', '');
+
         $properties = Property::published()
             ->featured()
-            ->with('featuredImage')
+            ->with(['featuredImage', 'amenities'])
             ->orderBy('order')
             ->orderBy('created_at', 'desc')
             ->take(6)
@@ -34,7 +44,7 @@ class HomeController extends Controller
         // Fall back to the latest published properties when none are featured yet
         if ($properties->isEmpty()) {
             $properties = Property::published()
-                ->with('featuredImage')
+                ->with(['featuredImage', 'amenities'])
                 ->orderBy('order')
                 ->orderBy('created_at', 'desc')
                 ->take(6)
@@ -66,6 +76,14 @@ class HomeController extends Controller
             'primaryColor',
             'secondaryColor',
             'accentColor',
+            'heroTitle',
+            'heroSubtitle',
+            'ctaTitle',
+            'ctaText',
+            'ctaButtonLabel',
+            'ctaButtonUrl',
+            'featuresTitle',
+            'featuresSubtitle',
             'properties',
             'posts',
             'stats',

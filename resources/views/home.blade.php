@@ -9,28 +9,22 @@
         <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
             <div class="max-w-3xl">
                 <h1 class="text-4xl md:text-6xl font-extrabold text-white leading-tight mb-4">
-                    {{ $tagline ?: __('home.tagline') }}
+                    {{ $heroTitle ?: ($tagline ?: __('home.tagline')) }}
                 </h1>
-                @if ($description)
-                    <p class="text-lg md:text-xl text-white/90 mb-8 leading-relaxed">{{ $description }}</p>
+                @if ($heroSubtitle)
+                    <p class="text-lg md:text-xl text-white/90 mb-8 leading-relaxed">{{ $heroSubtitle }}</p>
                 @endif
 
                 <!-- Search -->
                 <form action="{{ route('properties.public.index') }}" method="GET"
-                      class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 flex flex-col md:flex-row gap-3 max-w-2xl">
+                      class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-5 flex flex-col md:flex-row gap-3 max-w-4xl">
                     <x-search-input :label="__('home.search_name')"
                                     :placeholder="__('home.search_placeholder')"
                                     :value="request('search')"
-                                    input-classes="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
-                    <div class="md:w-48">
-                        <label for="city" class="sr-only">{{ __('home.city_placeholder') }}</label>
-                        <input type="text" name="city" id="city" placeholder="{{ __('home.city_placeholder') }}"
-                               value="{{ request('city') }}"
-                               class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                               style="--tw-ring-color: {{ $primaryColor }}">
-                    </div>
+                                    :additional-classes="'flex-1'"
+                                    input-classes="w-full px-5 py-3.5 text-base rounded-xl border border-gray-200 focus:outline-none focus:ring-2 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
                     <button type="submit"
-                            class="px-8 py-3 rounded-xl text-white font-semibold hover:opacity-90 transition"
+                            class="px-8 py-3.5 rounded-xl text-white font-semibold hover:opacity-90 transition"
                             style="background-color: {{ $primaryColor }}">
                         {{ __('home.search') }}
                     </button>
@@ -91,6 +85,20 @@
                                         {{ __('home.featured_badge') }}
                                     </span>
                                 @endif
+                                @php
+                                    $typeBadge = $property->unit_types[0] ?? null;
+                                    $amenityBadges = $property->amenities->take(3);
+                                @endphp
+                                @if ($typeBadge || $amenityBadges->isNotEmpty())
+                                    <div class="absolute bottom-3 left-3 flex flex-wrap gap-1.5">
+                                        @if ($typeBadge)
+                                            <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 text-white backdrop-blur-sm">{{ $property->typeLabel($typeBadge) }}</span>
+                                        @endif
+                                        @foreach ($amenityBadges as $amenity)
+                                            <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-white/90 text-gray-800 backdrop-blur-sm">{{ $amenity->icon ? $amenity->icon . ' ' : '' }}{{ $amenity->name }}</span>
+                                        @endforeach
+                                    </div>
+                                @endif
                             </div>
                             <div class="p-6">
                                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white group-hover:opacity-80 transition">{{ $property->name }}</h3>
@@ -141,8 +149,8 @@
     <section class="py-16 md:py-20 bg-white dark:bg-gray-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-12">
-                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">{{ __('home.why_title') }}</h2>
-                <p class="text-gray-600 mt-2 max-w-2xl mx-auto dark:text-gray-400">{{ __('home.why_sub') }}</p>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">{{ $featuresTitle ?: __('home.why_title') }}</h2>
+                <p class="text-gray-600 mt-2 max-w-2xl mx-auto dark:text-gray-400">{{ $featuresSubtitle ?: __('home.why_sub') }}</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div class="text-center p-6">
@@ -220,8 +228,8 @@
     <!-- CTA / Contact -->
     <section class="py-16 md:py-20" style="background: linear-gradient(135deg, {{ $primaryColor }} 0%, {{ $secondaryColor }} 100%);">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">{{ __('home.cta_title') }}</h2>
-            <p class="text-white/90 mb-8">{{ __('home.cta_sub') }}</p>
+            <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">{{ $ctaTitle ?: __('home.cta_title') }}</h2>
+            <p class="text-white/90 mb-8">{{ $ctaText ?: __('home.cta_sub') }}</p>
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
                 @php
                     $whatsapp = \App\Services\SettingsService::get('whatsapp_default', '');
@@ -233,9 +241,9 @@
                         {{ __('home.chat_whatsapp') }}
                     </a>
                 @endif
-                <a href="{{ route('properties.public.index') }}"
+                <a href="{{ $ctaButtonUrl ?: route('properties.public.index') }}"
                    class="inline-flex items-center px-8 py-3.5 rounded-full font-semibold text-white border-2 border-white hover:bg-white hover:text-gray-900 transition">
-                    {{ __('home.explore') }}
+                    {{ $ctaButtonLabel ?: __('home.explore') }}
                 </a>
             </div>
         </div>

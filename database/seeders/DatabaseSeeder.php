@@ -22,7 +22,7 @@ class DatabaseSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
 
-        // Run role seeder and setting seeder
-        $this->call([RoleSeeder::class, SettingSeeder::class]);
+        // Run role seeder, setting seeder, and amenity master data
+        $this->call([RoleSeeder::class, SettingSeeder::class, AmenitySeeder::class]);
     }
 }

@@ -8,12 +8,19 @@ import Alpine from 'alpinejs';
 
 window.Alpine = Alpine;
 
+// Escape HTML sebelum interpolasi ke x-html: title & highlight harus bersih
+// dari XSS (title dari server, query dari user — keduanya ikut dirender).
+function escapeHtml(str) {
+    // Numeric char refs (bukan entitas &...;) — hasil sama, aman untuk x-html.
+    return str.replace(/[&<>"']/g, (c) => '&#' + c.charCodeAt(0) + ';');
+}
+
 // Autocomplete pencarian publik (Turbo-compatible).
 // Data komponen dipakai via `x-data="searchAutocomplete({ action: '...' })"`
 // pada wrapper input; Alpine.start() sekali + MutationObserver otomatis
 // meng-init node baru hasil body-swap Turbo — tanpa butuh `turbo:load`.
 Alpine.data('searchAutocomplete', (config = {}) => ({
-    query: '',
+    query: config.value ?? '',
     results: [],
     open: false,
     loading: false,
@@ -23,9 +30,22 @@ Alpine.data('searchAutocomplete', (config = {}) => ({
     placeholder: config.placeholder ?? '',
     action: config.action ?? '',
     fieldName: config.fieldName ?? 'search',
+    inputClasses: config.inputClasses ?? '',
 
     get hasResults() {
         return this.results.length > 0;
+    },
+
+    // Sorot semua kemunculan query (case-insensitive) di judul hasil.
+    // Aman untuk x-html: title DI-ESCAPE dulu, lalu query ter-escape dibungkus <mark>.
+    // Replacer function (bukan string) -> hasil literal, tak ada substitusi $&.
+    highlight(title) {
+        const q = this.query.trim();
+        const escaped = escapeHtml(String(title));
+        if (!q) return escaped;
+        const pattern = escapeHtml(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const mark = '<mark class="bg-yellow-200 text-inherit px-0.5 rounded-sm dark:bg-yellow-500/30">' + pattern + '</mark>';
+        return escaped.replace(new RegExp(pattern, 'gi'), () => mark);
     },
 
     // ponytail: batas panjang query & debounce di client; endpoint tetap
@@ -48,6 +68,7 @@ Alpine.data('searchAutocomplete', (config = {}) => ({
                 this.loading = false;
                 return;
             }
+            this.open = true;
             this.loading = true;
             try {
                 // Absolut URL + encodeURIComponent: hasil fetch boleh di-cache

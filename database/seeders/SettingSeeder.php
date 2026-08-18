@@ -39,6 +39,18 @@ class SettingSeeder extends Seeder
             'social_youtube' => '',
         ];
 
+        // Homepage Settings (hero / CTA / features — kosongkan untuk memakai fallback blade)
+        $homepageSettings = [
+            'hero_title' => 'Temukan Apartemen Impian Anda',
+            'hero_subtitle' => 'Ratusan pilihan apartemen harian, mingguan, dan bulanan dengan harga terbaik di lokasi premium.',
+            'cta_title' => 'Siap Menyewa Apartemen?',
+            'cta_text' => 'Hubungi kami sekarang untuk konsultasi gratis dan dapatkan penawaran terbaik untuk hunian Anda.',
+            'cta_button_label' => 'Jelajahi Apartemen',
+            'cta_button_url' => '',
+            'features_title' => 'Kenapa Memilih Kami?',
+            'features_subtitle' => 'Pengalaman menyewa apartemen yang mudah, aman, dan terpercaya.',
+        ];
+
         // Theme Settings
         $themeSettings = [
             'primary_color' => '#3b82f6',
@@ -85,6 +97,17 @@ class SettingSeeder extends Seeder
                 [
                     'value' => $value,
                     'group' => 'footer',
+                ]
+            );
+        }
+
+        // Insert homepage settings
+        foreach ($homepageSettings as $key => $value) {
+            Setting::updateOrCreate(
+                ['key' => $key],
+                [
+                    'value' => $value,
+                    'group' => 'homepage',
                 ]
             );
         }

@@ -23,20 +23,14 @@
                 <x-search-input :label="__('home.search_name')"
                                 :placeholder="__('home.search_placeholder')"
                                 :value="request('search')"
-                                input-classes="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
-                <div class="md:w-56">
-                    <label for="city" class="sr-only">{{ __('home.city_placeholder') }}</label>
-                    <input type="text" name="city" id="city" placeholder="{{ __('home.city_placeholder') }}"
-                           value="{{ request('city') }}"
-                           class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                           style="--tw-ring-color: {{ $primaryColor }}">
-                </div>
+                                :additional-classes="'flex-1'"
+                                input-classes="w-full px-5 py-3.5 text-base rounded-xl border border-gray-200 focus:outline-none focus:ring-2 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
                 <button type="submit"
-                        class="px-8 py-3 rounded-xl text-white font-semibold hover:opacity-90 transition"
+                        class="px-8 py-3.5 rounded-xl text-white font-semibold hover:opacity-90 transition"
                         style="background-color: {{ $primaryColor }}">
                     {{ __('home.search') }}
                 </button>
-                @if (request('search') || request('city'))
+                @if (request('search'))
                     <a href="{{ route('properties.public.index') }}"
                        class="inline-flex items-center justify-center px-5 py-3 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition text-sm font-medium dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">
                         {{ __('prop.reset') }}
@@ -67,6 +61,20 @@
                                     <span class="absolute top-3 left-3 bg-white/95 text-xs font-bold px-3 py-1 rounded-full shadow" style="color: {{ $primaryColor }}">
                                         {{ __('home.featured_badge') }}
                                     </span>
+                                @endif
+                                @php
+                                    $typeBadge = $property->unit_types[0] ?? null;
+                                    $amenityBadges = $property->amenities->take(3);
+                                @endphp
+                                @if ($typeBadge || $amenityBadges->isNotEmpty())
+                                    <div class="absolute bottom-3 left-3 flex flex-wrap gap-1.5">
+                                        @if ($typeBadge)
+                                            <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 text-white backdrop-blur-sm">{{ $property->typeLabel($typeBadge) }}</span>
+                                        @endif
+                                        @foreach ($amenityBadges as $amenity)
+                                            <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-white/90 text-gray-800 backdrop-blur-sm">{{ $amenity->icon ? $amenity->icon . ' ' : '' }}{{ $amenity->name }}</span>
+                                        @endforeach
+                                    </div>
                                 @endif
                             </div>
                             <div class="p-6">

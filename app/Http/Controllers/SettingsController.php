@@ -38,6 +38,15 @@ class SettingsController extends Controller
             'timezone' => $this->settingsService->get('timezone', 'UTC'),
             'locale' => $this->settingsService->get('locale', 'en'),
             'currency' => $this->settingsService->get('currency', 'IDR'),
+            // Homepage (hero / CTA / features)
+            'hero_title' => $this->settingsService->get('hero_title'),
+            'hero_subtitle' => $this->settingsService->get('hero_subtitle'),
+            'cta_title' => $this->settingsService->get('cta_title'),
+            'cta_text' => $this->settingsService->get('cta_text'),
+            'cta_button_label' => $this->settingsService->get('cta_button_label'),
+            'cta_button_url' => $this->settingsService->get('cta_button_url'),
+            'features_title' => $this->settingsService->get('features_title'),
+            'features_subtitle' => $this->settingsService->get('features_subtitle'),
             // Footer
             'footer_about' => $this->settingsService->get('footer_about'),
             'footer_copyright' => $this->settingsService->get('footer_copyright'),
@@ -95,6 +104,14 @@ class SettingsController extends Controller
                 'timezone' => 'nullable|string|max:100',
                 'locale' => 'nullable|string|in:en,id',
                 'currency' => 'nullable|string|in:USD,IDR,EUR',
+                'hero_title' => 'nullable|string|max:255',
+                'hero_subtitle' => 'nullable|string',
+                'cta_title' => 'nullable|string|max:255',
+                'cta_text' => 'nullable|string',
+                'cta_button_label' => 'nullable|string|max:255',
+                'cta_button_url' => 'nullable|url|max:500',
+                'features_title' => 'nullable|string|max:255',
+                'features_subtitle' => 'nullable|string',
                 'footer_about' => 'nullable|string',
                 'footer_copyright' => 'nullable|string|max:255',
                 'social_facebook' => 'nullable|url',
@@ -191,6 +208,8 @@ class SettingsController extends Controller
             return 'integrations';
         } elseif (str_starts_with($key, 'notification_webhook')) {
             return 'integrations';
+        } elseif (str_starts_with($key, 'hero_') || str_starts_with($key, 'cta_') || str_starts_with($key, 'features_')) {
+            return 'homepage';
         }
 
         return 'general';
