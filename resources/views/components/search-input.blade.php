@@ -13,7 +13,7 @@
 
     <div x-cloak x-show="open && hasResults && !loading"
          class="absolute z-30 mt-2 w-full bg-white dark:bg-gray-800 rounded-xl shadow-xl ring-1 ring-black/5 border border-gray-200 dark:border-gray-700 overflow-hidden"
-         x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+   st      x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
          x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 -translate-y-1">
         <ul x-on:mouseenter="open = true" class="max-h-80 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
             <template x-for="(r, i) in results" :key="r.url">
