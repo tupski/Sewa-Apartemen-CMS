@@ -14,7 +14,10 @@ class SettingsController extends Controller
 
     public function __construct(SettingsService $settingsService)
     {
-        $this->middleware('auth');
+        // BUG-007 FIX: Tambahkan middleware 'admin' agar hanya super-admin yang bisa
+        // mengakses settings. Sebelumnya hanya 'auth' yang dicek — user non-admin
+        // berpotensi mengubah konfigurasi situs, logo, webhook, dan API key.
+        $this->middleware(['auth', 'admin']);
         $this->settingsService = $settingsService;
     }
 

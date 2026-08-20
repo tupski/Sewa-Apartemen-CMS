@@ -300,18 +300,23 @@ class BookingController extends Controller
 
     /**
      * Remove the specified booking (admin).
+     *
+     * BUG-005 FIX: destroy() seharusnya menghapus booking, bukan cancel.
+     * Cancel punya route tersendiri (POST /bookings/{booking}/cancel).
      */
     public function destroy(Booking $booking): RedirectResponse
     {
         try {
-            BookingService::cancel($booking);
+            $booking->forceDelete();
+
+            log_activity('booking_deleted', "Booking {$booking->code} deleted");
 
             return redirect()
                 ->route('admin.bookings.index')
-                ->with('success', 'Booking cancelled successfully.');
+                ->with('success', 'Booking deleted successfully.');
         } catch (\Exception $e) {
             return back()
-                ->with('error', 'Failed to cancel booking: ' . $e->getMessage());
+                ->with('error', 'Failed to delete booking: ' . $e->getMessage());
         }
     }
 }

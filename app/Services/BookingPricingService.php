@@ -251,9 +251,19 @@ class BookingPricingService
 
     /**
      * Round arbitrary transit hours UP to the nearest available bucket (max 24).
+     *
+     * BUG-008 FIX: Tambahkan null/zero guard — PHP null <= 3 adalah true (silent bug),
+     * sehingga booking transit tanpa durasi sebelumnya dihitung 3 jam tanpa error.
+     * Sekarang melempar InvalidArgumentException dengan pesan yang jelas.
      */
     protected function normalizeTransitHours(?int $hours): int
     {
+        if ($hours === null || $hours <= 0) {
+            throw new \InvalidArgumentException(
+                'Durasi transit harus diisi dan bernilai lebih dari 0 jam.'
+            );
+        }
+
         foreach (self::TRANSIT_BUCKETS as $bucket) {
             if ($hours <= $bucket) {
                 return $bucket;
