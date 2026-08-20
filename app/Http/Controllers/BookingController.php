@@ -23,26 +23,26 @@ class BookingController extends Controller
         try {
             $data = $request->validated();
 
-            // Validate voucher if provided
+            // BUG-001 FIX: Validate dan increment voucher di dalam satu transaksi DB
+            // dengan lockForUpdate() untuk mencegah double-spend pada concurrent requests.
             if (!empty($data['voucher_code']) || !empty($data['voucher_id'])) {
-                $code    = strtoupper($data['voucher_code'] ?? '');
-                $voucher = !empty($data['voucher_id'])
-                    ? Voucher::find($data['voucher_id'])
-                    : Voucher::where('code', $code)->first();
+                \Illuminate\Support\Facades\DB::transaction(function () use (&$data) {
+                    $code    = strtoupper($data['voucher_code'] ?? '');
+                    $voucher = !empty($data['voucher_id'])
+                        ? Voucher::where('id', $data['voucher_id'])->lockForUpdate()->first()
+                        : Voucher::where('code', $code)->lockForUpdate()->first();
 
-                if (!$voucher || !$voucher->isValid()) {
-                    throw new \Exception('Kode voucher tidak valid atau sudah kadaluarsa.');
-                }
+                    if (!$voucher || !$voucher->isValid()) {
+                        throw new \Exception('Kode voucher tidak valid atau sudah kadaluarsa.');
+                    }
 
-                $data['voucher_id'] = $voucher->id;
+                    // Increment di dalam lock — aman dari race condition
+                    $voucher->increment('used_count');
+                    $data['voucher_id'] = $voucher->id;
+                });
             }
 
             $booking = BookingService::create($data);
-
-            // Increment voucher used_count after successful booking
-            if (!empty($data['voucher_id'])) {
-                Voucher::where('id', $data['voucher_id'])->increment('used_count');
-            }
 
             log_activity('booking_created', "Booking {$booking->code} created for {$booking->customer_name}");
 

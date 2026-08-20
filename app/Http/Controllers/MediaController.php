@@ -71,9 +71,12 @@ class MediaController extends Controller
             $type = $this->getFileType($file->getMimeType());
 
             // Generate safe filename
+            // BUG-004 FIX: Gunakan extension dari MIME type yang sudah diverifikasi server,
+            // bukan dari nama file yang dikirim client (mencegah eksekusi file berbahaya).
             $originalName = $file->getClientOriginalName();
             $safeName = Str::slug(pathinfo($originalName, PATHINFO_FILENAME));
-            $extension = $file->getClientOriginalExtension();
+            $extension = $this->extensionFromMime($file->getMimeType())
+                         ?? strtolower($file->getClientOriginalExtension());
             $filename = $safeName . '-' . time() . '-' . Str::random(10) . '.' . $extension;
 
             // Store file
@@ -193,6 +196,31 @@ class MediaController extends Controller
             ->toArray();
 
         return array_values($folders);
+    }
+
+    /**
+     * BUG-004 FIX: Map MIME type ke extension yang aman dan terpercaya.
+     * Menghindari penggunaan extension dari client yang bisa dimanipulasi.
+     *
+     * @return string|null  Extension tanpa titik, atau null jika tidak dikenali
+     */
+    protected function extensionFromMime(string $mimeType): ?string
+    {
+        $map = [
+            'image/jpeg'      => 'jpg',
+            'image/png'       => 'png',
+            'image/gif'       => 'gif',
+            'image/webp'      => 'webp',
+            'image/svg+xml'   => 'svg',
+            'application/pdf' => 'pdf',
+            'application/msword' => 'doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+            'video/mp4'       => 'mp4',
+            'video/avi'       => 'avi',
+            'video/quicktime' => 'mov',
+        ];
+
+        return $map[$mimeType] ?? null;
     }
 
     /**

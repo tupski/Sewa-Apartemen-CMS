@@ -12,7 +12,8 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function () {
-            Route::middleware('web')
+            // BUG-002 FIX: Tambahkan protect.installer — hanya localhost/whitelist/token
+            Route::middleware(['web', 'protect.installer'])
                 ->prefix('install')
                 ->group(__DIR__.'/../routes/install.php');
         },
@@ -29,7 +30,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'admin'             => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            // BUG-002 FIX: Installer hanya bisa diakses dari localhost / IP whitelist / token
+            'protect.installer' => \App\Http\Middleware\ProtectInstaller::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

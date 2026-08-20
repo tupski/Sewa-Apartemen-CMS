@@ -356,12 +356,14 @@ class InstallerController extends Controller
 
             \Illuminate\Support\Facades\Auth::login($user);
 
+            // BUG-003 FIX: Jangan simpan password admin di state file (plaintext).
+            // Hanya simpan flag bahwa admin sudah dibuat dan email-nya saja.
             $this->markStepComplete(4, [
                 'admin_created' => true,
                 'admin' => [
-                    'name' => $validated['name'],
+                    'name'  => $validated['name'],
                     'email' => $validated['email'],
-                    'password' => $validated['password'],
+                    // password TIDAK disimpan ke state file
                 ],
             ]);
 
@@ -547,17 +549,24 @@ class InstallerController extends Controller
             ]);
         }
 
-        // Re-create admin user if stored in state
+        // BUG-003 FIX: stepFresh tidak lagi membaca password dari state file.
+        // Password tidak pernah disimpan di state (sejak perbaikan step4).
+        // Jika admin sudah dibuat di step4 dan masih login, gunakan sesi yang ada.
+        // Jika admin belum ada (fresh reset), buat dengan password sementara yang harus diganti.
         $adminData = $data['admin'] ?? null;
-        if ($adminData && !empty($adminData['email']) && !empty($adminData['password'])) {
-            $user = User::create([
-                'name' => $adminData['name'] ?? 'Admin',
-                'email' => $adminData['email'],
-                'password' => Hash::make($adminData['password']),
-            ]);
-
-            $superAdminRole = Role::firstOrCreate(['slug' => 'super-admin', 'name' => 'Super Admin']);
-            $user->roles()->attach($superAdminRole->id, ['model_type' => User::class]);
+        if ($adminData && !empty($adminData['email'])) {
+            $existingUser = User::where('email', $adminData['email'])->first();
+            if (!$existingUser) {
+                // Buat admin dengan password acak — user harus reset via forgot-password
+                $tempPassword = Str::random(24);
+                $user = User::create([
+                    'name'     => $adminData['name'] ?? 'Admin',
+                    'email'    => $adminData['email'],
+                    'password' => Hash::make($tempPassword),
+                ]);
+                $superAdminRole = Role::firstOrCreate(['slug' => 'super-admin', 'name' => 'Super Admin']);
+                $user->roles()->attach($superAdminRole->id, ['model_type' => User::class]);
+            }
         }
 
         // Write SettingsService values
