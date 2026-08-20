@@ -97,20 +97,59 @@
                     <!-- Amenities -->
                     @if ($property->amenities->isNotEmpty())
                         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 md:p-8">
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ __('prop.amenities') }}</h2>
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5">{{ __('prop.amenities') }}</h2>
+                            @php
+                            $iconMap = [
+                                'wifi' => 'wifi', 'wi-fi' => 'wifi', 'internet' => 'wifi',
+                                'parkir' => 'car', 'parking' => 'car',
+                                'ac' => 'thermometer', 'air conditioner' => 'thermometer', 'air conditioning' => 'thermometer',
+                                'dapur' => 'utensils', 'kitchen' => 'utensils', 'kitchenette' => 'utensils',
+                                'tv' => 'tv', 'televisi' => 'tv',
+                                'kolam renang' => 'waves', 'pool' => 'waves', 'swimming pool' => 'waves',
+                                'gym' => 'dumbbell', 'fitness' => 'dumbbell',
+                                'security' => 'shield', 'keamanan' => 'shield',
+                                'lift' => 'arrow-up-square', 'elevator' => 'arrow-up-square',
+                                'laundry' => 'shirt', 'cuci baju' => 'shirt',
+                                'kamar mandi' => 'bath', 'bathroom' => 'bath',
+                                'kamar tidur' => 'bed-double', 'bedroom' => 'bed-double',
+                            ];
+                            @endphp
                             <div class="flex flex-wrap gap-3">
                                 @foreach ($property->amenities as $amenity)
-                                    <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium"
-                                          style="background-color: {{ $primaryColor }}12; color: {{ $primaryColor }}">
-                                        @if ($amenity->icon)
-                                            <i class="fa-solid {{ $amenity->icon }} text-base mr-1.5"></i>
-                                        @else
-                                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                        @endif
-                                        {{ $amenity->name }}
-                                    </span>
+                                    @php
+                                        $iconName = $iconMap[strtolower($amenity->name)] ?? ($amenity->icon ?? 'check-circle');
+                                    @endphp
+                                    <div class="relative group amenity-item"
+                                         title="{{ $amenity->name }}"
+                                         data-tooltip="{{ $amenity->name }}">
+                                        <div class="flex flex-col items-center justify-center w-16 h-16 bg-white border border-gray-200 dark:bg-gray-700 dark:border-gray-600 rounded-xl shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-500 transition-all duration-200 cursor-default">
+                                            <i data-lucide="{{ $iconName }}" class="w-6 h-6 text-blue-600 dark:text-blue-400 mb-1"></i>
+                                            <span class="text-xs text-gray-600 dark:text-gray-300 text-center leading-tight truncate w-full px-1">{{ \Illuminate\Support\Str::limit($amenity->name, 10) }}</span>
+                                        </div>
+                                        {{-- Tooltip (desktop hover) --}}
+                                        <div class="amenity-tooltip absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                                            {{ $amenity->name }}
+                                            <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                                        </div>
+                                    </div>
                                 @endforeach
                             </div>
+                            <script>
+                            document.querySelectorAll('.amenity-item').forEach(function(el) {
+                                el.addEventListener('click', function() {
+                                    var tooltip = this.querySelector('.amenity-tooltip');
+                                    tooltip.classList.toggle('opacity-100');
+                                    tooltip.classList.toggle('opacity-0');
+                                    var self = this;
+                                    setTimeout(function() {
+                                        self.querySelector('.amenity-tooltip').classList.remove('opacity-100');
+                                        self.querySelector('.amenity-tooltip').classList.add('opacity-0');
+                                    }, 2000);
+                                });
+                            });
+                            // Reinit lucide for amenity icons
+                            if (typeof lucide !== 'undefined') lucide.createIcons();
+                            </script>
                         </div>
                     @endif
 

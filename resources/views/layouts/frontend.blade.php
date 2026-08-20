@@ -62,6 +62,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css"></noscript>
 
+    <!-- Lucide Icons (MIT) -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
@@ -76,7 +79,7 @@
 
     <!-- Header -->
     <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100 shadow-sm dark:bg-gray-900/95 dark:border-gray-800">
-        <div x-data="{ open: false }" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div x-data="{ open: false }" x-effect="open ? document.getElementById('mobile-menu').classList.add('menu-open') : document.getElementById('mobile-menu').classList.remove('menu-open')" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16 md:h-20">
                 <!-- Brand -->
                 <a href="{{ url('/') }}" class="flex items-center space-x-2">
@@ -95,7 +98,7 @@
                     @endforeach
                 </nav>
 
-                <!-- Actions -->
+                <!-- Actions (desktop) -->
                 <div class="hidden lg:flex items-center space-x-4">
                     <!-- Dark mode toggle -->
                     <button @click="dark = !dark"
@@ -130,24 +133,26 @@
                         <svg x-show="!dark" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
                         <svg x-show="dark" class="h-5 w-5" style="display: none;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                     </button>
-                    <button @click="open = !open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 focus:outline-none" aria-label="Toggle menu" :aria-expanded="open.toString()">
-                        <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                            <path :class="{'hidden': open, 'inline-flex': !open}" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                            <path :class="{'hidden': !open, 'inline-flex': open}" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
+                    <!-- Hamburger: animates to X when open -->
+                    <button @click="open = !open"
+                            id="mobile-menu-btn"
+                            class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 focus:outline-none transition"
+                            aria-label="Toggle menu"
+                            :aria-expanded="open.toString()">
+                        <i data-lucide="menu" id="menu-icon-open" class="w-6 h-6" :class="{ 'hidden': open }"></i>
+                        <i data-lucide="x" id="menu-icon-close" class="w-6 h-6 hidden" :class="{ 'hidden': !open }"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- Mobile Nav -->
-            <div :class="{'block': open, 'hidden': !open}" class="hidden lg:hidden pb-4 space-y-1 dark:bg-gray-900">
+            <!-- Mobile Nav — smooth slide via CSS #mobile-menu transition -->
+            <div id="mobile-menu" class="lg:hidden">
                 @foreach ($mainMenu as $item)
-                    <a href="{{ $item->url ?? '#' }}" @if(($item->target ?? '') === '_blank') target="_blank" rel="noopener" @endif
-                       class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800">
+                    <a href="{{ $item->url ?? '#' }}" @if(($item->target ?? '') === '_blank') target="_blank" rel="noopener" @endif>
                         {{ $item->title }}
                     </a>
                 @endforeach
-                <div class="pt-2 flex space-x-3">
+                <div class="pt-2 pb-1 flex space-x-3 px-1">
                     @if ($whatsapp)
                         <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}" target="_blank" rel="noopener"
                            class="flex-1 text-center px-4 py-2.5 rounded-full text-sm font-semibold text-white" style="background-color: #25d366">
@@ -280,6 +285,17 @@
         </a>
     @endif
 
+    <script>
+        // Reinitialise Lucide after Alpine toggles icon visibility
+        document.addEventListener('alpine:initialized', function () {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
+    </script>
+
     @stack('scripts')
+
+    <script>
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    </script>
 </body>
 </html>

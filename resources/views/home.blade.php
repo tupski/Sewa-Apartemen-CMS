@@ -50,7 +50,7 @@
     </section>
 
     <!-- Featured Properties -->
-    <section class="py-16 md:py-20 bg-gray-50 dark:bg-gray-800/50">
+    <section class="py-16 md:py-20 bg-slate-50 dark:bg-gray-800/50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-end justify-between mb-10">
                 <div>
@@ -69,15 +69,14 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                     @foreach ($properties as $property)
                         <a href="{{ route('properties.public.show', $property->slug) }}"
-                           class="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition">
+                           class="group property-card overflow-hidden dark:!bg-gray-800 dark:!shadow-gray-900/30">
                             <div class="relative aspect-[4/3] bg-gray-200">
                                 @if ($property->featuredImage)
                                     <img src="{{ $property->featuredImage->url }}" alt="{{ $property->name }}"
                                          class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
                                 @else
-                                    <div class="w-full h-full flex items-center justify-center text-gray-400"
-                                         style="background: linear-gradient(135deg, {{ $primaryColor }}22, {{ $secondaryColor }}22);">
-                                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                                    <div class="w-full h-full flex items-center justify-center text-blue-400 bg-gradient-to-br from-blue-100 to-indigo-200">
+                                        <i data-lucide="building-2" class="w-14 h-14"></i>
                                     </div>
                                 @endif
                                 @if ($property->is_featured)

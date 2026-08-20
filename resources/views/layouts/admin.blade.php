@@ -27,6 +27,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css"></noscript>
 
+    <!-- Lucide Icons (MIT) -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
     <!-- Quill 2 WYSIWYG (free, MIT) — loaded async -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css"></noscript>
@@ -371,5 +374,9 @@
     </script>
 
     @stack('scripts')
+
+    <script>
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    </script>
 </body>
 </html>
