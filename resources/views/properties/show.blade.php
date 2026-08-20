@@ -101,23 +101,44 @@
                             @php
                             $iconMap = [
                                 'wifi' => 'wifi', 'wi-fi' => 'wifi', 'internet' => 'wifi',
-                                'parkir' => 'car', 'parking' => 'car',
+                                'parkir' => 'car', 'parking' => 'car', 'parkir mobil' => 'car', 'parkir motor' => 'car',
                                 'ac' => 'thermometer', 'air conditioner' => 'thermometer', 'air conditioning' => 'thermometer',
                                 'dapur' => 'utensils', 'kitchen' => 'utensils', 'kitchenette' => 'utensils',
-                                'tv' => 'tv', 'televisi' => 'tv',
+                                'tv' => 'tv', 'televisi' => 'tv', 'cable tv' => 'tv',
                                 'kolam renang' => 'waves', 'pool' => 'waves', 'swimming pool' => 'waves',
-                                'gym' => 'dumbbell', 'fitness' => 'dumbbell',
-                                'security' => 'shield', 'keamanan' => 'shield',
+                                'gym' => 'dumbbell', 'fitness' => 'dumbbell', 'pusat kebugaran' => 'dumbbell',
+                                'security' => 'shield', 'keamanan' => 'shield', 'keamanan 24 jam' => 'shield', 'security 24 jam' => 'shield', '24-hour security' => 'shield',
                                 'lift' => 'arrow-up-square', 'elevator' => 'arrow-up-square',
                                 'laundry' => 'shirt', 'cuci baju' => 'shirt',
                                 'kamar mandi' => 'bath', 'bathroom' => 'bath',
                                 'kamar tidur' => 'bed-double', 'bedroom' => 'bed-double',
+                                'balkon' => 'door-open', 'balcony' => 'door-open',
+                                'taman' => 'trees', 'garden' => 'trees',
+                                'rumah sakit' => 'cross', 'hospital' => 'cross',
+                                'restoran' => 'utensils', 'restaurant' => 'utensils',
+                                'mall' => 'shopping-bag', 'shopping' => 'shopping-bag', 'pusat perbelanjaan' => 'shopping-bag',
                             ];
                             @endphp
                             <div class="flex flex-wrap gap-3">
                                 @foreach ($property->amenities as $amenity)
                                     @php
-                                        $iconName = $iconMap[strtolower($amenity->name)] ?? ($amenity->icon ?? 'check-circle');
+                                        // Resolve icon: try exact match first, then substring match, then fallback.
+                                        // The fallback strips any non-ASCII/emoji values from $amenity->icon.
+                                        $amenityKey = strtolower($amenity->name);
+                                        $iconName = $iconMap[$amenityKey] ?? null;
+                                        if (!$iconName) {
+                                            foreach ($iconMap as $keyword => $icon) {
+                                                if (str_contains($amenityKey, $keyword)) {
+                                                    $iconName = $icon;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if (!$iconName) {
+                                            $rawIcon = $amenity->icon ?? '';
+                                            // Only use $amenity->icon if it contains only ASCII printable characters (valid Lucide name)
+                                            $iconName = (preg_match('/^[a-z0-9\-]+$/i', $rawIcon) && $rawIcon !== '') ? $rawIcon : 'check-circle';
+                                        }
                                     @endphp
                                     <div class="relative group amenity-item"
                                          title="{{ $amenity->name }}"
