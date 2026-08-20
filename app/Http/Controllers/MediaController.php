@@ -67,7 +67,14 @@ class MediaController extends Controller
         try {
             $validated = $request->validated();
             $file = $request->file('file');
-            $folder = $validated['folder'] ?? 'media/' . date('Y/m');
+
+            // BUG-013 FIX: Sanitasi folder input dari client untuk mencegah path traversal.
+            // Strip "..", karakter berbahaya, dan pastikan path relatif yang aman.
+            $rawFolder   = $validated['folder'] ?? '';
+            $safeFolder  = trim(preg_replace('/\.\.+/', '', $rawFolder), '/\\ ');
+            $safeFolder  = preg_replace('/[^a-zA-Z0-9\/_\-]/', '', $safeFolder);
+            $folder      = !empty($safeFolder) ? $safeFolder : 'media/' . date('Y/m');
+
             $type = $this->getFileType($file->getMimeType());
 
             // Generate safe filename

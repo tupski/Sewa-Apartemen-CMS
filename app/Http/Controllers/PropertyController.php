@@ -28,31 +28,25 @@ class PropertyController extends Controller
             $query->where('name', 'like', '%' . $request->search . '%');
         }
 
-        // Filter by booking type: only show properties that have at least one
-        // price entry for the requested type (checked in PHP after retrieval,
-        // as JSON filtering is DB-engine-dependent and we paginate small sets).
+        // BUG-012 FIX: Filter booking type dilakukan di DB level menggunakan
+        // JSON_CONTAINS (MySQL) agar tidak perlu load semua properti ke memory.
+        // Fallback ke PHP-side filter tetap ada sebagai safety net jika DB tidak support.
         $typeFilter = $request->input('type');
+
+        if ($typeFilter) {
+            // Gunakan whereRaw JSON_CONTAINS untuk MySQL — lebih efisien dari get()->filter()
+            $query->whereRaw(
+                "JSON_CONTAINS(JSON_KEYS(COALESCE(prices, '{}')), JSON_QUOTE(?))",
+                [$typeFilter]
+            );
+        }
 
         $properties = $query->orderBy('order', 'asc')
                             ->orderBy('created_at', 'desc')
-                            ->get()
-                            ->when($typeFilter, function ($collection) use ($typeFilter) {
-                                return $collection->filter(function ($p) use ($typeFilter) {
-                                    return $p->hasBookingType($typeFilter);
-                                });
-                            });
+                            ->paginate(12)
+                            ->withQueryString();
 
-        // Manual pagination after PHP-side filter
-        $page      = $request->input('page', 1);
-        $perPage   = 12;
-        $total     = $properties->count();
-        $items     = $properties->slice(($page - 1) * $perPage, $perPage)->values();
-        $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
-            $items, $total, $perPage, $page,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
-
-        return view('properties.index', ['properties' => $paginator, 'typeFilter' => $typeFilter]);
+        return view('properties.index', ['properties' => $properties, 'typeFilter' => $typeFilter]);
     }
 
     /**

@@ -45,7 +45,7 @@ Route::get('/robots.txt', [SeoController::class, 'robots'])->name('robots');
 // Public CMS Pages
 Route::get('/pages/{page:slug}', [PageController::class, 'publicShow'])->name('pages.show');
 
-Route::get('/dashboard', ['App\Http\Controllers\Admin\DashboardController', 'index'])
+Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])
     ->middleware(['auth', 'verified', 'admin'])
     ->name('dashboard');
 
