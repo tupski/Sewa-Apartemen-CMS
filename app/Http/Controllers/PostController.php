@@ -48,15 +48,19 @@ class PostController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:posts,slug',
-            'content' => 'required|string',
-            'excerpt' => 'nullable|string',
-            'status' => 'required|in:draft,published',
-            'category_id' => 'nullable|exists:categories,id',
+            'title'          => 'required|string|max:255',
+            'slug'           => 'nullable|string|max:255|unique:posts,slug',
+            'content'        => 'required|string',
+            'excerpt'        => 'nullable|string',
+            'status'         => 'required|in:draft,published',
+            'category_id'    => 'nullable|exists:categories,id',
             'featured_image' => 'nullable|image|max:2048',
-            'tags' => 'nullable|string',
-            'seo' => 'nullable|array',
+            'tags'           => 'nullable|string',
+            'seo'            => 'nullable|array',
+            // BUG-024 FIX: Validasi field SEO agar tidak ada string tak terbatas
+            'seo.meta_title'       => 'nullable|string|max:255',
+            'seo.meta_description' => 'nullable|string|max:320',
+            'seo.canonical_url'    => 'nullable|url|max:2048',
         ]);
 
         try {
@@ -117,15 +121,19 @@ class PostController extends Controller
     public function update(Request $request, Post $post)
     {
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:posts,slug,' . $post->id,
-            'content' => 'required|string',
-            'excerpt' => 'nullable|string',
-            'status' => 'required|in:draft,published',
-            'category_id' => 'nullable|exists:categories,id',
+            'title'          => 'required|string|max:255',
+            'slug'           => 'nullable|string|max:255|unique:posts,slug,' . $post->id,
+            'content'        => 'required|string',
+            'excerpt'        => 'nullable|string',
+            'status'         => 'required|in:draft,published',
+            'category_id'    => 'nullable|exists:categories,id',
             'featured_image' => 'nullable|image|max:2048',
-            'tags' => 'nullable|string',
-            'seo' => 'nullable|array',
+            'tags'           => 'nullable|string',
+            'seo'            => 'nullable|array',
+            // BUG-024 FIX: Konsisten dengan store() — validasi field SEO pada update juga
+            'seo.meta_title'       => 'nullable|string|max:255',
+            'seo.meta_description' => 'nullable|string|max:320',
+            'seo.canonical_url'    => 'nullable|url|max:2048',
         ]);
 
         try {

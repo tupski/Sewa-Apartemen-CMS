@@ -116,9 +116,14 @@ class Booking extends Model
 
     /**
      * Check if the booking is past due.
+     *
+     * BUG-017 FIX: check_out bisa null untuk booking transit. Tambahkan null guard
+     * agar tidak terjadi fatal error saat memanggil ->isPast() pada null.
      */
     public function isPastDue(): bool
     {
-        return $this->check_out->isPast() && $this->status !== 'completed';
+        return $this->check_out !== null
+            && $this->check_out->isPast()
+            && $this->status !== 'completed';
     }
 }

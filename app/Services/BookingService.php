@@ -13,23 +13,28 @@ class BookingService
      * Generate a unique booking code.
      *
      * Format: BK-YYYYMMDD-XXXX (where XXXX is a 4-digit sequence number)
+     *
+     * BUG-006 FIX: Pembacaan kode terakhir + increment kini dilakukan di dalam
+     * DB::transaction dengan lockForUpdate() agar tidak menghasilkan kode duplikat
+     * pada concurrent requests di hari yang sama.
      */
     public static function generateCode(): string
     {
-        $datePrefix = now()->format('Ymd');
+        return DB::transaction(function () {
+            $datePrefix = now()->format('Ymd');
 
-        $lastBooking = Booking::where('code', 'like', "BK-{$datePrefix}-%")
-            ->orderBy('code', 'desc')
-            ->first();
+            // Lock row terakhir agar tidak ada dua request yang membaca nilai yang sama
+            $lastBooking = Booking::where('code', 'like', "BK-{$datePrefix}-%")
+                ->orderBy('code', 'desc')
+                ->lockForUpdate()
+                ->first();
 
-        if ($lastBooking) {
-            $lastNumber = (int) substr($lastBooking->code, -4);
-            $newNumber = $lastNumber + 1;
-        } else {
-            $newNumber = 1;
-        }
+            $newNumber = $lastBooking
+                ? ((int) substr($lastBooking->code, -4)) + 1
+                : 1;
 
-        return "BK-{$datePrefix}-" . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+            return "BK-{$datePrefix}-" . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+        });
     }
 
     /**

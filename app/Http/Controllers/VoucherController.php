@@ -92,10 +92,12 @@ class VoucherController extends Controller
         }
 
         $data = $request->validate([
-            'code'                => ['required', 'string', 'max:50', $codeUnique],
-            'name'                => ['required', 'string', 'max:255'],
-            'discount_type'       => ['required', 'string', 'in:percent,fixed'],
-            'discount_value'      => ['required', 'numeric', 'min:0'],
+            'code'           => ['required', 'string', 'max:50', $codeUnique],
+            'name'           => ['required', 'string', 'max:255'],
+            'discount_type'  => ['required', 'string', 'in:percent,fixed'],
+            // BUG-023 FIX: discount_value minimal 0.01 (tidak boleh nol).
+            // Untuk tipe percent, tambahan validasi max:100 via after-validation di bawah.
+            'discount_value'      => ['required', 'numeric', 'min:0.01'],
             'min_booking_amount'  => ['nullable', 'integer', 'min:0'],
             'max_discount_amount' => ['nullable', 'integer', 'min:0'],
             'usage_limit'         => ['nullable', 'integer', 'min:1'],
@@ -103,6 +105,13 @@ class VoucherController extends Controller
             'valid_until'         => ['nullable', 'date', 'after_or_equal:valid_from'],
             'is_active'           => ['boolean'],
         ]);
+
+        // BUG-023 FIX: Untuk tipe percent, nilai maksimal 100%
+        if ($data['discount_type'] === 'percent' && $data['discount_value'] > 100) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'discount_value' => 'Diskon persen tidak boleh melebihi 100%.',
+            ]);
+        }
 
         // Normalize code to uppercase
         $data['code'] = strtoupper($data['code']);

@@ -34,7 +34,7 @@ class BookingRequest extends FormRequest
             'booking_type' => ['nullable', 'string', Rule::in(['daily', 'transit', 'weekly', 'monthly'])],
             'unit_type' => ['required', 'string', Rule::in(array_keys(Property::UNIT_TYPES))],
             'duration_hours' => ['nullable', 'integer', 'min:1', 'max:24'],
-            'check_in' => ['required', 'date'],
+            'check_in' => ['required', 'date', 'after_or_equal:today'],
             'check_in_time' => ['nullable', 'string', 'max:5', 'regex:/^([01][0-9]|2[0-3]):[0-5][0-9]$/'],
             'check_out' => ['nullable', 'date', 'after_or_equal:check_in'],
             'customer_name' => ['required', 'string', 'max:255'],

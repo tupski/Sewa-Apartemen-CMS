@@ -23,26 +23,26 @@ class BookingController extends Controller
         try {
             $data = $request->validated();
 
-            // Validate voucher if provided
+            // BUG-001 FIX: Validate dan increment voucher di dalam satu transaksi DB
+            // dengan lockForUpdate() untuk mencegah double-spend pada concurrent requests.
             if (!empty($data['voucher_code']) || !empty($data['voucher_id'])) {
-                $code    = strtoupper($data['voucher_code'] ?? '');
-                $voucher = !empty($data['voucher_id'])
-                    ? Voucher::find($data['voucher_id'])
-                    : Voucher::where('code', $code)->first();
+                \Illuminate\Support\Facades\DB::transaction(function () use (&$data) {
+                    $code    = strtoupper($data['voucher_code'] ?? '');
+                    $voucher = !empty($data['voucher_id'])
+                        ? Voucher::where('id', $data['voucher_id'])->lockForUpdate()->first()
+                        : Voucher::where('code', $code)->lockForUpdate()->first();
 
-                if (!$voucher || !$voucher->isValid()) {
-                    throw new \Exception('Kode voucher tidak valid atau sudah kadaluarsa.');
-                }
+                    if (!$voucher || !$voucher->isValid()) {
+                        throw new \Exception('Kode voucher tidak valid atau sudah kadaluarsa.');
+                    }
 
-                $data['voucher_id'] = $voucher->id;
+                    // Increment di dalam lock — aman dari race condition
+                    $voucher->increment('used_count');
+                    $data['voucher_id'] = $voucher->id;
+                });
             }
 
             $booking = BookingService::create($data);
-
-            // Increment voucher used_count after successful booking
-            if (!empty($data['voucher_id'])) {
-                Voucher::where('id', $data['voucher_id'])->increment('used_count');
-            }
 
             log_activity('booking_created', "Booking {$booking->code} created for {$booking->customer_name}");
 
@@ -251,6 +251,10 @@ class BookingController extends Controller
 
     /**
      * Export bookings as CSV.
+     *
+     * BUG-026 FIX: Export tanpa limit bisa OOM pada ribuan booking.
+     * Gunakan chunk() untuk stream data ke CSV secara bertahap,
+     * dan wajibkan filter tanggal minimal 90 hari terakhir jika tidak ada filter.
      */
     public function export(Request $request): Response
     {
@@ -260,36 +264,44 @@ class BookingController extends Controller
             $query->where('status', $status);
         }
 
-        $bookings = $query->orderBy('created_at', 'desc')->get();
+        // Default: ekspor maksimal 90 hari terakhir jika tidak ada filter tanggal
+        $dateFrom = $request->get('date_from') ?? now()->subDays(90)->format('Y-m-d');
+        $dateTo   = $request->get('date_to')   ?? now()->format('Y-m-d');
+        $query->whereDate('created_at', '>=', $dateFrom)
+              ->whereDate('created_at', '<=', $dateTo);
 
         $headers = [
-            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Type'        => 'text/csv; charset=utf-8',
             'Content-Disposition' => 'attachment; filename="bookings-' . now()->format('Ymd') . '.csv"',
         ];
 
-        $columns = ['Code', 'Customer', 'Email', 'Phone', 'Property', 'Room Type', 'Booking Type', 'Check-in', 'Check-out', 'Guests', 'Total', 'Status', 'Notes', 'Created'];
+        $columns = ['Code', 'Customer', 'Email', 'Phone', 'Property', 'Room Type',
+                    'Booking Type', 'Check-in', 'Check-out', 'Guests', 'Total', 'Status', 'Notes', 'Created'];
 
         $fp = fopen('php://temp', 'r+');
         fputcsv($fp, $columns);
 
-        foreach ($bookings as $b) {
-            fputcsv($fp, [
-                $b->code,
-                $b->customer_name,
-                $b->customer_email,
-                $b->customer_phone,
-                $b->property->name ?? '',
-                $b->property ? $b->property->typeLabel($b->unit_type) : $b->unit_type,
-                ucfirst($b->booking_type),
-                $b->check_in?->format('Y-m-d H:i'),
-                $b->check_out?->format('Y-m-d H:i'),
-                $b->guests,
-                $b->total_price,
-                $b->status,
-                $b->notes,
-                $b->created_at->format('Y-m-d H:i'),
-            ]);
-        }
+        // Chunk 200 rows agar tidak OOM
+        $query->orderBy('created_at', 'desc')->chunk(200, function ($bookings) use ($fp) {
+            foreach ($bookings as $b) {
+                fputcsv($fp, [
+                    $b->code,
+                    $b->customer_name,
+                    $b->customer_email,
+                    $b->customer_phone,
+                    $b->property->name ?? '',
+                    $b->property ? $b->property->typeLabel($b->unit_type) : $b->unit_type,
+                    ucfirst($b->booking_type),
+                    $b->check_in?->format('Y-m-d H:i'),
+                    $b->check_out?->format('Y-m-d H:i'),
+                    $b->guests,
+                    $b->total_price,
+                    $b->status,
+                    $b->notes,
+                    $b->created_at->format('Y-m-d H:i'),
+                ]);
+            }
+        });
 
         rewind($fp);
         $csvContent = stream_get_contents($fp);
@@ -300,18 +312,23 @@ class BookingController extends Controller
 
     /**
      * Remove the specified booking (admin).
+     *
+     * BUG-005 FIX: destroy() seharusnya menghapus booking, bukan cancel.
+     * Cancel punya route tersendiri (POST /bookings/{booking}/cancel).
      */
     public function destroy(Booking $booking): RedirectResponse
     {
         try {
-            BookingService::cancel($booking);
+            $booking->forceDelete();
+
+            log_activity('booking_deleted', "Booking {$booking->code} deleted");
 
             return redirect()
                 ->route('admin.bookings.index')
-                ->with('success', 'Booking cancelled successfully.');
+                ->with('success', 'Booking deleted successfully.');
         } catch (\Exception $e) {
             return back()
-                ->with('error', 'Failed to cancel booking: ' . $e->getMessage());
+                ->with('error', 'Failed to delete booking: ' . $e->getMessage());
         }
     }
 }

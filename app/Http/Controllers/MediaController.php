@@ -7,7 +7,9 @@ use App\Http\Requests\MediaRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Intervention\Image\Facades\Image;
+// BUG-020 FIX: Hapus import Intervention\Image yang tidak pernah digunakan.
+// Thumbnail generation sudah menggunakan GD native (imagecreatefromjpeg, dll).
+// Import ini dead code yang menyesatkan developer.
 
 class MediaController extends Controller
 {
@@ -67,13 +69,23 @@ class MediaController extends Controller
         try {
             $validated = $request->validated();
             $file = $request->file('file');
-            $folder = $validated['folder'] ?? 'media/' . date('Y/m');
+
+            // BUG-013 FIX: Sanitasi folder input dari client untuk mencegah path traversal.
+            // Strip "..", karakter berbahaya, dan pastikan path relatif yang aman.
+            $rawFolder   = $validated['folder'] ?? '';
+            $safeFolder  = trim(preg_replace('/\.\.+/', '', $rawFolder), '/\\ ');
+            $safeFolder  = preg_replace('/[^a-zA-Z0-9\/_\-]/', '', $safeFolder);
+            $folder      = !empty($safeFolder) ? $safeFolder : 'media/' . date('Y/m');
+
             $type = $this->getFileType($file->getMimeType());
 
             // Generate safe filename
+            // BUG-004 FIX: Gunakan extension dari MIME type yang sudah diverifikasi server,
+            // bukan dari nama file yang dikirim client (mencegah eksekusi file berbahaya).
             $originalName = $file->getClientOriginalName();
             $safeName = Str::slug(pathinfo($originalName, PATHINFO_FILENAME));
-            $extension = $file->getClientOriginalExtension();
+            $extension = $this->extensionFromMime($file->getMimeType())
+                         ?? strtolower($file->getClientOriginalExtension());
             $filename = $safeName . '-' . time() . '-' . Str::random(10) . '.' . $extension;
 
             // Store file
@@ -193,6 +205,31 @@ class MediaController extends Controller
             ->toArray();
 
         return array_values($folders);
+    }
+
+    /**
+     * BUG-004 FIX: Map MIME type ke extension yang aman dan terpercaya.
+     * Menghindari penggunaan extension dari client yang bisa dimanipulasi.
+     *
+     * @return string|null  Extension tanpa titik, atau null jika tidak dikenali
+     */
+    protected function extensionFromMime(string $mimeType): ?string
+    {
+        $map = [
+            'image/jpeg'      => 'jpg',
+            'image/png'       => 'png',
+            'image/gif'       => 'gif',
+            'image/webp'      => 'webp',
+            'image/svg+xml'   => 'svg',
+            'application/pdf' => 'pdf',
+            'application/msword' => 'doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+            'video/mp4'       => 'mp4',
+            'video/avi'       => 'avi',
+            'video/quicktime' => 'mov',
+        ];
+
+        return $map[$mimeType] ?? null;
     }
 
     /**

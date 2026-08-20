@@ -124,6 +124,14 @@ class UserController extends Controller
 
     public function destroy(User $user): RedirectResponse
     {
+        // BUG-015 FIX: Cegah admin menghapus dirinya sendiri. Jika satu-satunya
+        // super-admin dihapus, tidak ada yang bisa login ke admin panel lagi.
+        if ($user->id === auth()->id()) {
+            return redirect()
+                ->route('admin.users.index')
+                ->with('error', 'Anda tidak dapat menghapus akun Anda sendiri.');
+        }
+
         log_activity('user_deleted', "User {$user->name} deleted");
 
         $user->delete();

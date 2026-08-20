@@ -105,12 +105,28 @@ class BlogController extends Controller
 
     protected function getSidebarData(): array
     {
-        return Cache::remember('blog_sidebar', now()->addHour(), function () {
-            return [
-                'recentPosts' => Post::published()->latest('published_at')->limit(5)->get(),
-                'categories' => Category::withCount(['posts' => fn($q) => $q->published()])->orderBy('name')->get(),
-                'tags' => Tag::withCount(['posts' => fn($q) => $q->published()])->orderBy('name')->get(),
-            ];
-        });
+        // BUG-018 FIX: Gunakan cache tag 'blog' agar bisa di-invalidate
+        // secara presisi saat post/kategori/tag berubah, bukan tunggu 1 jam.
+        // Tag-based cache membutuhkan driver yang mendukung tags (Redis/Memcached).
+        // Fallback ke remember() biasa jika driver tidak support tags (file/database).
+        try {
+            return \Illuminate\Support\Facades\Cache::tags(['blog'])
+                ->remember('blog_sidebar', now()->addHour(), function () {
+                    return [
+                        'recentPosts' => Post::published()->latest('published_at')->limit(5)->get(),
+                        'categories'  => Category::withCount(['posts' => fn($q) => $q->published()])->orderBy('name')->get(),
+                        'tags'        => Tag::withCount(['posts' => fn($q) => $q->published()])->orderBy('name')->get(),
+                    ];
+                });
+        } catch (\BadMethodCallException $e) {
+            // Driver tidak support cache tags (file/database) — fallback ke remember biasa
+            return \Illuminate\Support\Facades\Cache::remember('blog_sidebar', now()->addHour(), function () {
+                return [
+                    'recentPosts' => Post::published()->latest('published_at')->limit(5)->get(),
+                    'categories'  => Category::withCount(['posts' => fn($q) => $q->published()])->orderBy('name')->get(),
+                    'tags'        => Tag::withCount(['posts' => fn($q) => $q->published()])->orderBy('name')->get(),
+                ];
+            });
+        }
     }
 }

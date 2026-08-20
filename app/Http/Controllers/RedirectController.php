@@ -45,11 +45,22 @@ class RedirectController extends Controller
     /**
      * Store a newly created redirect.
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'from_url' => 'required|string|max:2048|unique:redirects,from_url',
-            'to_url' => 'required|string|max:2048',
+            'from_url'    => 'required|string|max:2048|unique:redirects,from_url',
+            // BUG-014 FIX: Validasi to_url harus berupa URL yang valid (dimulai /  atau https?://)
+            // agar tidak bisa digunakan sebagai open redirector ke situs berbahaya eksternal.
+            'to_url'      => ['required', 'string', 'max:2048', function ($attribute, $value, $fail) {
+                // Izinkan: path relatif (/path/to/page) atau URL absolut ke host yang sama
+                // Blokir: javascript:, data:, //evil.com, dll.
+                if (!str_starts_with($value, '/') && !preg_match('#^https?://#i', $value)) {
+                    $fail('URL tujuan harus berupa path relatif (/) atau URL lengkap (https://).');
+                }
+                if (preg_match('#^(javascript|data|vbscript):#i', $value)) {
+                    $fail('URL tujuan mengandung protokol yang tidak diizinkan.');
+                }
+            }],
             'status_code' => 'required|integer|in:301,302',
         ]);
 
@@ -74,8 +85,16 @@ class RedirectController extends Controller
     public function update(Request $request, Redirect $redirect)
     {
         $validated = $request->validate([
-            'from_url' => 'required|string|max:2048|unique:redirects,from_url,' . $redirect->id,
-            'to_url' => 'required|string|max:2048',
+            'from_url'    => 'required|string|max:2048|unique:redirects,from_url,' . $redirect->id,
+            // BUG-014 FIX: Validasi to_url pada update juga (konsisten dengan store)
+            'to_url'      => ['required', 'string', 'max:2048', function ($attribute, $value, $fail) {
+                if (!str_starts_with($value, '/') && !preg_match('#^https?://#i', $value)) {
+                    $fail('URL tujuan harus berupa path relatif (/) atau URL lengkap (https://).');
+                }
+                if (preg_match('#^(javascript|data|vbscript):#i', $value)) {
+                    $fail('URL tujuan mengandung protokol yang tidak diizinkan.');
+                }
+            }],
             'status_code' => 'required|integer|in:301,302',
         ]);
 
