@@ -161,5 +161,65 @@ class SettingSeeder extends Seeder
                 ]
             );
         }
+
+        // Pricing / Weekend Settings
+        $pricingSettings = [
+            [
+                'key'         => 'weekend_days_mode',
+                'value'       => 'sat_sun',
+                'type'        => 'select',
+                'group'       => 'pricing',
+                'description' => 'Konfigurasi hari weekend default',
+                'options'     => json_encode([
+                    'sat_sun' => 'Sabtu–Minggu',
+                    'fri_sun' => 'Jumat–Minggu',
+                    'custom'  => 'Custom (pakai pengaturan di bawah)',
+                ]),
+            ],
+            [
+                'key'         => 'weekend_start_day',
+                'value'       => '5',
+                'type'        => 'select',
+                'group'       => 'pricing',
+                'description' => 'Hari awal weekend (default global) — dipakai jika mode Custom',
+                'options'     => json_encode([
+                    '0' => 'Minggu',
+                    '1' => 'Senin',
+                    '2' => 'Selasa',
+                    '3' => 'Rabu',
+                    '4' => 'Kamis',
+                    '5' => 'Jumat',
+                    '6' => 'Sabtu',
+                ]),
+            ],
+            [
+                'key'         => 'weekend_end_day',
+                'value'       => '0',
+                'type'        => 'select',
+                'group'       => 'pricing',
+                'description' => 'Hari akhir weekend (default global) — dipakai jika mode Custom',
+                'options'     => json_encode([
+                    '0' => 'Minggu',
+                    '1' => 'Senin',
+                    '2' => 'Selasa',
+                    '3' => 'Rabu',
+                    '4' => 'Kamis',
+                    '5' => 'Jumat',
+                    '6' => 'Sabtu',
+                ]),
+            ],
+        ];
+
+        foreach ($pricingSettings as $setting) {
+            Setting::updateOrCreate(
+                ['key' => $setting['key']],
+                [
+                    'value'       => $setting['value'],
+                    'type'        => $setting['type'],
+                    'group'       => $setting['group'],
+                    'description' => $setting['description'],
+                ]
+            );
+        }
     }
 }

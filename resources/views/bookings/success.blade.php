@@ -132,6 +132,17 @@
                             <span class="font-medium">{{ $booking->metadata['nights'] ?? '-' }}</span>
                         </div>
                     @endif
+                    @if($booking->voucher_discount > 0)
+                    <div class="flex justify-between text-green-700 dark:text-green-400">
+                        <span>
+                            Diskon Voucher
+                            @if($booking->voucher)
+                                <code class="ml-1 text-xs px-1.5 py-0.5 bg-green-100 dark:bg-green-900/40 rounded font-mono">{{ $booking->voucher->code }}</code>
+                            @endif
+                        </span>
+                        <span class="font-medium">−Rp{{ number_format($booking->voucher_discount) }}</span>
+                    </div>
+                    @endif
                     <div class="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-2">
                         <span class="font-medium text-gray-800 dark:text-gray-100">Total Price</span>
                         <span class="font-bold text-lg text-gray-900 dark:text-white">Rp{{ number_format($booking->total_price) }}</span>

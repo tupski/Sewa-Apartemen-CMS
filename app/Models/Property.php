@@ -119,6 +119,14 @@ class Property extends Model
     }
 
     /**
+     * Promo rates defined for this property.
+     */
+    public function promoRates()
+    {
+        return $this->hasMany(PromoRate::class);
+    }
+
+    /**
      * Human label for a room type key.
      */
     public function typeLabel(string $type): string

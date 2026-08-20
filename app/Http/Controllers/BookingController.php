@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\BookingRequest;
 use App\Models\Booking;
 use App\Models\Property;
+use App\Models\Voucher;
 use App\Services\BookingService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -21,7 +23,26 @@ class BookingController extends Controller
         try {
             $data = $request->validated();
 
+            // Validate voucher if provided
+            if (!empty($data['voucher_code']) || !empty($data['voucher_id'])) {
+                $code    = strtoupper($data['voucher_code'] ?? '');
+                $voucher = !empty($data['voucher_id'])
+                    ? Voucher::find($data['voucher_id'])
+                    : Voucher::where('code', $code)->first();
+
+                if (!$voucher || !$voucher->isValid()) {
+                    throw new \Exception('Kode voucher tidak valid atau sudah kadaluarsa.');
+                }
+
+                $data['voucher_id'] = $voucher->id;
+            }
+
             $booking = BookingService::create($data);
+
+            // Increment voucher used_count after successful booking
+            if (!empty($data['voucher_id'])) {
+                Voucher::where('id', $data['voucher_id'])->increment('used_count');
+            }
 
             log_activity('booking_created', "Booking {$booking->code} created for {$booking->customer_name}");
 
@@ -66,9 +87,53 @@ class BookingController extends Controller
      */
     public function success(Booking $booking): View
     {
-        $booking->load('property');
+        $booking->load('property', 'voucher');
 
         return view('bookings.success', compact('booking'));
+    }
+
+    /**
+     * Validate a voucher code for a booking amount (public, throttled).
+     */
+    public function validateVoucher(Request $request): JsonResponse
+    {
+        $request->validate([
+            'code'        => ['required', 'string', 'max:50'],
+            'property_id' => ['required', 'integer', 'exists:properties,id'],
+            'amount'      => ['required', 'integer', 'min:0'],
+        ]);
+
+        $code    = strtoupper(trim($request->input('code')));
+        $amount  = (int) $request->input('amount');
+        $voucher = Voucher::where('code', $code)->first();
+
+        if (!$voucher || !$voucher->isValid()) {
+            return response()->json([
+                'valid'   => false,
+                'message' => 'Kode voucher tidak valid atau sudah kadaluarsa.',
+            ], 422);
+        }
+
+        if ($voucher->min_booking_amount && $amount < $voucher->min_booking_amount) {
+            return response()->json([
+                'valid'   => false,
+                'message' => 'Minimum booking Rp ' . number_format($voucher->min_booking_amount, 0, ',', '.') . ' untuk menggunakan voucher ini.',
+            ], 422);
+        }
+
+        $discountAmount = $voucher->calculateDiscount($amount);
+        $finalAmount    = max(0, $amount - $discountAmount);
+
+        return response()->json([
+            'valid'          => true,
+            'voucher_id'     => $voucher->id,
+            'code'           => $voucher->code,
+            'name'           => $voucher->name,
+            'discount_type'  => $voucher->discount_type,
+            'discount_value' => $voucher->discount_value,
+            'discount_amount'=> $discountAmount,
+            'final_amount'   => $finalAmount,
+        ]);
     }
 
     /**

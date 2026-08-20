@@ -66,6 +66,7 @@ class PropertyController extends Controller
             'featuredImage',
             'amenities',
             'photos.media',
+            'promoRates' => fn ($q) => $q->where('is_active', true)->orderBy('name'),
         ]);
 
         return view('properties.show', compact('property'));

@@ -43,6 +43,11 @@ class BookingRequest extends FormRequest
             'customer_whatsapp' => ['nullable', 'string', 'max:20'],
             'guests' => ['required', 'integer', 'min:1', 'max:20'],
             'message' => ['nullable', 'string', 'max:1000'],
+            // Promo rate
+            'promo_rate_id' => ['nullable', 'integer', 'exists:promo_rates,id'],
+            // Voucher
+            'voucher_code' => ['nullable', 'string', 'max:50'],
+            'voucher_id' => ['nullable', 'integer', 'exists:vouchers,id'],
         ];
     }
 
@@ -68,6 +73,9 @@ class BookingRequest extends FormRequest
             'customer_whatsapp' => 'nomor WhatsApp',
             'guests' => 'jumlah tamu',
             'message' => 'pesan',
+            'promo_rate_id' => 'kode promo',
+            'voucher_code' => 'kode voucher',
+            'voucher_id' => 'voucher',
         ];
     }
 

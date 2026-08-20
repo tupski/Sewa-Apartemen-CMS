@@ -33,6 +33,11 @@
                         class="py-4 px-6 border-b-2 font-medium text-sm transition">
                     SEO
                 </button>
+                <button @click="activeTab = 'pricing'"
+                        :class="activeTab === 'pricing' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        class="py-4 px-6 border-b-2 font-medium text-sm transition">
+                    Pricing
+                </button>
                 <button @click="activeTab = 'booking'"
                         :class="activeTab === 'booking' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                         class="py-4 px-6 border-b-2 font-medium text-sm transition">
@@ -850,6 +855,74 @@
   }
 }</code></pre>
                             </details>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== PRICING TAB ===== -->
+                <div x-show="activeTab === 'pricing'" class="p-6 space-y-6">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-1">Pengaturan Harga & Weekend</h3>
+                        <p class="text-sm text-gray-500 mb-6">
+                            Konfigurasi hari weekend secara global. Properti individual bisa meng-override pengaturan ini
+                            di tab Harga pada halaman edit properti.
+                        </p>
+
+                        <!-- Weekend Days Mode -->
+                        <div class="mb-6">
+                            <label for="weekend_days_mode" class="block text-sm font-medium text-gray-700 mb-1">
+                                Konfigurasi Hari Weekend Default
+                            </label>
+                            <select name="weekend_days_mode"
+                                    id="weekend_days_mode"
+                                    x-data
+                                    @change="$dispatch('weekend-mode-changed', { value: $event.target.value })"
+                                    class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                @foreach(['sat_sun' => 'Sabtu–Minggu', 'fri_sun' => 'Jumat–Minggu', 'custom' => 'Custom (pakai pengaturan di bawah)'] as $optVal => $optLabel)
+                                    <option value="{{ $optVal }}" {{ old('weekend_days_mode', $settings['weekend_days_mode'] ?? 'sat_sun') === $optVal ? 'selected' : '' }}>
+                                        {{ $optLabel }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">
+                                Menentukan hari mana yang dianggap "weekend" saat menghitung harga. Pilih <strong>Custom</strong> untuk mengatur sendiri.
+                            </p>
+                        </div>
+
+                        <!-- Custom weekend range (shown when mode = custom) -->
+                        <div x-data="{ show: '{{ old('weekend_days_mode', $settings['weekend_days_mode'] ?? 'sat_sun') }}' === 'custom' }"
+                             @weekend-mode-changed.window="show = $event.detail.value === 'custom'"
+                             x-show="show"
+                             class="ml-4 p-4 bg-amber-50 border border-amber-200 rounded-lg mb-6">
+                            <p class="text-xs text-amber-700 font-medium mb-3">Pengaturan Custom Weekend</p>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="weekend_start_day" class="block text-xs font-medium text-gray-700 mb-1">Hari Awal Weekend</label>
+                                    <select name="weekend_start_day"
+                                            id="weekend_start_day"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                        @foreach(['0'=>'Minggu','1'=>'Senin','2'=>'Selasa','3'=>'Rabu','4'=>'Kamis','5'=>'Jumat','6'=>'Sabtu'] as $dayVal => $dayName)
+                                            <option value="{{ $dayVal }}" {{ old('weekend_start_day', $settings['weekend_start_day'] ?? '5') == $dayVal ? 'selected' : '' }}>
+                                                {{ $dayName }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <p class="text-xs text-gray-400 mt-1">Hari awal weekend (inklusif).</p>
+                                </div>
+                                <div>
+                                    <label for="weekend_end_day" class="block text-xs font-medium text-gray-700 mb-1">Hari Akhir Weekend</label>
+                                    <select name="weekend_end_day"
+                                            id="weekend_end_day"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                        @foreach(['0'=>'Minggu','1'=>'Senin','2'=>'Selasa','3'=>'Rabu','4'=>'Kamis','5'=>'Jumat','6'=>'Sabtu'] as $dayVal => $dayName)
+                                            <option value="{{ $dayVal }}" {{ old('weekend_end_day', $settings['weekend_end_day'] ?? '0') == $dayVal ? 'selected' : '' }}>
+                                                {{ $dayName }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <p class="text-xs text-gray-400 mt-1">Hari akhir weekend (inklusif). Bisa wrap ke hari berikutnya.</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -11,11 +11,13 @@ use App\Http\Controllers\NavigationController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PromoRateController;
 use App\Http\Controllers\PropertyController;
 use App\Http\Controllers\RedirectController;
 use App\Http\Controllers\SeoController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TagController;
+use App\Http\Controllers\VoucherController;
 use Illuminate\Support\Facades\Route;
 
 // Homepage
@@ -57,6 +59,7 @@ Route::middleware('auth')->group(function () {
 Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store')->middleware('throttle:10,1');
 Route::get('/bookings/{booking}/success', [BookingController::class, 'success'])->name('bookings.success');
 Route::get('/booking/status/{code}', [BookingController::class, 'publicStatus'])->name('bookings.status')->middleware('throttle:30,1');
+Route::post('/booking/validate-voucher', [BookingController::class, 'validateVoucher'])->name('bookings.validate-voucher')->middleware('throttle:20,1');
 
 // Admin CMS Routes (require authentication + admin role)
 Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -109,6 +112,14 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     Route::resource('posts', PostController::class);
     Route::resource('categories', CategoryController::class);
     Route::resource('tags', TagController::class);
+
+    // Promo Rates (nested under properties)
+    Route::post('properties/{property}/promos', [PromoRateController::class, 'store'])->name('properties.promos.store');
+    Route::put('properties/{property}/promos/{promo}', [PromoRateController::class, 'update'])->name('properties.promos.update');
+    Route::delete('properties/{property}/promos/{promo}', [PromoRateController::class, 'destroy'])->name('properties.promos.destroy');
+
+    // Voucher Management
+    Route::resource('vouchers', VoucherController::class);
 });
 
 require __DIR__.'/auth.php';

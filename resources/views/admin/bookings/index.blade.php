@@ -116,6 +116,11 @@
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm font-medium text-gray-900">Rp{{ number_format($booking->total_price) }}</div>
                                     <div class="text-xs text-gray-500">Deposit: Rp{{ number_format($booking->deposit_amount) }}</div>
+                                    @if($booking->voucher_discount > 0)
+                                        <div class="text-xs text-green-600 mt-0.5">
+                                            🎟 Diskon: −Rp{{ number_format($booking->voucher_discount) }}
+                                        </div>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     @if($booking->status === 'pending')

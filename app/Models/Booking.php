@@ -36,6 +36,8 @@ class Booking extends Model
         'deposit_amount',
         'price_breakdown',
         'metadata',
+        'voucher_id',
+        'voucher_discount',
     ];
 
     /**
@@ -50,6 +52,7 @@ class Booking extends Model
         'duration_hours' => 'integer',
         'total_price' => 'decimal:2',
         'deposit_amount' => 'decimal:2',
+        'voucher_discount' => 'integer',
         'price_breakdown' => 'json',
         'metadata' => 'json',
         'whatsapp_sent_at' => 'datetime',
@@ -61,6 +64,14 @@ class Booking extends Model
     public function property()
     {
         return $this->belongsTo(Property::class);
+    }
+
+    /**
+     * Get the voucher applied to this booking.
+     */
+    public function voucher()
+    {
+        return $this->belongsTo(Voucher::class);
     }
 
     /**
