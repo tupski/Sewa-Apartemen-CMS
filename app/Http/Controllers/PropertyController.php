@@ -101,7 +101,7 @@ class PropertyController extends Controller
     public function store(PropertyRequest $request)
     {
         try {
-            $data = array_merge($request->validated(), $this->buildPricingData($request));
+            $data = array_merge($request->validated(), $this->normalizeDetailData($request), $this->buildPricingData($request));
 
             // Auto-generate slug if empty
             if (empty($data['slug'])) {
@@ -167,7 +167,7 @@ class PropertyController extends Controller
     public function update(PropertyRequest $request, Property $property)
     {
         try {
-            $data = array_merge($request->validated(), $this->buildPricingData($request));
+            $data = array_merge($request->validated(), $this->normalizeDetailData($request), $this->buildPricingData($request));
 
             // Auto-generate slug if empty
             if (empty($data['slug'])) {
@@ -335,6 +335,34 @@ class PropertyController extends Controller
         $asFeatured = \App\Models\Property::where('featured_image_id', $media->id)->exists();
 
         return !$asPhoto && !$asFeatured;
+    }
+
+    /**
+     * Normalize JSON detail fields (required documents, nearby places) from the form.
+     */
+    protected function normalizeDetailData(Request $request): array
+    {
+        $docs = array_values(array_filter(array_map('trim', (array) $request->input('required_documents', []))));
+        $places = [];
+
+        foreach ((array) $request->input('nearby_places', []) as $place) {
+            $name = trim((string) ($place['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $places[] = [
+                'name' => $name,
+                'category' => $place['category'] ?? 'Others',
+                'distance_km' => $place['distance_km'] !== '' && $place['distance_km'] !== null
+                    ? (float) $place['distance_km']
+                    : null,
+            ];
+        }
+
+        return [
+            'required_documents' => $docs ?: null,
+            'nearby_places' => $places ?: null,
+        ];
     }
 
     /**

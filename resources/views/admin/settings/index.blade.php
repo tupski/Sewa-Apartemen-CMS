@@ -752,6 +752,29 @@
                         </div>
                     </div>
 
+                    <!-- Google Maps API Key -->
+                    <div class="border-t border-gray-200 pt-6 mt-6">
+                        <h4 class="text-md font-semibold text-gray-700 mb-2">Google Maps</h4>
+                        <p class="text-sm text-gray-500 mb-4">
+                            Opsional. Biarkan kosong untuk memakai embed peta tanpa kunci + daftar tempat manual per properti.
+                            Isi kunci (dengan Places API diaktifkan) untuk otomatis mengambil tempat sekitar properti.
+                        </p>
+                        <div>
+                            <label for="google_maps_api_key" class="block text-sm font-medium text-gray-700 mb-2">
+                                Google Maps API Key
+                            </label>
+                            <input type="text"
+                                   name="google_maps_api_key"
+                                   id="google_maps_api_key"
+                                   value="{{ old('google_maps_api_key', $settings['google_maps_api_key'] ?? '') }}"
+                                   placeholder="AIza..."
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            @error('google_maps_api_key')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
                     <!-- Owner Notification Webhook -->
                     <div class="border-t border-gray-200 pt-6 mt-6">
                         <h4 class="text-md font-semibold text-gray-700 mb-2">Owner Notification Webhook</h4>

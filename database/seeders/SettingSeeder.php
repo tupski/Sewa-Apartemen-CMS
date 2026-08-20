@@ -77,6 +77,7 @@ class SettingSeeder extends Seeder
             'meta_pixel_id' => '',
             'search_console_token' => '',
             'microsoft_clarity_id' => '',
+            'google_maps_api_key' => '',
         ];
 
         // Insert general settings

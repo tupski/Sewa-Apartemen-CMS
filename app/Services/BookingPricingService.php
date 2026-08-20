@@ -33,9 +33,10 @@ class BookingPricingService
         $prices = $property->prices[$unitType] ?? [];
         $weekendDays = $property->weekendDays();
 
-        // Transit: fixed hourly bucket, rate decided by the check-in day
+        // Transit: hourly rate, decided by the check-in day.
+        // Arbitrary hours are rounded UP to the nearest available bucket.
         if ($bookingType === 'transit') {
-            $hours = in_array($hours, self::TRANSIT_BUCKETS, true) ? $hours : 3;
+            $hours = $this->normalizeTransitHours($hours);
             $isWeekend = in_array($checkIn->dayOfWeek, $weekendDays, true);
             $key = ($isWeekend ? 't' . $hours . '_we' : 't' . $hours . '_wd');
             $rate = (float) ($prices[$key] ?? 0);
@@ -100,5 +101,19 @@ class BookingPricingService
             'days' => $days,
             'rate' => null,
         ];
+    }
+
+    /**
+     * Round arbitrary transit hours UP to the nearest available bucket (max 24).
+     */
+    protected function normalizeTransitHours(?int $hours): int
+    {
+        foreach (self::TRANSIT_BUCKETS as $bucket) {
+            if ($hours <= $bucket) {
+                return $bucket;
+            }
+        }
+
+        return self::TRANSIT_BUCKETS[array_key_last(self::TRANSIT_BUCKETS)];
     }
 }

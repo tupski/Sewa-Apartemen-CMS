@@ -224,6 +224,9 @@
                     <!-- Room Types & Pricing -->
                     @include('admin.properties._pricing', ['property' => $property])
 
+                    <!-- Policy, Documents & Nearby Places -->
+                    @include('admin.properties._policy', ['property' => $property ?? null])
+
                     <!-- Photo Gallery -->
                     @include('admin.properties._photos', ['property' => $property])
 

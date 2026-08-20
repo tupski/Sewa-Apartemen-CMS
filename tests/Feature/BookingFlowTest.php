@@ -24,6 +24,7 @@ class BookingFlowTest extends TestCase
             'status' => 'published',
             'unit_types' => ['studio', '1br'],
             'weekend_days' => [6, 0],
+            'max_days' => 30,
             'prices' => [
                 'studio' => ['night_wd' => 500000, 'night_we' => 600000, 't3_wd' => 150000, 't3_we' => 180000, 'weekly' => 3000000, 'monthly' => 9000000],
                 '1br' => ['night_wd' => 700000, 'night_we' => 800000, 't3_wd' => 200000, 't3_we' => 240000, 't6_wd' => 300000, 't6_we' => 360000, 'weekly' => 4200000, 'monthly' => 12600000],
@@ -91,6 +92,76 @@ class BookingFlowTest extends TestCase
         $booking = Booking::latest()->first();
         $this->assertEquals('transit', $booking->booking_type);
         $this->assertEquals(6, $booking->duration_hours);
+    }
+
+    /** Guest books via new method: duration + unit (malam) */
+    public function test_guest_can_book_with_duration_and_unit_nights(): void
+    {
+        $checkIn = now()->addDays(1)->format('Y-m-d');
+
+        $response = $this->postJson(route('bookings.store'), [
+            'property_id' => $this->property->id,
+            'unit_type' => 'studio',
+            'unit' => 'malam',
+            'duration' => 3,
+            'check_in' => $checkIn,
+            'check_in_time' => '14:00',
+            'customer_name' => 'Unit Test',
+            'customer_phone' => '081234567895',
+            'guests' => 2,
+        ]);
+
+        $response->assertOk();
+        $response->assertJson(['success' => true]);
+
+        $booking = Booking::latest()->first();
+        $this->assertEquals('daily', $booking->booking_type);
+        $this->assertEquals(3, $booking->metadata['nights']);
+        $this->assertEquals('malam', $booking->metadata['unit']);
+        $this->assertEquals('14:00', $booking->metadata['check_in_time']);
+        $this->assertEquals($checkIn, $booking->check_in->format('Y-m-d'));
+        $this->assertEquals('14:00', $booking->check_in->format('H:i'));
+    }
+
+    /** Guest books per jam (transit) via new method */
+    public function test_guest_can_book_with_duration_and_unit_hours(): void
+    {
+        $response = $this->postJson(route('bookings.store'), [
+            'property_id' => $this->property->id,
+            'unit_type' => '1br',
+            'unit' => 'jam',
+            'duration' => 6,
+            'check_in' => now()->addDays(1)->format('Y-m-d'),
+            'customer_name' => 'Hour Test',
+            'customer_phone' => '081234567896',
+            'guests' => 1,
+        ]);
+
+        $response->assertOk();
+        $response->assertJson(['success' => true]);
+
+        $booking = Booking::latest()->first();
+        $this->assertEquals('transit', $booking->booking_type);
+        $this->assertEquals(6, $booking->duration_hours);
+        $this->assertEquals('jam', $booking->metadata['unit']);
+    }
+
+    /** Max days cap is enforced on the server */
+    public function test_max_days_cap_is_enforced(): void
+    {
+        $response = $this->postJson(route('bookings.store'), [
+            'property_id' => $this->property->id,
+            'unit_type' => 'studio',
+            'unit' => 'malam',
+            'duration' => 45, // max_days = 30
+            'check_in' => now()->addDays(1)->format('Y-m-d'),
+            'customer_name' => 'Cap Test',
+            'customer_phone' => '081234567897',
+            'guests' => 1,
+        ]);
+
+        $this->assertContains($response->status(), [422, 500]);
+        $this->assertStringContainsString('maksimal', mb_strtolower($response->json('message')));
     }
 
     /** Invalid room type is rejected */

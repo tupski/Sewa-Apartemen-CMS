@@ -73,6 +73,7 @@ class SettingsController extends Controller
             'meta_pixel_id' => $this->settingsService->get('meta_pixel_id'),
             'search_console_token' => $this->settingsService->get('search_console_token'),
             'microsoft_clarity_id' => $this->settingsService->get('microsoft_clarity_id'),
+            'google_maps_api_key' => $this->settingsService->get('google_maps_api_key'),
             // Webhook (owner notifications)
             'notification_webhook' => $this->settingsService->get('notification_webhook'),
             'notification_webhook_secret' => $this->settingsService->get('notification_webhook_secret'),
@@ -134,6 +135,7 @@ class SettingsController extends Controller
                 'meta_pixel_id' => 'nullable|string|max:255',
                 'search_console_token' => 'nullable|string|max:255',
                 'microsoft_clarity_id' => 'nullable|string|max:255',
+                'google_maps_api_key' => 'nullable|string|max:255',
                 'notification_webhook' => 'nullable|url|max:500',
                 'notification_webhook_secret' => 'nullable|string|max:255',
             ]);

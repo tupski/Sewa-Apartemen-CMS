@@ -35,6 +35,12 @@ class Property extends Model
         'meta_description',
         'is_featured',
         'order',
+        'max_days',
+        'checkin_time',
+        'checkout_time',
+        'checkin_method',
+        'required_documents',
+        'nearby_places',
     ];
 
     /**
@@ -47,10 +53,13 @@ class Property extends Model
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
         'order' => 'integer',
+        'max_days' => 'integer',
         'unit_types' => 'array',
         'weekend_days' => 'array',
         'prices' => 'array',
         'photo_categories' => 'array',
+        'required_documents' => 'array',
+        'nearby_places' => 'array',
     ];
 
     /** Available room types (key => label). */
@@ -165,6 +174,137 @@ class Property extends Model
         }
 
         return $rates ? min($rates) : null;
+    }
+
+    /**
+     * Whether the booking method key ("transit"|"weekly"|"monthly"|"daily")
+     * is available for this property (i.e. any room type has a price set).
+     */
+    public function hasBookingType(string $key): bool
+    {
+        $priceKeys = [
+            'transit' => ['t3_wd', 't3_we', 't6_wd', 't6_we', 't9_wd', 't9_we', 't12_wd', 't12_we', 't24_wd', 't24_we'],
+            'weekly' => ['weekly'],
+            'monthly' => ['monthly'],
+            'daily' => ['night_wd', 'night_we'],
+        ];
+
+        $keys = $priceKeys[$key] ?? [];
+
+        foreach ($this->unit_types ?? [] as $type) {
+            foreach ($keys as $k) {
+                if (($this->prices[$type][$k] ?? null) !== null) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Booking methods available for this property, in display order.
+     * Weekly/monthly are only included when a price is set.
+     */
+    public function availableBookingTypes(): array
+    {
+        $out = [];
+
+        foreach (['transit' => 'Transit', 'daily' => 'Harian', 'weekly' => 'Mingguan', 'monthly' => 'Bulanan'] as $key => $label) {
+            if ($this->hasBookingType($key)) {
+                $out[$key] = $label;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Maximum booking duration in days (null = unlimited).
+     */
+    public function maxBookingDays(): ?int
+    {
+        $max = $this->max_days;
+
+        return $max > 0 ? (int) $max : null;
+    }
+
+    /**
+     * Nearby places grouped by category, filtered to non-empty groups.
+     */
+    public function nearbyByCategory(): array
+    {
+        $groups = ['Nearby Places' => [], 'Transportation' => [], 'Entertainment/Attraction' => [], 'Others' => []];
+
+        foreach ((array) ($this->nearby_places ?? []) as $place) {
+            $cat = $place['category'] ?? 'Others';
+            if (!isset($groups[$cat])) {
+                $cat = 'Others';
+            }
+            $groups[$cat][] = $place;
+        }
+
+        return array_filter($groups, fn ($items) => count($items) > 0);
+    }
+
+    /**
+     * Auto-generated FAQ entries derived from property data + booking rules.
+     */
+    public function faqs(): array
+    {
+        $faqs = [];
+        $types = $this->unit_types ?? [];
+
+        if ($types) {
+            $labels = array_map(fn ($t) => $this->typeLabel($t), $types);
+            $faqs[] = [
+                'q' => 'Tipe kamar apa saja yang tersedia?',
+                'a' => 'Kamar yang tersedia di apartemen ini: ' . implode(', ', $labels) . '. Pilih tipe kamar saat melakukan pemesanan.',
+            ];
+        }
+
+        if ($this->checkin_time || $this->checkout_time) {
+            $time = trim(($this->checkin_time ?: '—') . ' s/d ' . ($this->checkout_time ?: '—'), ' —');
+            $faqs[] = [
+                'q' => 'Jam berapa check-in dan check-out?',
+                'a' => 'Check-in mulai pukul ' . ($this->checkin_time ?: '-') . ' dan check-out paling lambat pukul ' . ($this->checkout_time ?: '-') . ' WIB.',
+            ];
+        }
+
+        if ($this->checkin_method) {
+            $faqs[] = [
+                'q' => 'Bagaimana proses check-in?',
+                'a' => $this->checkin_method,
+            ];
+        }
+
+        if ($docs = $this->required_documents ?? []) {
+            $faqs[] = [
+                'q' => 'Dokumen apa saja yang harus disiapkan saat check-in?',
+                'a' => 'Dokumen yang diperlukan: ' . implode(', ', $docs) . '.',
+            ];
+        }
+
+        if ($max = $this->maxBookingDays()) {
+            $faqs[] = [
+                'q' => 'Berapa lama maksimal saya bisa menyewa?',
+                'a' => 'Durasi maksimal pemesanan adalah ' . $max . ' malam.',
+            ];
+        }
+
+        if ($this->hasBookingType('daily')) {
+            $faqs[] = [
+                'q' => 'Bagaimana cara menghitung harga?',
+                'a' => 'Harga dihitung per malam. Tarif weekday dan weekend bisa berbeda — tarif weekend berlaku pada hari yang sudah ditetapkan properti.',
+            ];
+        }
+
+        $faqs[] = [
+            'q' => 'Apakah ada uang deposit?',
+            'a' => 'Deposit 30% dari total harga diperlukan untuk konfirmasi pemesanan. Sisanya dibayar saat check-in.',
+        ];
+
+        return $faqs;
     }
 
     /**

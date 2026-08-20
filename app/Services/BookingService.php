@@ -51,8 +51,43 @@ class BookingService
                 throw new \Exception('Tipe kamar tidak tersedia di properti ini.');
             }
 
+            // Normalize new booking method (duration + unit jam/malam) to legacy fields
+            if (!empty($data['unit']) && !empty($data['duration'])) {
+                $unit = $data['unit'];
+                $duration = (int) $data['duration'];
+
+                if ($unit === 'jam') {
+                    $data['booking_type'] = 'transit';
+                    $data['duration_hours'] = $duration;
+                    $data['check_out'] = null;
+                } else {
+                    $data['booking_type'] = 'daily';
+                    $data['duration_hours'] = null;
+                    $maxDays = $property->maxBookingDays();
+                    if ($maxDays && $duration > $maxDays) {
+                        throw new \Exception("Durasi maksimal pemesanan properti ini adalah {$maxDays} malam.");
+                    }
+                    $data['check_out'] = Carbon::parse($data['check_in'])->addDays($duration)->format('Y-m-d');
+                }
+            }
+
+            // Legacy booking types: reject when the price for that type is not set
+            if (in_array($data['booking_type'] ?? '', ['weekly', 'monthly', 'transit'], true)
+                && !$property->hasBookingType($data['booking_type'])) {
+                throw new \Exception('Metode sewa ini belum tersedia. Silakan hubungi admin.');
+            }
+
             $checkIn = Carbon::parse($data['check_in']);
             $checkOut = !empty($data['check_out']) ? Carbon::parse($data['check_out']) : null;
+
+            if (!empty($data['check_in_time'])) {
+                [$h, $m] = array_pad(explode(':', $data['check_in_time']), 2, '0');
+                $checkIn = $checkIn->copy()->setTime((int) $h, (int) $m);
+                // Keep full nights intact: align check-out to the same time of day
+                if ($checkOut) {
+                    $checkOut = $checkOut->copy()->setTime((int) $h, (int) $m);
+                }
+            }
 
             // Transit keeps check_out null unless a start time is known; price is by bucket
             $pricing = app(BookingPricingService::class)->calculate(
@@ -101,6 +136,9 @@ class BookingService
                     'unit_type' => $data['unit_type'],
                     'nights' => $pricing['nights'],
                     'hours' => $pricing['hours'],
+                    'check_in_time' => $data['check_in_time'] ?? null,
+                    'unit' => $data['unit'] ?? null,
+                    'duration' => $data['duration'] ?? null,
                 ],
             ]);
 
