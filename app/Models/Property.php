@@ -161,7 +161,7 @@ class Property extends Model
     }
 
     /**
-     * Cheapest weekday nightly rate across all room types (for "Mulai dari").
+     * Cheapest weekday nightly rate across all room types (for "Mulai dari" — daily only).
      */
     public function cheapestNight(): ?float
     {
@@ -170,6 +170,30 @@ class Property extends Model
         foreach ($this->unit_types ?? [] as $type) {
             if ($rate = $this->priceFor($type, 'night_wd')) {
                 $rates[] = $rate;
+            }
+        }
+
+        return $rates ? min($rates) : null;
+    }
+
+    /**
+     * Absolute lowest price across all room types and all booking types
+     * (transit slots, daily, weekly, monthly). Returns null if no prices set.
+     */
+    public function lowestPrice(): ?float
+    {
+        $rates = [];
+        $allKeys = ['night_wd', 'night_we', 'weekly', 'monthly',
+                    't3_wd', 't3_we', 't6_wd', 't6_we',
+                    't9_wd', 't9_we', 't12_wd', 't12_we',
+                    't24_wd', 't24_we'];
+
+        foreach ($this->unit_types ?? [] as $type) {
+            foreach ($allKeys as $key) {
+                $v = $this->priceFor($type, $key);
+                if ($v !== null && $v > 0) {
+                    $rates[] = $v;
+                }
             }
         }
 

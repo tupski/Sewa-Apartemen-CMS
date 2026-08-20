@@ -33,6 +33,11 @@
                         class="py-4 px-6 border-b-2 font-medium text-sm transition">
                     SEO
                 </button>
+                <button @click="activeTab = 'booking'"
+                        :class="activeTab === 'booking' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        class="py-4 px-6 border-b-2 font-medium text-sm transition">
+                    Booking
+                </button>
                 <button @click="activeTab = 'integrations'"
                         :class="activeTab === 'integrations' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                         class="py-4 px-6 border-b-2 font-medium text-sm transition">
@@ -845,6 +850,71 @@
   }
 }</code></pre>
                             </details>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== BOOKING TAB ===== -->
+                <div x-show="activeTab === 'booking'" class="p-6 space-y-6">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-1">Pengaturan Booking</h3>
+                        <p class="text-sm text-gray-500 mb-6">Konfigurasi perilaku sistem booking yang berlaku untuk semua properti.</p>
+
+                        <!-- Min Transit Hours -->
+                        <div class="mb-5">
+                            <label for="booking_min_transit_hours" class="block text-sm font-medium text-gray-700 mb-1">
+                                Minimal Jam Transit
+                            </label>
+                            <div class="flex items-center gap-3">
+                                <input type="number"
+                                       name="booking_min_transit_hours"
+                                       id="booking_min_transit_hours"
+                                       value="{{ old('booking_min_transit_hours', $settings['booking_min_transit_hours'] ?? '3') }}"
+                                       min="1" max="24" step="1"
+                                       class="w-24 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                <span class="text-sm text-gray-500">jam (slot transit terkecil yang bisa dipesan)</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Default: 3 jam. Hanya berlaku sebagai referensi — slot aktual ditentukan oleh harga yang diisi per properti.</p>
+                        </div>
+
+                        <!-- Default Check-in Time -->
+                        <div class="mb-5">
+                            <label for="booking_checkin_default_time" class="block text-sm font-medium text-gray-700 mb-1">
+                                Jam Check-in Default
+                            </label>
+                            <div class="flex items-center gap-3">
+                                <input type="time"
+                                       name="booking_checkin_default_time"
+                                       id="booking_checkin_default_time"
+                                       value="{{ old('booking_checkin_default_time', $settings['booking_checkin_default_time'] ?? '14:00') }}"
+                                       class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                <span class="text-sm text-gray-500">pre-filled di form booking frontend</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Default: 14:00. User bisa mengubahnya saat memesan.</p>
+                        </div>
+
+                        <!-- Auto Confirm -->
+                        <div class="mb-5">
+                            <div class="flex items-start gap-4">
+                                <div class="flex items-center h-5 mt-0.5">
+                                    <input type="hidden" name="booking_auto_confirm" value="0">
+                                    <input type="checkbox"
+                                           name="booking_auto_confirm"
+                                           id="booking_auto_confirm"
+                                           value="1"
+                                           {{ ($settings['booking_auto_confirm'] ?? '0') === '1' ? 'checked' : '' }}
+                                           class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label for="booking_auto_confirm" class="block text-sm font-medium text-gray-700">
+                                        Auto Confirm Booking
+                                    </label>
+                                    <p class="text-xs text-gray-400 mt-0.5">
+                                        Jika aktif, booking baru langsung berstatus <strong>confirmed</strong> tanpa perlu konfirmasi manual admin.
+                                        Matikan jika ingin review setiap booking terlebih dahulu.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

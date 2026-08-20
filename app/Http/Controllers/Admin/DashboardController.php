@@ -50,6 +50,14 @@ class DashboardController extends Controller
             );
         });
 
+        // Today's operational metrics (not cached — always fresh)
+        $todayStart = now()->startOfDay();
+        $todayEnd   = now()->endOfDay();
+        $todayBookings   = Booking::whereDate('created_at', today())->count();
+        $pendingCount    = Booking::where('status', 'pending')->count();
+        $checkinToday    = Booking::whereDate('check_in', today())->whereIn('status', ['confirmed', 'pending'])->count();
+        $checkoutToday   = Booking::whereDate('check_out', today())->whereIn('status', ['confirmed', 'completed'])->count();
+
         $recentBookings = Booking::with('property')->latest()->take(5)->get();
         $recentPosts = Post::with('category')->latest()->take(5)->get();
         $recentProperties = Property::latest()->take(5)->get();
@@ -57,7 +65,11 @@ class DashboardController extends Controller
         return view('dashboard', array_merge($stats, compact(
             'recentBookings',
             'recentPosts',
-            'recentProperties'
+            'recentProperties',
+            'todayBookings',
+            'pendingCount',
+            'checkinToday',
+            'checkoutToday'
         )));
     }
 }

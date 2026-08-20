@@ -4,6 +4,64 @@
 
 @section('content')
 <div class="max-w-7xl mx-auto">
+    <!-- Today's Operational Metrics -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <a href="{{ route('admin.bookings.index', ['date_from' => now()->format('Y-m-d'), 'date_to' => now()->format('Y-m-d')]) }}"
+           class="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition border-l-4 border-indigo-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Booking Hari Ini</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-1">{{ $todayBookings }}</p>
+                </div>
+                <svg class="w-9 h-9 text-indigo-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+        </a>
+
+        <a href="{{ route('admin.bookings.index', ['status' => 'pending']) }}"
+           class="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition border-l-4 border-yellow-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Pending Konfirmasi</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-1">{{ $pendingCount }}</p>
+                </div>
+                <svg class="w-9 h-9 text-yellow-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+            </div>
+            @if($pendingCount > 0)
+                <p class="text-xs text-yellow-600 font-medium mt-2">Butuh tindakan!</p>
+            @endif
+        </a>
+
+        <a href="{{ route('admin.bookings.index', ['date_from' => now()->format('Y-m-d'), 'date_to' => now()->format('Y-m-d')]) }}"
+           class="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition border-l-4 border-green-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Check-in Hari Ini</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-1">{{ $checkinToday }}</p>
+                </div>
+                <svg class="w-9 h-9 text-green-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                </svg>
+            </div>
+        </a>
+
+        <a href="{{ route('admin.bookings.index') }}"
+           class="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition border-l-4 border-orange-400">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Check-out Hari Ini</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-1">{{ $checkoutToday }}</p>
+                </div>
+                <svg class="w-9 h-9 text-orange-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                </svg>
+            </div>
+        </a>
+    </div>
+
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
         <a href="{{ route('admin.properties.index') }}" class="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition border-l-4 border-blue-500">

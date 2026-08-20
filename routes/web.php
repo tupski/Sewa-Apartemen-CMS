@@ -56,6 +56,7 @@ Route::middleware('auth')->group(function () {
 // Public Booking Routes
 Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store')->middleware('throttle:10,1');
 Route::get('/bookings/{booking}/success', [BookingController::class, 'success'])->name('bookings.success');
+Route::get('/booking/status/{code}', [BookingController::class, 'publicStatus'])->name('bookings.status')->middleware('throttle:30,1');
 
 // Admin CMS Routes (require authentication + admin role)
 Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.')->group(function () {

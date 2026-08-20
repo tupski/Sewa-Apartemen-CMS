@@ -72,6 +72,18 @@ class BookingController extends Controller
     }
 
     /**
+     * Public booking status page — accessible by anyone with the booking code.
+     */
+    public function publicStatus(string $code): View
+    {
+        $booking = Booking::with('property')
+            ->where('code', $code)
+            ->firstOrFail();
+
+        return view('bookings.status', compact('booking'));
+    }
+
+    /**
      * Display a listing of bookings (admin).
      */
     public function index(Request $request): View

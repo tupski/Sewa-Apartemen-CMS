@@ -394,9 +394,10 @@
     var allPhotos = @json($allPhotoUrls);
     var prices = @json($property->prices ?? []);
     var weekendDays = @json($property->weekendDays());
+    var unitTypeLabels = @json(\App\Models\Property::UNIT_TYPES);
     var propertyId = {{ $property->id }};
     var maxDays = {{ $property->maxBookingDays() ?: 365 }};
-    var hasTransit = @json($property->hasBookingType('transit'));
+    var buckets = [3, 6, 9, 12, 24];
 
     // ---------- Lightbox ----------
     var lb = document.getElementById('gal-lightbox');
@@ -444,42 +445,125 @@
     function fmt(n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); }
     function isWeekend(d) { return weekendDays.indexOf(d.getDay()) !== -1; }
 
-    var buckets = [3, 6, 9, 12, 24];
     function billedHours(h) {
         for (var i = 0; i < buckets.length; i++) { if (h <= buckets[i]) return buckets[i]; }
         return 24;
     }
 
-    function unitFor(form) {
-        var unit = form.querySelector('.bkf-unit');
+    /** Get selected room type from a form (pill / select / hidden) */
+    function getRoomType(form) {
+        var activePill = form.querySelector('.bkf-room-pill.bkf-pill-active');
+        if (activePill) return activePill.dataset.type;
+        var sel = form.querySelector('.bkf-room-type');
+        if (sel) return sel.value;
+        var hidden = form.querySelector('.bkf-room-type-hidden');
+        if (hidden) return hidden.value;
+        return '';
+    }
+
+    /** Rebuild satuan <select> based on prices available for given type */
+    function rebuildSatuan(form, type) {
+        var p = prices[type] || {};
+        var $unit = form.querySelector('.bkf-unit');
+        var current = $unit.value;
+        var opts = [];
+        var hasTransit = buckets.some(function (h) {
+            return parseFloat(p['t' + h + '_wd']) > 0 || parseFloat(p['t' + h + '_we']) > 0;
+        });
+        var hasDaily   = parseFloat(p['night_wd']) > 0 || parseFloat(p['night_we']) > 0;
+        var hasWeekly  = parseFloat(p['weekly']) > 0;
+        var hasMonthly = parseFloat(p['monthly']) > 0;
+        if (hasTransit) opts.push({ value: 'jam',    label: 'Transit Jam' });
+        if (hasDaily)   opts.push({ value: 'malam',  label: 'Harian' });
+        if (hasWeekly)  opts.push({ value: 'minggu', label: 'Mingguan' });
+        if (hasMonthly) opts.push({ value: 'bulan',  label: 'Bulanan' });
+        $unit.innerHTML = '';
+        opts.forEach(function (o) {
+            var opt = document.createElement('option');
+            opt.value = o.value; opt.textContent = o.label;
+            if (o.value === current) opt.selected = true;
+            $unit.appendChild(opt);
+        });
+        if (!$unit.value && opts.length) $unit.value = opts[0].value;
+        return $unit.value;
+    }
+
+    /** Rebuild durasi element based on satuan */
+    function rebuildDurasi(form, satuan, type) {
+        var wrap = form.querySelector('[id$="-duration-wrap"]');
+        if (!wrap) return;
+        var p = prices[type] || {};
+        if (satuan === 'jam') {
+            var slots = buckets.filter(function (h) {
+                return parseFloat(p['t' + h + '_wd']) > 0 || parseFloat(p['t' + h + '_we']) > 0;
+            });
+            if (slots.length > 0) {
+                var sel = document.createElement('select');
+                sel.className = 'bkf-duration w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2';
+                slots.forEach(function (h) {
+                    var opt = document.createElement('option'); opt.value = h; opt.textContent = h + ' jam';
+                    sel.appendChild(opt);
+                });
+                wrap.innerHTML = ''; wrap.appendChild(sel);
+                sel.addEventListener('change', function () { calc(form); });
+            }
+        } else if (satuan === 'minggu') {
+            var sel2 = document.createElement('select');
+            sel2.className = 'bkf-duration w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2';
+            [1,2,3,4].forEach(function (w) {
+                var opt = document.createElement('option'); opt.value = w; opt.textContent = w + ' minggu';
+                sel2.appendChild(opt);
+            });
+            wrap.innerHTML = ''; wrap.appendChild(sel2);
+            sel2.addEventListener('change', function () { calc(form); });
+        } else if (satuan === 'bulan') {
+            var sel3 = document.createElement('select');
+            sel3.className = 'bkf-duration w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2';
+            for (var m = 1; m <= 12; m++) {
+                var opt2 = document.createElement('option'); opt2.value = m; opt2.textContent = m + ' bulan';
+                sel3.appendChild(opt2);
+            }
+            wrap.innerHTML = ''; wrap.appendChild(sel3);
+            sel3.addEventListener('change', function () { calc(form); });
+        } else {
+            var inp = document.createElement('input');
+            inp.type = 'number';
+            inp.className = 'bkf-duration w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2';
+            inp.value = 1; inp.min = 1; inp.max = maxDays;
+            wrap.innerHTML = ''; wrap.appendChild(inp);
+            inp.addEventListener('change', function () { calc(form); });
+            inp.addEventListener('input', function () { calc(form); });
+        }
+    }
+
+    function getDuration(form) {
         var el = form.querySelector('.bkf-duration');
-        el.max = unit.value === 'jam' ? 24 : maxDays;
-        el.min = 1;
-        if (unit.value === 'jam' && parseInt(el.value, 10) < 3) el.value = 3;
-        return unit.value;
+        return el ? (parseInt(el.value, 10) || 1) : 1;
     }
 
     function calc(form) {
-        var type = @json($property->unit_types[0] ?? 'studio');
+        var type = getRoomType(form);
         var p = prices[type] || {};
         var unit = form.querySelector('.bkf-unit').value;
-        var duration = parseInt(form.querySelector('.bkf-duration').value, 10) || 0;
+        var duration = getDuration(form);
         var checkin = form.querySelector('.bkf-checkin').value;
         var time = form.querySelector('.bkf-checkin-time').value || '14:00';
         var detailEl = form.querySelector('.bkf-detail');
         var totalEl = form.querySelector('.bkf-total');
-
         var total = 0, detail = '';
         if (!checkin) {
             detail = 'Pilih tanggal check-in';
         } else if (unit === 'jam') {
-            var billed = billedHours(duration);
+            var billed = parseInt(duration, 10);
             var key = (isWeekend(new Date(checkin + 'T00:00:00')) ? 't' + billed + '_we' : 't' + billed + '_wd');
-            if (!(key in p)) { detail = 'Durasi jam tidak tersedia'; }
-            else {
-                total = parseFloat(p[key] || 0);
-                detail = duration + ' jam (tarif ' + billed + ' jam) · ' + time;
-            }
+            total = parseFloat(p[key] || 0);
+            detail = billed + ' jam · ' + time;
+        } else if (unit === 'minggu') {
+            total = parseFloat(p['weekly'] || 0) * duration;
+            detail = duration + ' minggu (' + (duration * 7) + ' malam)';
+        } else if (unit === 'bulan') {
+            total = parseFloat(p['monthly'] || 0) * duration;
+            detail = duration + ' bulan (' + (duration * 30) + ' malam)';
         } else {
             var start = new Date(checkin + 'T00:00:00');
             for (var i = 0; i < duration; i++) {
@@ -488,20 +572,73 @@
             }
             detail = duration + ' malam';
         }
-
         form.dataset.total = total;
         form.dataset.detail = detail;
         totalEl.textContent = fmt(total);
-        detailEl.textContent = detail;
+        detailEl.textContent = detail || '—';
+    }
+
+    function stylePills(form, activeType) {
+        form.querySelectorAll('.bkf-room-pill').forEach(function (pill) {
+            var isActive = pill.dataset.type === activeType;
+            pill.classList.toggle('bkf-pill-active', isActive);
+            pill.classList.toggle('bkf-pill-inactive', !isActive);
+            pill.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            if (isActive) {
+                pill.style.backgroundColor = '{{ $primaryColor }}';
+                pill.style.color = '#fff';
+                pill.style.borderColor = '{{ $primaryColor }}';
+            } else {
+                pill.style.backgroundColor = '';
+                pill.style.color = '';
+                pill.style.borderColor = '';
+            }
+        });
     }
 
     function bindForm(form) {
-        form.querySelectorAll('.bkf-checkin, .bkf-checkin-time, .bkf-duration, .bkf-unit, .bkf-guests').forEach(function (el) {
+        var initialType = getRoomType(form);
+        var initialSatuan = rebuildSatuan(form, initialType);
+        rebuildDurasi(form, initialSatuan, initialType);
+        stylePills(form, initialType);
+        calc(form);
+
+        // Room type pills
+        form.querySelectorAll('.bkf-room-pill').forEach(function (pill) {
+            pill.addEventListener('click', function () {
+                var newType = pill.dataset.type;
+                stylePills(form, newType);
+                var newSatuan = rebuildSatuan(form, newType);
+                rebuildDurasi(form, newSatuan, newType);
+                calc(form);
+            });
+        });
+
+        // Room type dropdown
+        var rtSel = form.querySelector('.bkf-room-type');
+        if (rtSel) {
+            rtSel.addEventListener('change', function () {
+                var newType = rtSel.value;
+                var newSatuan = rebuildSatuan(form, newType);
+                rebuildDurasi(form, newSatuan, newType);
+                calc(form);
+            });
+        }
+
+        // Satuan change
+        form.querySelector('.bkf-unit').addEventListener('change', function () {
+            var type = getRoomType(form);
+            rebuildDurasi(form, form.querySelector('.bkf-unit').value, type);
+            calc(form);
+        });
+
+        // Date/time/guests changes
+        form.querySelectorAll('.bkf-checkin, .bkf-checkin-time, .bkf-guests').forEach(function (el) {
             el.addEventListener('change', function () { calc(form); });
             el.addEventListener('input', function () { calc(form); });
         });
-        form.querySelector('.bkf-unit').addEventListener('change', function () { unitFor(form); calc(form); });
 
+        // "Lanjut Pemesanan"
         form.querySelector('.bkf-open').addEventListener('click', function () {
             var total = parseFloat(form.dataset.total || 0);
             if (total <= 0) {
@@ -510,27 +647,26 @@
                 return;
             }
             form.querySelector('.bkf-error').classList.add('hidden');
-
-            var type = @json($property->unit_types[0] ?? 'studio');
+            var type = getRoomType(form);
+            var typeLabel = unitTypeLabels[type] || type;
             var unit = form.querySelector('.bkf-unit').value;
-            var duration = parseInt(form.querySelector('.bkf-duration').value, 10);
+            var duration = getDuration(form);
             var checkin = form.querySelector('.bkf-checkin').value;
             var time = form.querySelector('.bkf-checkin-time').value || '14:00';
             var guests = parseInt(form.querySelector('.bkf-guests').value, 10) || 1;
-
             var detail = form.dataset.detail;
-            var unitLabel = unit === 'jam' ? 'jam' : 'malam';
-
+            var satuanLabel = form.querySelector('.bkf-unit').options[form.querySelector('.bkf-unit').selectedIndex]
+                ? form.querySelector('.bkf-unit').options[form.querySelector('.bkf-unit').selectedIndex].text : unit;
             $summary.innerHTML =
-                '<div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Tipe kamar</span><span class="font-medium">' + type.toUpperCase().replace('BR', ' BR') + '</span></div>' +
+                '<div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Tipe kamar</span><span class="font-medium">' + typeLabel + '</span></div>' +
+                '<div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Tipe sewa</span><span class="font-medium">' + satuanLabel + '</span></div>' +
                 '<div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Check-in</span><span class="font-medium">' + checkin + ' · ' + time + '</span></div>' +
-                '<div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Durasi</span><span class="font-medium">' + duration + ' ' + unitLabel + '</span></div>' +
-                '<div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Detail</span><span class="font-medium">' + detail + '</span></div>' +
+                '<div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Durasi</span><span class="font-medium">' + detail + '</span></div>' +
                 '<div class="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-2 mt-2"><span class="font-medium">Total</span><span class="font-bold" style="color: {{ $primaryColor }}">' + fmt(total) + '</span></div>';
-
             window.__bkPayload = {
                 property_id: propertyId,
                 unit_type: type,
+                booking_type: unit === 'jam' ? 'transit' : (unit === 'minggu' ? 'weekly' : (unit === 'bulan' ? 'monthly' : 'daily')),
                 unit: unit,
                 duration: duration,
                 check_in: checkin,
@@ -542,15 +678,13 @@
     }
 
     document.querySelectorAll('[data-bkf]').forEach(bindForm);
-    document.querySelectorAll('[data-bkf]').forEach(function (f) { unitFor(f); calc(f); });
 
-    // Mobile bar opens modal (form prefilled same as desktop)
+    // Mobile bar opens modal
     var mobOpen = document.getElementById('mob-bk-open');
     if (mobOpen) {
         mobOpen.addEventListener('click', function () {
             var f = document.querySelector('[data-bkf]');
-            var total = parseFloat(f.dataset.total || 0);
-            if (total > 0) f.querySelector('.bkf-open').click();
+            f.querySelector('.bkf-open').click();
         });
     }
 

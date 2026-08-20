@@ -145,5 +145,21 @@ class SettingSeeder extends Seeder
                 ]
             );
         }
+
+        // Booking Settings
+        $bookingSettings = [
+            'booking_min_transit_hours'    => '3',
+            'booking_checkin_default_time' => '14:00',
+            'booking_auto_confirm'         => '0',
+        ];
+        foreach ($bookingSettings as $key => $value) {
+            Setting::updateOrCreate(
+                ['key' => $key],
+                [
+                    'value' => $value,
+                    'group' => 'booking',
+                ]
+            );
+        }
     }
 }
