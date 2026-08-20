@@ -251,6 +251,10 @@ class BookingController extends Controller
 
     /**
      * Export bookings as CSV.
+     *
+     * BUG-026 FIX: Export tanpa limit bisa OOM pada ribuan booking.
+     * Gunakan chunk() untuk stream data ke CSV secara bertahap,
+     * dan wajibkan filter tanggal minimal 90 hari terakhir jika tidak ada filter.
      */
     public function export(Request $request): Response
     {
@@ -260,36 +264,44 @@ class BookingController extends Controller
             $query->where('status', $status);
         }
 
-        $bookings = $query->orderBy('created_at', 'desc')->get();
+        // Default: ekspor maksimal 90 hari terakhir jika tidak ada filter tanggal
+        $dateFrom = $request->get('date_from') ?? now()->subDays(90)->format('Y-m-d');
+        $dateTo   = $request->get('date_to')   ?? now()->format('Y-m-d');
+        $query->whereDate('created_at', '>=', $dateFrom)
+              ->whereDate('created_at', '<=', $dateTo);
 
         $headers = [
-            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Type'        => 'text/csv; charset=utf-8',
             'Content-Disposition' => 'attachment; filename="bookings-' . now()->format('Ymd') . '.csv"',
         ];
 
-        $columns = ['Code', 'Customer', 'Email', 'Phone', 'Property', 'Room Type', 'Booking Type', 'Check-in', 'Check-out', 'Guests', 'Total', 'Status', 'Notes', 'Created'];
+        $columns = ['Code', 'Customer', 'Email', 'Phone', 'Property', 'Room Type',
+                    'Booking Type', 'Check-in', 'Check-out', 'Guests', 'Total', 'Status', 'Notes', 'Created'];
 
         $fp = fopen('php://temp', 'r+');
         fputcsv($fp, $columns);
 
-        foreach ($bookings as $b) {
-            fputcsv($fp, [
-                $b->code,
-                $b->customer_name,
-                $b->customer_email,
-                $b->customer_phone,
-                $b->property->name ?? '',
-                $b->property ? $b->property->typeLabel($b->unit_type) : $b->unit_type,
-                ucfirst($b->booking_type),
-                $b->check_in?->format('Y-m-d H:i'),
-                $b->check_out?->format('Y-m-d H:i'),
-                $b->guests,
-                $b->total_price,
-                $b->status,
-                $b->notes,
-                $b->created_at->format('Y-m-d H:i'),
-            ]);
-        }
+        // Chunk 200 rows agar tidak OOM
+        $query->orderBy('created_at', 'desc')->chunk(200, function ($bookings) use ($fp) {
+            foreach ($bookings as $b) {
+                fputcsv($fp, [
+                    $b->code,
+                    $b->customer_name,
+                    $b->customer_email,
+                    $b->customer_phone,
+                    $b->property->name ?? '',
+                    $b->property ? $b->property->typeLabel($b->unit_type) : $b->unit_type,
+                    ucfirst($b->booking_type),
+                    $b->check_in?->format('Y-m-d H:i'),
+                    $b->check_out?->format('Y-m-d H:i'),
+                    $b->guests,
+                    $b->total_price,
+                    $b->status,
+                    $b->notes,
+                    $b->created_at->format('Y-m-d H:i'),
+                ]);
+            }
+        });
 
         rewind($fp);
         $csvContent = stream_get_contents($fp);

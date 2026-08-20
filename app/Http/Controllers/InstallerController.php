@@ -74,6 +74,12 @@ class InstallerController extends Controller
             abort(403, 'Installation already completed.');
         }
 
+        // BUG-021 FIX: Bersihkan state file lama saat user kembali ke halaman awal
+        // installer. Ini memastikan credential/password yang mungkin tersimpan dari
+        // sesi instalasi sebelumnya yang gagal tidak menumpuk di filesystem.
+        // State akan dibuat ulang saat user mulai langkah pertama.
+        $this->clearState();
+
         return redirect()->route('install.step', 1);
     }
 

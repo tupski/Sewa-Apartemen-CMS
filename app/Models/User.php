@@ -52,10 +52,14 @@ class User extends Authenticatable
 
     /**
      * Whether the user may access the admin panel.
+     *
+     * BUG-025 FIX: Dukung beberapa role admin agar tidak hardcode hanya 'super-admin'.
+     * 'super-admin' tetap role utama, 'admin' adalah alias yang diizinkan.
+     * Untuk menambah role baru cukup tambahkan ke array ini.
      */
     public function isAdmin(): bool
     {
-        return $this->hasRole('super-admin');
+        return $this->hasRole(['super-admin', 'admin']);
     }
 
     public function activityLogs(): HasMany

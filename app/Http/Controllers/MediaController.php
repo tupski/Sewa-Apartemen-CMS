@@ -7,7 +7,9 @@ use App\Http\Requests\MediaRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Intervention\Image\Facades\Image;
+// BUG-020 FIX: Hapus import Intervention\Image yang tidak pernah digunakan.
+// Thumbnail generation sudah menggunakan GD native (imagecreatefromjpeg, dll).
+// Import ini dead code yang menyesatkan developer.
 
 class MediaController extends Controller
 {
