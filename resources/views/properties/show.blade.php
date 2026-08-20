@@ -302,7 +302,7 @@
 
     <!-- ============ MOBILE FLOATING BOOKING BAR ============ -->
     @if ($hasBooking)
-        <div id="mob-bk-bar" class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] px-4 py-3">
+        <div id="mob-bk-bar" class="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] px-4 py-3">
             <div class="flex items-center justify-between gap-3 max-w-lg mx-auto">
                 <div>
                     <p class="text-xs text-gray-500 dark:text-gray-400">Mulai dari</p>
