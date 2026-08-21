@@ -39,8 +39,8 @@ class BookingRequest extends FormRequest
             'check_out' => ['nullable', 'date', 'after_or_equal:check_in'],
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_email' => ['nullable', 'email', 'max:255'],
-            'customer_phone' => ['required', 'string', 'max:20'],
-            'customer_whatsapp' => ['nullable', 'string', 'max:20'],
+            'customer_phone' => ['required', 'string', 'max:25'],
+            'customer_whatsapp' => ['nullable', 'string', 'max:25'],
             'guests' => ['required', 'integer', 'min:1', 'max:20'],
             'message' => ['nullable', 'string', 'max:1000'],
             // Promo rate

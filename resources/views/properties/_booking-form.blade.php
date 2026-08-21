@@ -71,8 +71,17 @@
         </div>
     </div>
 
-    {{-- ====== DURATION + UNIT ====== --}}
+    {{-- ====== UNIT (Tipe Sewa) + DURATION — Tipe Sewa tampil dulu ====== --}}
     <div class="grid grid-cols-2 gap-4">
+        <div>
+            <label for="{{ $prefix }}-unit" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                Tipe Sewa
+            </label>
+            <select id="{{ $prefix }}-unit"
+                    class="bkf-unit w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2">
+                {{-- Options populated by JS on load & room-type change --}}
+            </select>
+        </div>
         <div>
             <label for="{{ $prefix }}-duration" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 bkf-duration-label">
                 Durasi
@@ -84,15 +93,6 @@
                        class="bkf-duration w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2"
                        value="1" min="1" max="{{ $maxDays ?: 365 }}">
             </div>
-        </div>
-        <div>
-            <label for="{{ $prefix }}-unit" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Tipe Sewa
-            </label>
-            <select id="{{ $prefix }}-unit"
-                    class="bkf-unit w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2">
-                {{-- Options populated by JS on load & room-type change --}}
-            </select>
         </div>
     </div>
 

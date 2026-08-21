@@ -408,15 +408,46 @@
                         <label for="bk-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Lengkap <span class="text-red-500">*</span></label>
                         <input type="text" id="bk-name" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label for="bk-phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">No. HP <span class="text-red-500">*</span></label>
-                            <input type="tel" id="bk-phone" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                    {{-- ====== PHONE (gabungan HP + WhatsApp) dengan country code picker ====== --}}
+                    <div>
+                        <label for="bk-phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            No. HP / WhatsApp <span class="text-red-500">*</span>
+                            <span class="text-xs text-gray-400 font-normal">(digunakan untuk konfirmasi booking)</span>
+                        </label>
+                        <div class="flex">
+                            {{-- Country code selector --}}
+                            <div class="relative flex-shrink-0">
+                                <button type="button" id="bk-country-btn"
+                                        class="flex items-center gap-1.5 h-full px-3 py-2 border border-r-0 border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-l-lg text-sm bg-gray-50 hover:bg-gray-100 dark:hover:bg-gray-700 transition min-w-[90px]">
+                                    <span id="bk-country-flag" class="text-base leading-none">🇮🇩</span>
+                                    <span id="bk-country-code" class="font-medium text-gray-700 dark:text-gray-200">+62</span>
+                                    <svg class="w-3 h-3 text-gray-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
+                                {{-- Dropdown country list --}}
+                                <div id="bk-country-dropdown"
+                                     class="hidden absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl w-64 max-h-64 overflow-y-auto">
+                                    <div class="p-2 border-b border-gray-100 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
+                                        <input type="text" id="bk-country-search" placeholder="Cari negara..."
+                                               class="w-full px-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-1">
+                                    </div>
+                                    <div id="bk-country-list" class="py-1">
+                                        {{-- Populated by JS --}}
+                                    </div>
+                                </div>
+                            </div>
+                            {{-- Phone number input --}}
+                            <input type="tel" id="bk-phone" required
+                                   inputmode="numeric"
+                                   placeholder="81234567890"
+                                   class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-r-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                         </div>
-                        <div>
-                            <label for="bk-whatsapp" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">WhatsApp</label>
-                            <input type="tel" id="bk-whatsapp" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-                        </div>
+                        {{-- Peringatan jika diisi dengan awalan 0 --}}
+                        <p id="bk-phone-warn" class="hidden mt-1 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                            Nomor sudah diawali kode negara, tidak perlu tambah angka <strong>0</strong> di depan.
+                        </p>
+                        <input type="hidden" id="bk-phone-full">
+                        <input type="hidden" id="bk-whatsapp">
                     </div>
                     <div>
                         <label for="bk-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
@@ -753,21 +784,28 @@
     });
 
     $submit.addEventListener('click', function () {
-        var name = $name.value.trim();
-        var phone = $phone.value.trim();
+        var name  = $name.value.trim();
+        var phone = document.getElementById('bk-phone').value.trim();
+        var countryCode = document.getElementById('bk-country-code').textContent.trim(); // e.g. "+62"
+
         if (!name || !phone) {
             $error.textContent = 'Nama dan No. HP wajib diisi.';
             $error.classList.remove('hidden');
             return;
         }
+
+        // Gabungkan kode negara + nomor (strip awalan 0 jika ada)
+        var cleanPhone = phone.replace(/^0+/, '');
+        var fullPhone  = countryCode + cleanPhone;
+
         $error.classList.add('hidden');
 
         var payload = Object.assign({}, window.__bkPayload, {
-            customer_name: name,
-            customer_phone: phone,
-            customer_whatsapp: $whatsapp.value.trim(),
-            customer_email: $email.value.trim(),
-            message: $msg.value.trim()
+            customer_name:     name,
+            customer_phone:    fullPhone,
+            customer_whatsapp: fullPhone,
+            customer_email:    $email.value.trim(),
+            message:           $msg.value.trim()
         });
 
         fetch('{{ route('bookings.store') }}', {
@@ -795,6 +833,112 @@
             $error.classList.remove('hidden');
         });
     });
+
+    // ================================================================
+    // COUNTRY CODE PICKER — dengan validasi awalan 0
+    // ================================================================
+    (function () {
+        var countries = [
+            { flag: '🇮🇩', name: 'Indonesia',        code: '+62'  },
+            { flag: '🇸🇬', name: 'Singapore',        code: '+65'  },
+            { flag: '🇲🇾', name: 'Malaysia',         code: '+60'  },
+            { flag: '🇦🇺', name: 'Australia',        code: '+61'  },
+            { flag: '🇺🇸', name: 'United States',    code: '+1'   },
+            { flag: '🇬🇧', name: 'United Kingdom',   code: '+44'  },
+            { flag: '🇸🇦', name: 'Saudi Arabia',     code: '+966' },
+            { flag: '🇦🇪', name: 'UAE',              code: '+971' },
+            { flag: '🇯🇵', name: 'Japan',            code: '+81'  },
+            { flag: '🇰🇷', name: 'South Korea',      code: '+82'  },
+            { flag: '🇨🇳', name: 'China',            code: '+86'  },
+            { flag: '🇮🇳', name: 'India',            code: '+91'  },
+            { flag: '🇵🇭', name: 'Philippines',      code: '+63'  },
+            { flag: '🇹🇭', name: 'Thailand',         code: '+66'  },
+            { flag: '🇻🇳', name: 'Vietnam',          code: '+84'  },
+            { flag: '🇳🇱', name: 'Netherlands',      code: '+31'  },
+            { flag: '🇩🇪', name: 'Germany',          code: '+49'  },
+            { flag: '🇫🇷', name: 'France',           code: '+33'  },
+            { flag: '🇧🇷', name: 'Brazil',           code: '+55'  },
+            { flag: '🇿🇦', name: 'South Africa',     code: '+27'  },
+        ];
+
+        var btn      = document.getElementById('bk-country-btn');
+        var dropdown = document.getElementById('bk-country-dropdown');
+        var flagEl   = document.getElementById('bk-country-flag');
+        var codeEl   = document.getElementById('bk-country-code');
+        var search   = document.getElementById('bk-country-search');
+        var list     = document.getElementById('bk-country-list');
+        var phoneIn  = document.getElementById('bk-phone');
+        var warnEl   = document.getElementById('bk-phone-warn');
+
+        if (!btn || !dropdown || !phoneIn) return;
+
+        function renderList(filter) {
+            var filtered = filter
+                ? countries.filter(function (c) {
+                    return c.name.toLowerCase().includes(filter.toLowerCase()) ||
+                           c.code.includes(filter);
+                  })
+                : countries;
+            list.innerHTML = '';
+            filtered.forEach(function (c) {
+                var item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition text-left';
+                item.innerHTML = '<span class="text-base">' + c.flag + '</span>' +
+                                 '<span class="flex-1">' + c.name + '</span>' +
+                                 '<span class="text-gray-400 font-mono text-xs">' + c.code + '</span>';
+                item.addEventListener('click', function () {
+                    flagEl.textContent = c.flag;
+                    codeEl.textContent = c.code;
+                    dropdown.classList.add('hidden');
+                    phoneIn.focus();
+                    // Re-check warning after country change
+                    checkLeadingZero();
+                });
+                list.appendChild(item);
+            });
+        }
+
+        // Toggle dropdown
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            dropdown.classList.toggle('hidden');
+            if (!dropdown.classList.contains('hidden')) {
+                search.value = '';
+                renderList('');
+                setTimeout(function () { search.focus(); }, 50);
+            }
+        });
+
+        // Search filter
+        search.addEventListener('input', function () {
+            renderList(this.value);
+        });
+
+        // Close on outside click
+        document.addEventListener('click', function (e) {
+            if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        // Validasi awalan 0
+        function checkLeadingZero() {
+            var val = phoneIn.value.trim();
+            if (val.startsWith('0')) {
+                warnEl.classList.remove('hidden');
+            } else {
+                warnEl.classList.add('hidden');
+            }
+        }
+
+        phoneIn.addEventListener('input', checkLeadingZero);
+        phoneIn.addEventListener('blur',  checkLeadingZero);
+
+        // Init list
+        renderList('');
+    })();
+
 })();
 </script>
 @endpush
