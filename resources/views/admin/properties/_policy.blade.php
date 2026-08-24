@@ -29,6 +29,13 @@
                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
             <p class="text-xs text-gray-500 mt-1">Kosongkan = tanpa batas.</p>
         </div>
+        <div>
+            <label for="max_guests" class="block text-sm font-medium text-gray-700 mb-2">Maks. Tamu (orang)</label>
+            <input type="number" name="max_guests" id="max_guests"
+                   value="{{ old('max_guests', $property->max_guests ?? 2) }}" min="1" max="20"
+                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+            <p class="text-xs text-gray-500 mt-1">Default: 2 tamu. Berlaku semua tipe kamar.</p>
+        </div>
     </div>
 
     <div class="mb-6">

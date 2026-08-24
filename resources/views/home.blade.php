@@ -17,14 +17,24 @@
 
                 <!-- Search -->
                 <form action="{{ route('properties.public.index') }}" method="GET"
-                      class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-5 flex flex-col md:flex-row gap-3 max-w-4xl">
-                    <x-search-input :label="__('home.search_name')"
-                                    :placeholder="__('home.search_placeholder')"
-                                    :value="request('search')"
-                                    :additional-classes="'flex-1'"
-                                    input-classes="w-full px-5 py-3.5 text-base rounded-xl border border-gray-200 focus:outline-none focus:ring-2 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+                      class="flex items-stretch gap-0 bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-visible max-w-3xl">
+                    {{-- Search icon + input --}}
+                    <div class="relative flex-1 flex items-center">
+                        <span class="absolute left-4 text-gray-400 pointer-events-none" aria-hidden="true">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"
+                                 viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        </span>
+                        <x-search-input :label="__('home.search_name')"
+                                        :placeholder="__('prop.search_placeholder')"
+                                        :value="request('search')"
+                                        :additional-classes="'flex-1'"
+                                        input-classes="w-full h-[52px] pl-11 pr-4 text-base bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none rounded-l-2xl" />
+                    </div>
+                    {{-- Divider --}}
+                    <span class="self-center w-px h-8 bg-gray-200 dark:bg-gray-600 shrink-0" aria-hidden="true"></span>
+                    {{-- Submit button --}}
                     <button type="submit"
-                            class="px-8 py-3.5 rounded-xl text-white font-semibold hover:opacity-90 transition"
+                            class="shrink-0 px-7 h-[52px] rounded-r-2xl text-white text-sm font-semibold hover:opacity-90 active:scale-[.98] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                             style="background-color: {{ $primaryColor }}">
                         {{ __('home.search') }}
                     </button>

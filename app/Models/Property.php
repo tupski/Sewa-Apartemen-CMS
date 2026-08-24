@@ -41,6 +41,7 @@ class Property extends Model
         'checkin_method',
         'required_documents',
         'nearby_places',
+        'max_guests',
     ];
 
     /**
@@ -54,6 +55,7 @@ class Property extends Model
         'longitude' => 'decimal:8',
         'order' => 'integer',
         'max_days' => 'integer',
+        'max_guests' => 'integer',
         'unit_types' => 'array',
         'weekend_days' => 'array',
         'prices' => 'array',

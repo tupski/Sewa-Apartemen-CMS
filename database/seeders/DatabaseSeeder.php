@@ -23,6 +23,13 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // Run role seeder, setting seeder, and amenity master data
-        $this->call([RoleSeeder::class, SettingSeeder::class, AmenitySeeder::class]);
+        $this->call([
+            RoleSeeder::class,
+            SettingSeeder::class,
+            AmenitySeeder::class,
+            BlogCategorySeeder::class,
+            PropertySeeder::class,
+            PostSeeder::class,
+        ]);
     }
 }

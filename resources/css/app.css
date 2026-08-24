@@ -27,6 +27,66 @@ body {
 }
 
 /* =====================================================
+   Turbo Progress Bar — brand color, tebal lebih jelas
+   ===================================================== */
+.turbo-progress-bar {
+    height: 3px;
+    background: linear-gradient(90deg, #3b82f6, #6366f1);
+    /* Warna ini di-override JS saat primaryColor tersedia */
+}
+
+/* =====================================================
+   Page Transition Skeleton Overlay
+   ===================================================== */
+#page-skeleton {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: var(--color-bg, #f8fafc);
+    overflow: hidden;
+    pointer-events: none;
+}
+#page-skeleton.visible { display: block; }
+
+.dark #page-skeleton {
+    background: #111827;
+}
+
+/* Skeleton shimmer animation */
+@keyframes skeleton-shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position:  200% center; }
+}
+.sk-pulse {
+    background: linear-gradient(90deg,
+        #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%
+    );
+    background-size: 200% auto;
+    animation: skeleton-shimmer 1.4s linear infinite;
+    border-radius: 0.375rem;
+}
+.dark .sk-pulse {
+    background: linear-gradient(90deg,
+        #1f2937 25%, #374151 50%, #1f2937 75%
+    );
+    background-size: 200% auto;
+}
+
+/* Skeleton blocks */
+.sk-bar   { height: 1rem; }
+.sk-title { height: 1.5rem; width: 40%; }
+.sk-text  { height: 0.75rem; }
+.sk-card  {
+    background: white;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.dark .sk-card { background: #1f2937; }
+.sk-img   { width: 100%; aspect-ratio: 16/10; }
+
+/* =====================================================
    Property Card improvements
    ===================================================== */
 .property-card {

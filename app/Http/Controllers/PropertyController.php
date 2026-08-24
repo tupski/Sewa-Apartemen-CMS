@@ -24,29 +24,120 @@ class PropertyController extends Controller
     {
         $query = Property::published()->with(['featuredImage', 'amenities']);
 
+        // --- Search ---
         if ($request->filled('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('city', 'like', '%' . $search . '%')
+                  ->orWhere('province', 'like', '%' . $search . '%')
+                  ->orWhere('address', 'like', '%' . $search . '%');
+            });
         }
 
+        // --- Filter: Booking type (durasi sewa) ---
         // BUG-012 FIX: Filter booking type dilakukan di DB level menggunakan
         // JSON_CONTAINS (MySQL) agar tidak perlu load semua properti ke memory.
-        // Fallback ke PHP-side filter tetap ada sebagai safety net jika DB tidak support.
         $typeFilter = $request->input('type');
-
         if ($typeFilter) {
-            // Gunakan whereRaw JSON_CONTAINS untuk MySQL — lebih efisien dari get()->filter()
             $query->whereRaw(
                 "JSON_CONTAINS(JSON_KEYS(COALESCE(prices, '{}')), JSON_QUOTE(?))",
                 [$typeFilter]
             );
         }
 
-        $properties = $query->orderBy('order', 'asc')
-                            ->orderBy('created_at', 'desc')
-                            ->paginate(12)
-                            ->withQueryString();
+        // --- Filter: Tipe unit ---
+        $unitTypeFilter = $request->input('unit_type');
+        if ($unitTypeFilter) {
+            $query->whereJsonContains('unit_types', $unitTypeFilter);
+        }
 
-        return view('properties.index', ['properties' => $properties, 'typeFilter' => $typeFilter]);
+        // --- Filter: Kota ---
+        $cityFilter = $request->input('city');
+        if ($cityFilter) {
+            $query->where('city', $cityFilter);
+        }
+
+        // --- Filter: Harga min/max (menggunakan lowestPrice via JSON prices) ---
+        $priceMin = $request->input('price_min');
+        $priceMax = $request->input('price_max');
+        // Price filtering dilakukan di PHP-side setelah query karena prices adalah JSON column
+        // yang membutuhkan logic kompleks (lowestPrice across all types & keys).
+
+        // --- Filter: Fasilitas/amenity ---
+        $amenityFilter = $request->input('amenities', []);
+        if (is_string($amenityFilter)) {
+            $amenityFilter = array_filter(explode(',', $amenityFilter));
+        }
+        if (!empty($amenityFilter)) {
+            $query->whereHas('amenities', function ($q) use ($amenityFilter) {
+                $q->whereIn('amenities.id', $amenityFilter);
+            }, '>=', count($amenityFilter));
+        }
+
+        // --- Sorting ---
+        $sort = $request->input('sort', 'default');
+        switch ($sort) {
+            case 'newest':
+                $query->orderBy('created_at', 'desc');
+                break;
+            case 'oldest':
+                $query->orderBy('created_at', 'asc');
+                break;
+            case 'featured':
+                $query->orderBy('is_featured', 'desc')->orderBy('order', 'asc');
+                break;
+            default:
+                $query->orderBy('order', 'asc')->orderBy('created_at', 'desc');
+        }
+
+        // Paginate dahulu, lalu filter harga di PHP-side jika ada
+        if ($priceMin || $priceMax) {
+            $allProperties = $query->get();
+            $filtered = $allProperties->filter(function ($p) use ($priceMin, $priceMax) {
+                $lowest = $p->lowestPrice();
+                if ($lowest === null) return false;
+                if ($priceMin && $lowest < (float) $priceMin) return false;
+                if ($priceMax && $lowest > (float) $priceMax) return false;
+                return true;
+            });
+            // Gunakan LengthAwarePaginator manual untuk hasil yang sudah difilter
+            $page = $request->input('page', 1);
+            $perPage = 12;
+            $total = $filtered->count();
+            $items = $filtered->slice(($page - 1) * $perPage, $perPage)->values();
+            $properties = new \Illuminate\Pagination\LengthAwarePaginator(
+                $items, $total, $perPage, $page,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
+        } else {
+            $properties = $query->paginate(12)->withQueryString();
+        }
+
+        // --- Data untuk filter sidebar ---
+        $availableCities = Property::published()
+            ->whereNotNull('city')
+            ->where('city', '!=', '')
+            ->distinct()
+            ->orderBy('city')
+            ->pluck('city');
+
+        $availableAmenities = \App\Models\Amenity::active()
+            ->orderBy('name')
+            ->get();
+
+        return view('properties.index', [
+            'properties'        => $properties,
+            'typeFilter'        => $typeFilter,
+            'unitTypeFilter'    => $unitTypeFilter,
+            'cityFilter'        => $cityFilter,
+            'priceMin'          => $priceMin,
+            'priceMax'          => $priceMax,
+            'amenityFilter'     => (array) $amenityFilter,
+            'sort'              => $sort,
+            'availableCities'   => $availableCities,
+            'availableAmenities'=> $availableAmenities,
+        ]);
     }
 
     /**

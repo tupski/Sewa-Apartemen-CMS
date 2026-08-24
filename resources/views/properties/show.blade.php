@@ -69,9 +69,9 @@
                     {{ $property->address ? $property->address . ', ' : '' }}{{ $property->city }}{{ $property->province ? ', ' . $property->province : '' }}
                 </p>
             @endif
-            @if ($property->cheapestNight())
+            @if ($property->lowestPrice())
                 <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">
-                    Mulai dari <span class="text-lg font-bold" style="color: {{ $primaryColor }}">Rp {{ number_format($property->cheapestNight(), 0, ',', '.') }}</span>/malam
+                    Mulai dari <span class="text-lg font-bold" style="color: {{ $primaryColor }}">Rp {{ number_format($property->lowestPrice(), 0, ',', '.') }}</span>
                 </p>
             @endif
         </div>
@@ -362,20 +362,20 @@
 
     <!-- ============ MOBILE FLOATING BOOKING BAR ============ -->
     @if ($hasBooking)
-        <div id="mob-bk-bar" class="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] px-4 py-3">
+        <div id="mob-bk-bar" class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] px-4 py-3">
             <div class="flex items-center justify-between gap-3 max-w-lg mx-auto">
                 <div>
                     <p class="text-xs text-gray-500 dark:text-gray-400">Mulai dari</p>
                     <p class="text-lg font-bold" style="color: {{ $primaryColor }}">
-                        @if ($property->cheapestNight())
-                            Rp {{ number_format($property->cheapestNight(), 0, ',', '.') }}/malam
+                        @if ($property->lowestPrice())
+                            Rp {{ number_format($property->lowestPrice(), 0, ',', '.') }}
                         @else
                             —
                         @endif
                     </p>
                 </div>
                 <button type="button" id="mob-bk-open" class="px-6 py-3 rounded-full text-white font-semibold text-sm hover:opacity-90 transition" style="background-color: {{ $primaryColor }}">
-                    Pesan Sekarang
+                    Booking
                 </button>
             </div>
         </div>
@@ -392,7 +392,7 @@
     </div>
 
     <!-- ============ BOOKING MODAL ============ -->
-    <div id="bk-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div id="bk-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true">
         <div class="absolute inset-0 bg-black/60" data-close></div>
         <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div id="bk-form-state">
@@ -770,12 +770,12 @@
 
     document.querySelectorAll('[data-bkf]').forEach(bindForm);
 
-    // Mobile bar opens modal
+    // Mobile bar opens modal — langsung buka modal tanpa syarat total,
+    // karena user belum bisa isi form di mobile sebelum modal terbuka.
     var mobOpen = document.getElementById('mob-bk-open');
     if (mobOpen) {
         mobOpen.addEventListener('click', function () {
-            var f = document.querySelector('[data-bkf]');
-            f.querySelector('.bkf-open').click();
+            modal.classList.remove('hidden');
         });
     }
 

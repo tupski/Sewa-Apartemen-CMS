@@ -47,6 +47,7 @@ class PropertyRequest extends FormRequest
             'is_featured' => ['nullable', 'boolean'],
             'order' => ['nullable', 'integer', 'min:0'],
             'max_days' => ['nullable', 'integer', 'min:1'],
+            'max_guests' => ['nullable', 'integer', 'min:1', 'max:20'],
             'checkin_time' => ['nullable', 'string', 'max:5'],
             'checkout_time' => ['nullable', 'string', 'max:5'],
             'checkin_method' => ['nullable', 'string', 'max:255'],
