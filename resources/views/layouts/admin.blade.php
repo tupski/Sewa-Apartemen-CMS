@@ -40,9 +40,6 @@
     @stack('head')
 </head>
 <body class="font-sans antialiased bg-gray-100 dark:bg-gray-950">
-    {{-- Skeleton overlay — diisi dan ditampilkan oleh app.js saat Turbo navigasi --}}
-    <div id="page-skeleton" aria-hidden="true"></div>
-
     @stack('body_start')
 
     <!-- Skip to content -->

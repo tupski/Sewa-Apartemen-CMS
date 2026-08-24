@@ -77,9 +77,6 @@
 </head>
 <body class="font-sans antialiased bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">
 
-    {{-- Skeleton overlay — diisi dan ditampilkan oleh app.js saat Turbo navigasi --}}
-    <div id="page-skeleton" aria-hidden="true"></div>
-
     <!-- Header -->
     <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100 shadow-sm dark:bg-gray-900/95 dark:border-gray-800">
         <div x-data="{ open: false }" x-effect="open ? document.getElementById('mobile-menu').classList.add('menu-open') : document.getElementById('mobile-menu').classList.remove('menu-open')" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
