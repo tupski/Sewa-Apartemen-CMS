@@ -502,6 +502,19 @@ class PropertyController extends Controller
     }
 
     /**
+     * Toggle featured status via AJAX.
+     */
+    public function toggleFeatured(Property $property)
+    {
+        $property->update(['is_featured' => !$property->is_featured]);
+
+        return response()->json([
+            'success' => true,
+            'is_featured' => $property->is_featured
+        ]);
+    }
+
+    /**
      * Remove the specified property.
      */
     public function destroy(Property $property)
@@ -518,3 +531,4 @@ class PropertyController extends Controller
         }
     }
 }
+

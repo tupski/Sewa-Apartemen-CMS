@@ -89,6 +89,7 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     // Property Management
     Route::resource('properties', PropertyController::class);
     Route::patch('properties/{property}/status', [PropertyController::class, 'updateStatus'])->name('properties.status');
+    Route::patch('properties/{property}/featured', [PropertyController::class, 'toggleFeatured'])->name('properties.featured');
 
     // Amenity Management
     Route::resource('amenities', AmenityController::class);

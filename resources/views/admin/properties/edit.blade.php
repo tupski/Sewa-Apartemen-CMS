@@ -35,11 +35,13 @@
             @csrf
             @method('PUT')
 
-            <div class="p-6">
-                <div class="space-y-6">
-                    <!-- Basic Information -->
-                    <div class="border-b border-gray-200 pb-6">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Basic Information</h3>
+            <div class="p-6 space-y-8">
+                <!-- Basic Information Section -->
+                <div>
+                    <div class="bg-blue-50 border-l-4 border-blue-600 px-4 py-3 mb-4">
+                        <h3 class="text-lg font-bold text-gray-900">Basic Information</h3>
+                    </div>
+                    <div class="space-y-4">
 
                         <!-- Name -->
                         <div class="mb-4">
@@ -90,11 +92,15 @@
                         </div>
                     </div>
 
-                    <!-- Location -->
-                    <div class="border-b border-gray-200 pb-6">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Location</h3>
+                    </div>
+                </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Location Section -->
+                <div>
+                    <div class="bg-blue-50 border-l-4 border-blue-600 px-4 py-3 mb-4">
+                        <h3 class="text-lg font-bold text-gray-900">Location</h3>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Address -->
                             <div>
                                 <label for="address" class="block text-sm font-medium text-gray-700 mb-2">
@@ -193,11 +199,15 @@
                         </div>
                     </div>
 
-                    <!-- Status & Featured -->
-                    <div class="border-b border-gray-200 pb-6">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Status & Featured</h3>
+                    </div>
+                </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Status & Featured Section -->
+                <div>
+                    <div class="bg-blue-50 border-l-4 border-blue-600 px-4 py-3 mb-4">
+                        <h3 class="text-lg font-bold text-gray-900">Status & Featured</h3>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Status -->
                             <div>
                                 <label for="status" class="block text-sm font-medium text-gray-700 mb-2">
@@ -243,9 +253,13 @@
                     <!-- Photo Gallery -->
                     @include('admin.properties._photos', ['property' => $property])
 
-                    <!-- Amenities -->
-                    <div class="pb-6">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Amenities</h3>
+                </div>
+
+                <!-- Amenities Section -->
+                <div>
+                    <div class="bg-blue-50 border-l-4 border-blue-600 px-4 py-3 mb-4">
+                        <h3 class="text-lg font-bold text-gray-900">Amenities</h3>
+                    </div>
 
                         <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                             @forelse($amenities as $amenity)
@@ -265,9 +279,13 @@
                         </div>
                     </div>
 
-                    <!-- SEO Section -->
-                    <div class="border-t border-gray-200 pt-6">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">SEO Meta Information</h3>
+                </div>
+
+                <!-- SEO Section -->
+                <div>
+                    <div class="bg-blue-50 border-l-4 border-blue-600 px-4 py-3 mb-4">
+                        <h3 class="text-lg font-bold text-gray-900">SEO</h3>
+                    </div>
 
                         <div class="space-y-4">
                             <!-- Meta Title -->

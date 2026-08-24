@@ -109,24 +109,20 @@
                                     <span class="text-sm text-gray-500">{{ count($property->unit_types ?? []) }} room types</span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    @if($property->status === 'published')
-                                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                            Published
-                                        </span>
-                                    @else
-                                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                            Draft
-                                        </span>
-                                    @endif
+                                    <select onchange="updateStatus({{ $property->id }}, this.value)"
+                                            class="px-3 py-1 text-xs font-semibold rounded-full border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer
+                                                {{ $property->status === 'published' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                        <option value="published" {{ $property->status === 'published' ? 'selected' : '' }}>Published</option>
+                                        <option value="draft" {{ $property->status === 'draft' ? 'selected' : '' }}>Draft</option>
+                                    </select>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    @if($property->is_featured)
-                                        <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                                        </svg>
-                                    @else
-                                        <span class="text-gray-400">—</span>
-                                    @endif
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <button type="button"
+                                            onclick="toggleFeatured({{ $property->id }}, this)"
+                                            class="text-2xl focus:outline-none transition-colors duration-200"
+                                            title="{{ $property->is_featured ? 'Remove from featured' : 'Mark as featured' }}">
+                                        <i class="fa{{ $property->is_featured ? 's' : 'r' }} fa-star {{ $property->is_featured ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-400' }}"></i>
+                                    </button>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end gap-2">
@@ -184,4 +180,59 @@
         @endif
     </div>
 </div>
+
+@push('scripts')
+<script>
+function toggleFeatured(propertyId, button) {
+    fetch(`/admin/properties/${propertyId}/featured`, {
+        method: 'PATCH',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        const icon = button.querySelector('i');
+        if (data.is_featured) {
+            icon.classList.remove('far', 'text-gray-300', 'hover:text-yellow-400');
+            icon.classList.add('fas', 'text-yellow-400');
+            button.title = 'Remove from featured';
+        } else {
+            icon.classList.remove('fas', 'text-yellow-400');
+            icon.classList.add('far', 'text-gray-300', 'hover:text-yellow-400');
+            button.title = 'Mark as featured';
+        }
+    })
+    .catch(err => console.error('Failed to toggle featured:', err));
+}
+
+function updateStatus(propertyId, status) {
+    const select = event.target;
+    fetch(`/admin/properties/${propertyId}/status`, {
+        method: 'PATCH',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ status })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (status === 'published') {
+            select.classList.remove('bg-gray-100', 'text-gray-800');
+            select.classList.add('bg-green-100', 'text-green-800');
+        } else {
+            select.classList.remove('bg-green-100', 'text-green-800');
+            select.classList.add('bg-gray-100', 'text-gray-800');
+        }
+    })
+    .catch(err => {
+        console.error('Failed to update status:', err);
+        location.reload();
+    });
+}
+</script>
+@endpush
 @endsection

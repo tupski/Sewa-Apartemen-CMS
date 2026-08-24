@@ -315,7 +315,7 @@
 
                     <!-- Contact card (mobile only, since desktop has booking column) -->
                     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 lg:hidden">
-                        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-3">Hubungi Kami</h2>
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-3">Tanya Dulu</h2>
                         @if ($whatsapp)
                             <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}?text={{ urlencode('Halo, saya ingin bertanya tentang ' . $property->name) }}"
                                target="_blank" rel="noopener"
@@ -334,7 +334,7 @@
                                 @include('properties._booking-form', ['prefix' => 'bkf-desktop'])
                             </div>
                             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
-                                <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-3">Hubungi Kami</h2>
+                                <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-3">Tanya Dulu</h2>
                                 <ul class="space-y-3 text-sm text-gray-600 dark:text-gray-400">
                                     @if ($contactPhone)
                                         <li class="flex items-center gap-2">
@@ -403,7 +403,16 @@
                     </button>
                 </div>
                 <div class="p-6 space-y-4">
-                    <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-900/50 text-sm space-y-1" id="bk-modal-summary"></div>
+                    {{-- Mobile: show booking form first, then contact fields --}}
+                    <div id="bk-modal-form-wrapper" class="lg:hidden">
+                        @include('properties._booking-form', ['prefix' => 'bkf-modal'])
+                    </div>
+
+                    {{-- Desktop: show summary (populated by desktop sidebar form) --}}
+                    <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-900/50 text-sm space-y-1 hidden lg:block" id="bk-modal-summary"></div>
+
+                    {{-- Contact fields: hidden on mobile until form submitted --}}
+                    <div id="bk-contact-fields" class="space-y-4 hidden lg:block">
                     <div>
                         <label for="bk-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Lengkap <span class="text-red-500">*</span></label>
                         <input type="text" id="bk-name" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
@@ -458,9 +467,10 @@
                         <textarea id="bk-msg" rows="3" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"></textarea>
                     </div>
                     <p class="text-xs text-gray-500 dark:text-gray-400">Deposit 30% diperlukan untuk konfirmasi. Kami akan menghubungi Anda secepatnya.</p>
-                    <button type="button" id="bk-submit" class="w-full py-3 rounded-full text-white font-semibold hover:opacity-90 transition" style="background-color: {{ $primaryColor }}">
+                    <button type="button" id="bk-submit" class="w-full py-3 rounded-full text-white font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed" style="background-color: {{ $primaryColor }}">
                         Kirim Permintaan Booking
                     </button>
+                    </div>{{-- end bk-contact-fields --}}
                     <p id="bk-error" class="hidden text-sm text-red-600 dark:text-red-400 text-center"></p>
                 </div>
             </div>
@@ -770,13 +780,64 @@
 
     document.querySelectorAll('[data-bkf]').forEach(bindForm);
 
-    // Mobile bar opens modal — langsung buka modal tanpa syarat total,
-    // karena user belum bisa isi form di mobile sebelum modal terbuka.
+    // Mobile bar opens modal with embedded form
     var mobOpen = document.getElementById('mob-bk-open');
+    var contactFields = document.getElementById('bk-contact-fields');
+    var submitBtnWrap = document.getElementById('bk-submit-btn-wrap');
     if (mobOpen) {
         mobOpen.addEventListener('click', function () {
             modal.classList.remove('hidden');
+            // Reset: hide contact fields on mobile until form filled
+            if (window.innerWidth < 1024) {
+                contactFields.classList.add('hidden');
+                submitBtnWrap.classList.add('hidden');
+            }
         });
+    }
+
+    // Mobile form "Lanjut Pemesanan" shows contact fields
+    var mobileForm = document.querySelector('#bk-modal-form-wrapper [data-bkf]');
+    if (mobileForm) {
+        var mobileOpenBtn = mobileForm.querySelector('.bkf-open');
+        if (mobileOpenBtn) {
+            mobileOpenBtn.addEventListener('click', function() {
+                var total = parseFloat(mobileForm.dataset.total || 0);
+                if (total <= 0) return; // bindForm handles error display
+
+                // Show contact fields and submit button
+                contactFields.classList.remove('hidden');
+                submitBtnWrap.classList.remove('hidden');
+
+                // Build summary for desktop (modal already has form visible on mobile)
+                var type = getRoomType(mobileForm);
+                var typeLabel = unitTypeLabels[type] || type;
+                var unit = mobileForm.querySelector('.bkf-unit').value;
+                var checkin = mobileForm.querySelector('.bkf-checkin').value;
+                var time = mobileForm.querySelector('.bkf-checkin-time').value || '14:00';
+                var guests = parseInt(mobileForm.querySelector('.bkf-guests').value, 10) || 1;
+                var detail = mobileForm.dataset.detail;
+                var satuanLabel = mobileForm.querySelector('.bkf-unit').options[mobileForm.querySelector('.bkf-unit').selectedIndex]
+                    ? mobileForm.querySelector('.bkf-unit').options[mobileForm.querySelector('.bkf-unit').selectedIndex].text : unit;
+
+                $summary.innerHTML =
+                    '<div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Tipe kamar</span><span class="font-medium">' + typeLabel + '</span></div>' +
+                    '<div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Tipe sewa</span><span class="font-medium">' + satuanLabel + '</span></div>' +
+                    '<div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Check-in</span><span class="font-medium">' + checkin + ' · ' + time + '</span></div>' +
+                    '<div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Durasi</span><span class="font-medium">' + detail + '</span></div>' +
+                    '<div class="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-2 mt-2"><span class="text-gray-500 dark:text-gray-400 font-medium">Total</span><span class="font-bold text-lg">Rp ' + parseInt(total).toLocaleString('id-ID') + '</span></div>';
+
+                window.__bkPayload = {
+                    property_id: {{ $property->id }},
+                    room_type: type,
+                    booking_unit: unit,
+                    check_in_date: checkin,
+                    check_in_time: time,
+                    guests: guests,
+                    duration: getDuration(mobileForm),
+                    total_price: total
+                };
+            });
+        }
     }
 
     document.querySelectorAll('[data-close]').forEach(function (el) {

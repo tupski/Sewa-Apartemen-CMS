@@ -44,48 +44,6 @@
             <h1 class="text-3xl md:text-4xl font-bold mb-1">{{ __('prop.title') }}</h1>
             <p class="text-white/80 text-sm md:text-base">{{ __('prop.subtitle') }}</p>
 
-            {{-- ── Search Bar ─────────────────────────────────────────── --}}
-            <form action="{{ route('properties.public.index') }}" method="GET"
-                  id="search-form"
-                  class="mt-6 flex items-stretch gap-0 bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-visible max-w-3xl">
-
-                {{-- Preserve sidebar filters saat submit search --}}
-                @if(request('type'))   <input type="hidden" name="type"      value="{{ request('type') }}"> @endif
-                @if(request('unit_type')) <input type="hidden" name="unit_type" value="{{ request('unit_type') }}"> @endif
-                @if(request('city'))   <input type="hidden" name="city"      value="{{ request('city') }}"> @endif
-                @if(request('price_min')) <input type="hidden" name="price_min" value="{{ request('price_min') }}"> @endif
-                @if(request('price_max')) <input type="hidden" name="price_max" value="{{ request('price_max') }}"> @endif
-                @foreach((array)$amenityFilter as $aid)
-                    <input type="hidden" name="amenities[]" value="{{ $aid }}">
-                @endforeach
-                @if(request('sort') && request('sort') !== 'default')
-                    <input type="hidden" name="sort" value="{{ request('sort') }}">
-                @endif
-
-                {{-- Search icon + input --}}
-                <div class="relative flex-1 flex items-center">
-                    <span class="absolute left-4 text-gray-400 pointer-events-none" aria-hidden="true">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"
-                             viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                    </span>
-                    <x-search-input
-                        :label="__('home.search_name')"
-                        :placeholder="__('prop.search_placeholder')"
-                        :value="request('search')"
-                        :additional-classes="'flex-1'"
-                        input-classes="w-full h-[52px] pl-11 pr-4 text-base bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none rounded-2xl" />
-                </div>
-
-                {{-- Divider --}}
-                <span class="self-center w-px h-8 bg-gray-200 dark:bg-gray-600" aria-hidden="true"></span>
-
-                {{-- Cari button --}}
-                <button type="submit"
-                        class="shrink-0 px-7 h-[52px] rounded-r-2xl text-white text-sm font-semibold hover:opacity-90 active:scale-[.98] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
-                        style="background-color: {{ $primaryColor }}">
-                    {{ __('home.search') }}
-                </button>
-            </form>
         </div>
     </section>
 
@@ -97,7 +55,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
             {{-- Mobile: Filter + Sort bar --}}
-            <div class="flex lg:hidden items-center gap-3 mb-5">
+            <div id="mobile-filter-bar" class="flex lg:hidden items-center gap-3 mb-5">
                 {{-- Tombol Filter mobile --}}
                 <button @click="filterOpen = true"
                         type="button"
@@ -137,7 +95,7 @@
             <div class="flex gap-8 items-start">
 
                 {{-- ══ SIDEBAR FILTER (Desktop) ═══════════════════════════════════ --}}
-                <aside class="hidden lg:block w-72 xl:w-80 shrink-0">
+                <aside id="filter-section" class="hidden lg:block w-72 xl:w-80 shrink-0">
                     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 sticky top-24 overflow-hidden">
                         <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                             <h2 class="text-base font-semibold text-gray-800 dark:text-gray-100">{{ __('prop.filter_title') }}</h2>
@@ -159,6 +117,22 @@
                             @endif
 
                             <div class="px-5 py-4 space-y-6 max-h-[calc(100vh-16rem)] overflow-y-auto">
+
+                                {{-- Search --}}
+                                <fieldset>
+                                    <legend class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
+                                        {{ __('prop.search_label') }}
+                                    </legend>
+                                    <div class="relative">
+                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" aria-hidden="true">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
+                                                 viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                                        </span>
+                                        <input type="text" name="search" value="{{ request('search') }}"
+                                               placeholder="{{ __('prop.search_placeholder') }}"
+                                               class="w-full h-9 pl-10 pr-3 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800">
+                                    </div>
+                                </fieldset>
 
                                 {{-- Durasi Sewa --}}
                                 <fieldset>
@@ -563,6 +537,20 @@
 
                 <div class="px-5 py-4 space-y-6">
 
+                    {{-- Search --}}
+                    <fieldset>
+                        <legend class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">{{ __('prop.search_label') }}</legend>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" aria-hidden="true">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
+                                     viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                            </span>
+                            <input type="text" name="search" value="{{ request('search') }}"
+                                   placeholder="{{ __('prop.search_placeholder') }}"
+                                   class="w-full h-10 pl-10 pr-3 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800">
+                        </div>
+                    </fieldset>
+
                     {{-- Durasi --}}
                     <fieldset>
                         <legend class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">{{ __('prop.filter_duration') }}</legend>
@@ -696,6 +684,26 @@ function listingPage() {
                     this.filterOpen = false;
                 }
             });
+
+            // Mobile sticky filter: hide when scrolled past original position
+            const mobileBar = document.getElementById('mobile-filter-bar');
+            const filterSection = document.getElementById('filter-section');
+
+            if (mobileBar && filterSection && window.innerWidth < 1024) {
+                const observer = new IntersectionObserver(
+                    ([entry]) => {
+                        // Hide bar when filter section is visible, show when scrolled past
+                        if (entry.isIntersecting) {
+                            mobileBar.style.transform = 'translateY(100%)';
+                        } else {
+                            mobileBar.style.transform = 'translateY(0)';
+                        }
+                    },
+                    { threshold: 0, rootMargin: '0px' }
+                );
+
+                observer.observe(filterSection);
+            }
         },
     };
 }

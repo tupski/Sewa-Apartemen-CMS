@@ -123,7 +123,7 @@
                                         <div>
                                             <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('home.from') }}</p>
                                             <p class="text-lg font-bold" style="color: {{ $primaryColor }}">
-                                                Rp {{ number_format((float) $cheapest, 0, ',', '.') }}<span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('home.per_night') }}</span>
+                                                Rp {{ number_format((float) $cheapest, 0, ',', '.') }}
                                             </p>
                                         </div>
                                     @else

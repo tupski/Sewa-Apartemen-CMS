@@ -8,7 +8,17 @@
 
     <title>{{ config('app.name', 'Laravel') }} - Admin Panel</title>
 
-    @php $adminEnableDark = \App\Services\SettingsService::get('enable_dark_mode', false); @endphp
+    @php
+        $adminEnableDark = \App\Services\SettingsService::get('enable_dark_mode', false);
+        $adminSiteLogo = \App\Services\SettingsService::get('site_logo', '');
+        $adminSiteFavicon = \App\Services\SettingsService::get('site_favicon', '');
+    @endphp
+
+    @if($adminSiteFavicon)
+        <link rel="icon" type="image/x-icon" href="{{ asset('storage/' . $adminSiteFavicon) }}">
+    @else
+        <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    @endif
 
     <!-- Apply dark mode before first paint (no flash) -->
     <script>

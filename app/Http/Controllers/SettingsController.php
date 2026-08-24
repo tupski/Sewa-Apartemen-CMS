@@ -127,7 +127,7 @@ class SettingsController extends Controller
                 'secondary_color' => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
                 'accent_color' => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
                 'header_layout' => 'nullable|string|in:default,centered,minimal',
-                'footer_layout' => 'nullable|string|in:default,minimal,extended',
+                'footer_layout' => 'nullable|string|in:default,columns,minimal',
                 'enable_dark_mode' => 'nullable|boolean',
                 'meta_description' => 'nullable|string',
                 'meta_keywords' => 'nullable|string',

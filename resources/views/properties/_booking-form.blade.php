@@ -54,11 +54,13 @@
             <label for="{{ $prefix }}-checkin" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Tanggal Check-in
             </label>
-            <input type="date"
+            <input type="text"
                    id="{{ $prefix }}-checkin"
                    class="bkf-checkin w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2"
-                   min="{{ now()->format('Y-m-d') }}"
+                   placeholder="Pilih tanggal"
+                   readonly
                    aria-required="true">
+            <input type="hidden" id="{{ $prefix }}-checkin-raw" class="bkf-checkin-raw">
         </div>
         <div>
             <label for="{{ $prefix }}-checkin-time" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
@@ -87,11 +89,12 @@
                 Durasi
             </label>
             {{-- JS will replace this with the correct input/select based on satuan --}}
-            <div id="{{ $prefix }}-duration-wrap">
+            <div id="{{ $prefix }}-duration-wrap" class="relative">
                 <input type="number"
                        id="{{ $prefix }}-duration"
                        class="bkf-duration w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2"
                        value="1" min="1" max="{{ $maxDays ?: 365 }}">
+                <span class="bkf-duration-suffix absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400 pointer-events-none hidden"></span>
             </div>
         </div>
     </div>
@@ -101,11 +104,14 @@
         <label for="{{ $prefix }}-guests" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
             Jumlah Tamu
         </label>
-        <input type="number"
-               id="{{ $prefix }}-guests"
-               class="bkf-guests w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2"
-               value="1" min="1" max="20"
-               aria-label="Jumlah tamu">
+        <div class="relative">
+            <input type="number"
+                   id="{{ $prefix }}-guests"
+                   class="bkf-guests w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2"
+                   value="2" min="1" max="20"
+                   aria-label="Jumlah tamu">
+            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400 pointer-events-none">Dewasa</span>
+        </div>
     </div>
 
     {{-- ====== PRICE SUMMARY ====== --}}
@@ -120,7 +126,7 @@
 
     {{-- ====== VOUCHER FIELD ====== --}}
     <div class="space-y-2">
-        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">Kode Voucher</label>
+        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">Kode Voucher (opsional)</label>
         <div class="flex gap-2">
             <input type="text"
                    class="bkf-voucher-input flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 uppercase"
@@ -317,6 +323,127 @@
         });
         // Initial check
         checkPromos();
+    })();
+    </script>
+
+    {{-- Enhanced form behavior --}}
+    <script>
+    (function () {
+        var bkf = document.currentScript.closest('[data-bkf]');
+        if (!bkf) return;
+
+        var months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        var checkinDisplay = bkf.querySelector('.bkf-checkin');
+        var checkinRaw = bkf.querySelector('.bkf-checkin-raw');
+        var checkinTime = bkf.querySelector('.bkf-checkin-time');
+        var durationWrap = bkf.querySelector('[id$="-duration-wrap"]');
+        var durationSuffix = bkf.querySelector('.bkf-duration-suffix');
+
+        // 1. Date picker with Indonesian format
+        if (checkinDisplay) {
+            var today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            checkinDisplay.addEventListener('click', function() {
+                var input = document.createElement('input');
+                input.type = 'date';
+                input.style.position = 'absolute';
+                input.style.opacity = '0';
+                input.style.pointerEvents = 'none';
+                input.min = new Date().toISOString().split('T')[0];
+                document.body.appendChild(input);
+
+                input.addEventListener('change', function() {
+                    if (input.value) {
+                        var parts = input.value.split('-');
+                        var d = new Date(parts[0], parts[1] - 1, parts[2]);
+                        var formatted = d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+                        checkinDisplay.value = formatted;
+                        checkinRaw.value = input.value;
+
+                        // Trigger change for promo detection
+                        var evt = new Event('change', { bubbles: true });
+                        checkinDisplay.dispatchEvent(evt);
+                    }
+                    document.body.removeChild(input);
+                });
+
+                input.showPicker();
+            });
+        }
+
+        // 2. Disable past hours for today
+        if (checkinTime && checkinRaw) {
+            function updateTimeOptions() {
+                var selectedDate = checkinRaw.value;
+                if (!selectedDate) return;
+
+                var parts = selectedDate.split('-');
+                var selected = new Date(parts[0], parts[1] - 1, parts[2]);
+                selected.setHours(0, 0, 0, 0);
+                var now = new Date();
+                now.setHours(0, 0, 0, 0);
+
+                if (selected.getTime() === now.getTime()) {
+                    // Today: disable past hours
+                    var currentHour = new Date().getHours();
+                    var currentMinute = new Date().getMinutes();
+                    var currentTime = (currentHour < 10 ? '0' : '') + currentHour + ':' + (currentMinute < 10 ? '0' : '') + currentMinute;
+
+                    if (checkinTime.value < currentTime) {
+                        checkinTime.value = currentTime;
+                    }
+                    checkinTime.min = currentTime;
+                } else {
+                    // Future date: all hours available
+                    checkinTime.removeAttribute('min');
+                }
+            }
+
+            checkinRaw.addEventListener('change', updateTimeOptions);
+            checkinDisplay.addEventListener('change', updateTimeOptions);
+        }
+
+        // 3 & 4. Duration suffix handling for "Harian" with max 7
+        // This runs after show.blade.php's rebuildDurasi, watching for changes
+        var observer = new MutationObserver(function() {
+            var durationInput = durationWrap ? durationWrap.querySelector('.bkf-duration') : null;
+            var unitSelect = bkf.querySelector('.bkf-unit');
+
+            if (durationInput && unitSelect && durationSuffix) {
+                var unitValue = unitSelect.value || '';
+
+                if (unitValue.toLowerCase() === 'harian') {
+                    // Show "Malam" suffix
+                    durationSuffix.textContent = 'Malam';
+                    durationSuffix.classList.remove('hidden');
+
+                    // Enforce max 7 for harian
+                    if (durationInput.type === 'number') {
+                        durationInput.max = '7';
+                        if (parseInt(durationInput.value) > 7) {
+                            durationInput.value = '7';
+                        }
+                    }
+                } else {
+                    // Hide suffix for other types
+                    durationSuffix.classList.add('hidden');
+                }
+            }
+        });
+
+        if (durationWrap) {
+            observer.observe(durationWrap, { childList: true, subtree: true });
+        }
+
+        // Initial trigger
+        setTimeout(function() {
+            var unitSelect = bkf.querySelector('.bkf-unit');
+            if (unitSelect) {
+                var evt = new Event('change', { bubbles: true });
+                unitSelect.dispatchEvent(evt);
+            }
+        }, 100);
     })();
     </script>
 </div>
