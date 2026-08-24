@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class UserController extends Controller
@@ -34,7 +35,7 @@ class UserController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'phone' => ['nullable', 'string', 'max:20'],
             'avatar' => ['nullable', 'image', 'max:2048'],
-            'role_id' => ['nullable', 'exists:roles,id'],
+            'role_id' => ['nullable', 'exists:roles,id', Rule::in($this->assignableRoleIds())],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
@@ -78,12 +79,25 @@ class UserController extends Controller
 
     public function update(Request $request, User $user): RedirectResponse
     {
+        // FIND-009: a user must never escalate their own role in a single request
+        if ($user->id === auth()->id() && $request->filled('role_id')) {
+            $current = DB::table('model_has_roles')
+                ->where('model_type', User::class)
+                ->where('model_id', $user->id)
+                ->value('role_id');
+            $requested = (int) $request->input('role_id');
+
+            if ($current && $requested !== $current) {
+                return back()->withInput()->with('error', 'Anda tidak dapat mengubah role akun Anda sendiri.');
+            }
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
             'phone' => ['nullable', 'string', 'max:20'],
             'avatar' => ['nullable', 'image', 'max:2048'],
-            'role_id' => ['nullable', 'exists:roles,id'],
+            'role_id' => ['nullable', 'exists:roles,id', Rule::in($this->assignableRoleIds())],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ]);
 
@@ -120,6 +134,21 @@ class UserController extends Controller
         log_activity('user_updated', "User {$user->name} updated");
 
         return redirect()->route('admin.users.index')->with('success', 'User updated successfully.');
+    }
+
+    /**
+     * Role IDs the current actor is allowed to assign.
+     *
+     * FIND-009: only super-admins may grant the super-admin role; plain
+     * admins can only assign regular roles.
+     */
+    protected function assignableRoleIds(): array
+    {
+        if (auth()->user()?->hasRole('super-admin')) {
+            return Role::pluck('id')->all();
+        }
+
+        return Role::where('slug', '!=', 'super-admin')->pluck('id')->all();
     }
 
     public function destroy(User $user): RedirectResponse

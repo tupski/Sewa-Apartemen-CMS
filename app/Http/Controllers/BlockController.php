@@ -65,6 +65,10 @@ class BlockController extends Controller
     {
         try {
             $data = $request->validated();
+            // FIND-005: sanitize legacy string content (array content is structured data)
+            if (is_string($data['content'] ?? null)) {
+                $data['content'] = \App\Services\SafeHtmlService::sanitize($data['content']);
+            }
 
             $block = Block::create($data);
 
@@ -103,6 +107,10 @@ class BlockController extends Controller
     {
         try {
             $data = $request->validated();
+            // FIND-005: sanitize legacy string content (array content is structured data)
+            if (is_string($data['content'] ?? null)) {
+                $data['content'] = \App\Services\SafeHtmlService::sanitize($data['content']);
+            }
 
             $block->update($data);
 

@@ -23,6 +23,12 @@ class PropertyFactory extends Factory
             'province' => $this->faker->state(),
             'postal_code' => $this->faker->postcode(),
             'status' => 'published',
+            'unit_types' => ['studio', '1br'],
+            'weekend_days' => [6, 0],
+            'prices' => [
+                'studio' => ['night_wd' => 500000, 'night_we' => 600000, 't3_wd' => 150000, 't3_we' => 180000, 'weekly' => 3000000, 'monthly' => 9000000],
+                '1br' => ['night_wd' => 700000, 'night_we' => 800000, 't3_wd' => 200000, 't3_we' => 240000, 'weekly' => 4200000, 'monthly' => 12600000],
+            ],
         ];
     }
 }

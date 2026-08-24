@@ -207,6 +207,8 @@ class PropertyController extends Controller
     {
         try {
             $data = array_merge($request->validated(), $this->normalizeDetailData($request), $this->buildPricingData($request));
+            // FIND-005: sanitize rich content before persistence
+            $data['description'] = \App\Services\SafeHtmlService::sanitize($data['description'] ?? null);
 
             // Auto-generate slug if empty
             if (empty($data['slug'])) {
@@ -273,6 +275,8 @@ class PropertyController extends Controller
     {
         try {
             $data = array_merge($request->validated(), $this->normalizeDetailData($request), $this->buildPricingData($request));
+            // FIND-005: sanitize rich content before persistence
+            $data['description'] = \App\Services\SafeHtmlService::sanitize($data['description'] ?? null);
 
             // Auto-generate slug if empty
             if (empty($data['slug'])) {
@@ -381,7 +385,12 @@ class PropertyController extends Controller
                 try {
                     $originalName = $file->getClientOriginalName();
                     $safeName = \Illuminate\Support\Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) ?: 'photo';
-                    $filename = $safeName . '-' . time() . '-' . \Illuminate\Support\Str::random(8) . '.' . $file->getClientOriginalExtension();
+                    // FIND-007: extension must come from the verified MIME type, never the client filename
+                    $extByMime = [
+                        'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp',
+                    ];
+                    $extension = $extByMime[$file->getMimeType()] ?? 'bin';
+                    $filename = $safeName . '-' . time() . '-' . \Illuminate\Support\Str::random(8) . '.' . $extension;
                     $folder = "properties/{$property->id}/{$catSlug}";
                     $path = $file->storeAs($folder, $filename, 'public');
 
@@ -392,7 +401,7 @@ class PropertyController extends Controller
                         'filename' => $filename,
                         'original_filename' => $originalName,
                         'mime_type' => $file->getMimeType(),
-                        'extension' => $file->getClientOriginalExtension(),
+                        'extension' => $extension,
                         'size' => $file->getSize(),
                         'type' => 'image',
                         'alt' => $category,

@@ -161,10 +161,10 @@
 
     <!-- Lookup another booking -->
     <div class="mt-8 bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-5">
-        <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Cek kode booking lain</p>
+        <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Cek booking lain</p>
         <form action="" method="GET" class="flex gap-2"
-              onsubmit="event.preventDefault(); window.location='/booking/status/'+this.code.value.trim()">
-            <input type="text" name="code" placeholder="Masukkan kode booking..."
+              onsubmit="event.preventDefault(); window.location='{{ route('bookings.status', '__TOKEN__') }}'.replace('__TOKEN__', this.code.value.trim())">
+            <input type="text" name="code" placeholder="Masukkan token akses booking..."
                    class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2"
                    style="--tw-ring-color: {{ $primaryColor }}">
             <button type="submit"

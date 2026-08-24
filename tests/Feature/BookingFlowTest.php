@@ -194,13 +194,14 @@ class BookingFlowTest extends TestCase
             'check_out' => now()->addDays(5),
             'guests' => 1,
             'code' => 'BK-20260811-0001',
+            'access_token' => 'tok-abc123',
             'status' => 'pending',
             'total_price' => 1500000,
             'deposit_amount' => 450000,
             'metadata' => ['nights' => 3],
         ]);
 
-        $response = $this->get(route('bookings.success', $booking));
+        $response = $this->get(route('bookings.success', $booking->access_token));
 
         $response->assertStatus(200);
         $response->assertSee($booking->code);

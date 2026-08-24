@@ -37,9 +37,8 @@ class PasswordResetLinkController extends Controller
             $request->only('email')
         );
 
-        return $status == Password::RESET_LINK_SENT
-                    ? back()->with('status', __($status))
-                    : back()->withInput($request->only('email'))
-                        ->withErrors(['email' => __($status)]);
+        // VERIFY-008: never disclose whether an email is registered — always
+        // show the same success response.
+        return back()->with('status', __('passwords.sent'));
     }
 }

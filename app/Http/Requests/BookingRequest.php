@@ -45,9 +45,9 @@ class BookingRequest extends FormRequest
             'message' => ['nullable', 'string', 'max:1000'],
             // Promo rate
             'promo_rate_id' => ['nullable', 'integer', 'exists:promo_rates,id'],
-            // Voucher
+            // FIND-003: only the voucher code is accepted; a numeric voucher_id
+            // is not enough to redeem a voucher anymore.
             'voucher_code' => ['nullable', 'string', 'max:50'],
-            'voucher_id' => ['nullable', 'integer', 'exists:vouchers,id'],
         ];
     }
 
@@ -75,7 +75,6 @@ class BookingRequest extends FormRequest
             'message' => 'pesan',
             'promo_rate_id' => 'kode promo',
             'voucher_code' => 'kode voucher',
-            'voucher_id' => 'voucher',
         ];
     }
 

@@ -28,6 +28,7 @@ class Booking extends Model
         'check_out',
         'guests',
         'code',
+        'access_token',
         'message',
         'status',
         'whatsapp_status',

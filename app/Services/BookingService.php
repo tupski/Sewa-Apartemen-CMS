@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\Property;
+use App\Models\Voucher;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -51,6 +52,23 @@ class BookingService
     {
         return DB::transaction(function () use ($data) {
             $property = Property::findOrFail($data['property_id']);
+
+            // FIND-003: resolve + lock the voucher up front, before pricing.
+            // Only the code is accepted — a numeric voucher_id is never enough.
+            $voucherId = null;
+            $code = strtoupper(trim((string) ($data['voucher_code'] ?? '')));
+            if (!empty($data['voucher_id']) && $code === '') {
+                throw new \Exception('Kode voucher tidak valid atau sudah kadaluarsa.');
+            }
+            if ($code !== '') {
+                $voucher = Voucher::where('code', $code)->lockForUpdate()->first();
+
+                if (!$voucher || !$voucher->isValid()) {
+                    throw new \Exception('Kode voucher tidak valid atau sudah kadaluarsa.');
+                }
+
+                $voucherId = $voucher->id;
+            }
 
             if (!$property->hasType($data['unit_type'])) {
                 throw new \Exception('Tipe kamar tidak tersedia di properti ini.');
@@ -102,13 +120,28 @@ class BookingService
                 $checkIn,
                 $checkOut,
                 $data['duration_hours'] ?? null,
+                $data['promo_rate_id'] ?? null,
+                $voucherId,
             );
 
             if ($pricing['total'] <= 0) {
                 throw new \Exception('Harga untuk tipe sewa ini belum diatur. Silakan hubungi admin.');
             }
 
-            self::validateAvailability($property->id, $data['unit_type'], $checkIn, $checkOut, $data['booking_type']);
+            // VERIFY-006: enforce the property's max_guests capacity
+            $maxGuests = $property->max_guests;
+            if ($maxGuests && (int) ($data['guests'] ?? 1) > $maxGuests) {
+                throw new \Exception("Jumlah tamu maksimal untuk properti ini adalah {$maxGuests} orang.");
+            }
+
+            self::validateAvailability(
+                $property->id,
+                $data['unit_type'],
+                $checkIn,
+                $checkOut,
+                $data['booking_type'],
+                $data['duration_hours'] ?? null,
+            );
 
             $totalPrice = $pricing['total'];
             $depositAmount = round($totalPrice * 0.3, 2);
@@ -131,8 +164,11 @@ class BookingService
                 'check_out' => $effectiveCheckOut,
                 'guests' => $data['guests'] ?? 1,
                 'code' => self::generateCode(),
+                'access_token' => \Illuminate\Support\Str::random(24),
                 'message' => $data['message'] ?? null,
                 'status' => 'pending',
+                'voucher_id' => $voucherId,
+                'voucher_discount' => $pricing['discount'] ?? 0,
                 'total_price' => $totalPrice,
                 'deposit_amount' => $depositAmount,
                 'price_breakdown' => $pricing,
@@ -147,6 +183,12 @@ class BookingService
                 ],
             ]);
 
+            // FIND-003: burn the voucher only after the booking row exists —
+            // a failure anywhere above rolls back both and the voucher stays usable.
+            if ($voucherId) {
+                Voucher::where('id', $voucherId)->increment('used_count');
+            }
+
             // Outbound notification must never roll the booking back; dispatch after commit.
             DB::afterCommit(function () use ($booking) {
                 BookingNotificationService::send(BookingNotificationService::EVENT_CREATED, $booking);
@@ -159,23 +201,29 @@ class BookingService
     /**
      * Prevent overlapping bookings for the same property + room type.
      */
-    protected static function validateAvailability(int $propertyId, string $unitType, Carbon $checkIn, ?Carbon $checkOut, string $bookingType): void
+    protected static function validateAvailability(int $propertyId, string $unitType, Carbon $checkIn, ?Carbon $checkOut, string $bookingType, ?int $durationHours = null): void
     {
-        if ($bookingType === 'transit') {
-            return; // transit windows are short; manual handling
+        // Transit bookings store the effective window in check_out
+        $effectiveCheckOut = $checkOut;
+        if ($bookingType === 'transit' && $effectiveCheckOut === null) {
+            $effectiveCheckOut = $checkIn->copy()->addHours((int) ($durationHours ?? 3));
         }
 
-        if (!$checkOut) {
+        if (!$effectiveCheckOut) {
             return;
         }
 
+        // FIND-004: lock candidate rows so concurrent requests cannot both
+        // pass the check and double-book (TOCTOU). Runs inside the create()
+        // transaction, which is the same scope as the insert.
         $conflicting = Booking::where('property_id', $propertyId)
             ->where('unit_type', $unitType)
             ->where('status', '!=', 'cancelled')
-            ->where(function ($q) use ($checkIn, $checkOut) {
-                $q->where('check_in', '<', $checkOut)
+            ->where(function ($q) use ($checkIn, $effectiveCheckOut) {
+                $q->where('check_in', '<', $effectiveCheckOut)
                   ->where('check_out', '>', $checkIn);
             })
+            ->lockForUpdate()
             ->exists();
 
         if ($conflicting) {

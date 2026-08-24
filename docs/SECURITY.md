@@ -956,3 +956,29 @@ The security architecture provides:
 - ✓ Security headers
 
 Regular security audits and updates are essential to maintain security.
+
+---
+
+## 2026-08-24 Remediation (per `docs/security-audit-report.md`)
+
+Applied fixes for the high-confidence findings; regression tests live in `tests/Feature/SecurityTest.php`.
+
+| Finding | Mitigation |
+|---------|------------|
+| FIND-001 | Public booking pages now keyed by random `access_token` (migration `2026_08_24_000000_add_access_token_to_bookings_table`). Sequential booking code / numeric id no longer resolve a booking (404). |
+| FIND-002 | `.env` not tracked in git; `.gitignore` covers `.env`; `.env.example` contains no real secrets. Rotation of `APP_KEY`/DB creds remains a deployment task. |
+| FIND-003 | Voucher redeemable by code only; discount applied via `BookingPricingService::calculate(..., promoRateId, voucherId)`; voucher `used_count` incremented inside the same transaction as booking creation. |
+| FIND-004 | Availability check now runs `lockForUpdate()` inside the create transaction and covers transit windows; `max_guests` is enforced server-side. |
+| FIND-005 | Rich content (`property.description`, `page.content`, `post.content`, string `block.content`) sanitized on write by `App\Services\SafeHtmlService` (stdlib DOM allowlist). |
+| FIND-006 | JSON-LD `json_encode` now uses `JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT`. |
+| FIND-007 | Gallery upload extension derived from verified MIME map, never client filename. |
+| FIND-008 | `svg` removed from `MediaRequest` allowed mimes. |
+| FIND-009 | `admin` can no longer assign the `super-admin` role; a user cannot change their own role in one request. |
+| FIND-010 | CSV export prefixes cells starting with `= + - @` (and tab/CR) with `'`. |
+| VERIFY-001 | Installer DB identifiers validated against `[A-Za-z0-9_$]` (DSN + `USE`). |
+| VERIFY-005 | Webhook/log payload no longer contains full customer PII (name initial + masked phone). |
+| VERIFY-006 | `max_guests` enforced in `BookingService::create()`. |
+| VERIFY-008 | Password reset always returns the same success message (no user enumeration). |
+| VERIFY-009 | `throttle` added to register (5/min), login (10/min), forgot-password (5/min). |
+
+Deployment notes: run `php artisan migrate` for the new `access_token` column; rotate `APP_KEY` and DB credentials; set `APP_DEBUG=false` / `SESSION_SECURE_COOKIE=true` in production.

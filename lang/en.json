@@ -111,5 +111,6 @@
     "prop.from": "Starting from",
     "prop.all_types": "All Types",
     "prop.all_durations": "All Durations",
-    "prop.transit_hour": "Hourly Transit"
+    "prop.transit_hour": "Hourly Transit",
+    "passwords.sent": "We have emailed your password reset link."
 }

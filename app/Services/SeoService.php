@@ -245,7 +245,11 @@ class SeoService
                 continue;
             }
             $html .= '<script type="application/ld+json">' . "\n"
-                   . json_encode($clean, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n"
+                   . json_encode(
+                       $clean,
+                       JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+                       | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+                   ) . "\n"
                    . '</script>' . "\n";
         }
         return $html;

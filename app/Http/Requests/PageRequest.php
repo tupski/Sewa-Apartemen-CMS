@@ -77,4 +77,16 @@ class PageRequest extends FormRequest
             'status.in' => 'The status must be either draft, published, or scheduled.',
         ];
     }
+
+    /**
+     * Sanitize admin-entered rich content before persistence (FIND-005).
+     */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $this->merge([
+                'content' => \App\Services\SafeHtmlService::sanitize($this->input('content')),
+            ]);
+        });
+    }
 }

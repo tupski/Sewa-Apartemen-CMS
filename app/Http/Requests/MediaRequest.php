@@ -26,7 +26,7 @@ class MediaRequest extends FormRequest
                 'required',
                 'file',
                 'max:10240', // 10MB max
-                'mimes:jpg,jpeg,png,webp,gif,svg,pdf,doc,docx,mp4,avi,mov',
+                'mimes:jpg,jpeg,png,webp,gif,pdf,doc,docx,mp4,avi,mov',
             ],
             'folder' => ['nullable', 'string', 'max:255'],
             'alt' => ['nullable', 'string', 'max:255'],

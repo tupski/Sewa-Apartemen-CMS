@@ -30,6 +30,7 @@ class BookingFactory extends Factory
             'check_out' => $checkOut,
             'guests' => $this->faker->numberBetween(1, 4),
             'code' => 'BK-' . now()->format('Ymd') . '-' . str_pad(self::$codeCounter, 4, '0', STR_PAD_LEFT),
+            'access_token' => \Illuminate\Support\Str::random(24),
             'status' => $this->faker->randomElement(['pending', 'confirmed']),
             'total_price' => $this->faker->randomFloat(2, 500000, 10000000),
             'deposit_amount' => $this->faker->randomFloat(2, 150000, 3000000),

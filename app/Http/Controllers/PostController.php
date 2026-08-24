@@ -66,6 +66,8 @@ class PostController extends Controller
         try {
             $data = $validated;
             $data['user_id'] = auth()->id();
+            // FIND-005: sanitize rich content before persistence
+            $data['content'] = \App\Services\SafeHtmlService::sanitize($data['content'] ?? null);
 
             if (empty($data['slug'])) {
                 $data['slug'] = Str::slug($data['title']);
@@ -137,6 +139,8 @@ class PostController extends Controller
         ]);
 
         try {
+            // FIND-005: sanitize rich content before persistence
+            $validated['content'] = \App\Services\SafeHtmlService::sanitize($validated['content'] ?? null);
             $data = $validated;
 
             if (empty($data['slug'])) {

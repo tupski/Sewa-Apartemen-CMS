@@ -57,8 +57,9 @@ Route::middleware('auth')->group(function () {
 
 // Public Booking Routes
 Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store')->middleware('throttle:10,1');
-Route::get('/bookings/{booking}/success', [BookingController::class, 'success'])->name('bookings.success');
-Route::get('/booking/status/{code}', [BookingController::class, 'publicStatus'])->name('bookings.status')->middleware('throttle:30,1');
+// FIND-001: public booking pages are keyed by the random access token, never the numeric id / sequential code
+Route::get('/bookings/{token}/success', [BookingController::class, 'success'])->name('bookings.success');
+Route::get('/booking/status/{token}', [BookingController::class, 'publicStatus'])->name('bookings.status')->middleware('throttle:30,1');
 Route::post('/booking/validate-voucher', [BookingController::class, 'validateVoucher'])->name('bookings.validate-voucher')->middleware('throttle:20,1');
 
 // Admin CMS Routes (require authentication + admin role)

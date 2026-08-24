@@ -264,11 +264,13 @@ class InstallerController extends Controller
 
         if ($request->isMethod('POST')) {
             $validated = $request->validate([
-                'db_host' => 'required|string',
+                'db_host' => 'required|string|max:255',
                 'db_port' => 'required|integer|min:1|max:65535',
-                'db_database' => 'required|string',
-                'db_username' => 'required|string',
-                'db_password' => 'nullable|string',
+                // VERIFY-001: identifiers are interpolated into DSN/USE statements —
+                // only allow safe characters.
+                'db_database' => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9_$]+$/'],
+                'db_username' => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9_$]+$/'],
+                'db_password' => ['nullable', 'string', 'max:255'],
             ]);
 
             // Store in persistent state — .env write deferred to step 6
@@ -315,6 +317,17 @@ class InstallerController extends Controller
             $database = $request->db_database ?? '';
             $username = $request->db_username ?? '';
             $password = $request->db_password ?? '';
+
+            // VERIFY-001: reject identifier injection before building the DSN/USE
+            if ($host === '' || !preg_match('/^[A-Za-z0-9_.\-:\[\]]+$/', (string) $host)) {
+                throw new \InvalidArgumentException('DB_HOST tidak valid.');
+            }
+            if ($database !== '' && !preg_match('/^[A-Za-z0-9_$]+$/', (string) $database)) {
+                throw new \InvalidArgumentException('Nama database tidak valid.');
+            }
+            if (!preg_match('/^[A-Za-z0-9_$]+$/', (string) $username)) {
+                throw new \InvalidArgumentException('Username database tidak valid.');
+            }
 
             $dsn = "mysql:host={$host};port={$port}";
             $pdo = new \PDO($dsn, $username, $password);

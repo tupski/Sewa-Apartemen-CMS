@@ -141,6 +141,7 @@ class AnalyticsTest extends TestCase
             'check_out' => now()->addDays(3)->format('Y-m-d'),
             'guests' => 2,
             'code' => 'BK-20260811-0001',
+            'access_token' => 'tok-analytica1',
             'status' => 'pending',
             'total_price' => 1000000,
             'deposit_amount' => 300000,
@@ -156,7 +157,7 @@ class AnalyticsTest extends TestCase
         ];
 
         $response = $this->withSession(['analytics_event' => $analyticsEvent])
-            ->get(route('bookings.success', $booking));
+            ->get(route('bookings.success', $booking->access_token));
 
         $response->assertStatus(200);
         $response->assertSee("event: 'booking_completed'", false);

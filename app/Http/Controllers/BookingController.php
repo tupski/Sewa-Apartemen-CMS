@@ -23,25 +23,8 @@ class BookingController extends Controller
         try {
             $data = $request->validated();
 
-            // BUG-001 FIX: Validate dan increment voucher di dalam satu transaksi DB
-            // dengan lockForUpdate() untuk mencegah double-spend pada concurrent requests.
-            if (!empty($data['voucher_code']) || !empty($data['voucher_id'])) {
-                \Illuminate\Support\Facades\DB::transaction(function () use (&$data) {
-                    $code    = strtoupper($data['voucher_code'] ?? '');
-                    $voucher = !empty($data['voucher_id'])
-                        ? Voucher::where('id', $data['voucher_id'])->lockForUpdate()->first()
-                        : Voucher::where('code', $code)->lockForUpdate()->first();
-
-                    if (!$voucher || !$voucher->isValid()) {
-                        throw new \Exception('Kode voucher tidak valid atau sudah kadaluarsa.');
-                    }
-
-                    // Increment di dalam lock — aman dari race condition
-                    $voucher->increment('used_count');
-                    $data['voucher_id'] = $voucher->id;
-                });
-            }
-
+            // FIND-003: voucher consumed and applied inside BookingService::create()
+            // in a single transaction, so a failed booking no longer burns the voucher.
             $booking = BookingService::create($data);
 
             log_activity('booking_created', "Booking {$booking->code} created for {$booking->customer_name}");
@@ -65,7 +48,7 @@ class BookingController extends Controller
             }
 
             return redirect()
-                ->route('bookings.success', $booking)
+                ->route('bookings.success', $booking->access_token)
                 ->with('success', 'Booking request submitted successfully! We will contact you shortly.')
                 ->with('analytics_event', $analyticsEvent);
         } catch (\Exception $e) {
@@ -85,9 +68,11 @@ class BookingController extends Controller
     /**
      * Show the booking success page (non-JS fallback).
      */
-    public function success(Booking $booking): View
+    public function success(string $token): View
     {
-        $booking->load('property', 'voucher');
+        $booking = Booking::with('property', 'voucher')
+            ->where('access_token', $token)
+            ->firstOrFail();
 
         return view('bookings.success', compact('booking'));
     }
@@ -139,10 +124,10 @@ class BookingController extends Controller
     /**
      * Public booking status page — accessible by anyone with the booking code.
      */
-    public function publicStatus(string $code): View
+    public function publicStatus(string $token): View
     {
         $booking = Booking::with('property')
-            ->where('code', $code)
+            ->where('access_token', $token)
             ->firstOrFail();
 
         return view('bookings.status', compact('booking'));
@@ -286,18 +271,18 @@ class BookingController extends Controller
             foreach ($bookings as $b) {
                 fputcsv($fp, [
                     $b->code,
-                    $b->customer_name,
-                    $b->customer_email,
-                    $b->customer_phone,
-                    $b->property->name ?? '',
-                    $b->property ? $b->property->typeLabel($b->unit_type) : $b->unit_type,
+                    $this->csvSafe($b->customer_name),
+                    $this->csvSafe($b->customer_email),
+                    $this->csvSafe($b->customer_phone),
+                    $this->csvSafe($b->property->name ?? ''),
+                    $this->csvSafe($b->property ? $b->property->typeLabel($b->unit_type) : $b->unit_type),
                     ucfirst($b->booking_type),
                     $b->check_in?->format('Y-m-d H:i'),
                     $b->check_out?->format('Y-m-d H:i'),
                     $b->guests,
                     $b->total_price,
                     $b->status,
-                    $b->notes,
+                    $this->csvSafe($b->notes),
                     $b->created_at->format('Y-m-d H:i'),
                 ]);
             }
@@ -308,6 +293,20 @@ class BookingController extends Controller
         fclose($fp);
 
         return response($csvContent, 200, $headers);
+    }
+
+    /**
+     * Neutralize spreadsheet formula injection for CSV cells (FIND-010).
+     */
+    protected function csvSafe(?string $value): string
+    {
+        $value = (string) $value;
+
+        if ($value !== '' && preg_match('/^[=+\-@\t\r]/', $value)) {
+            return "'" . $value;
+        }
+
+        return $value;
     }
 
     /**

@@ -120,4 +120,16 @@ class PropertyRequest extends FormRequest
             'longitude.between' => 'The longitude must be between -180 and 180.',
         ];
     }
+
+    /**
+     * Sanitize admin-entered rich content before persistence (FIND-005).
+     */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $this->merge([
+                'description' => \App\Services\SafeHtmlService::sanitize($this->input('description')),
+            ]);
+        });
+    }
 }

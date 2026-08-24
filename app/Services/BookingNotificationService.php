@@ -103,10 +103,11 @@ class BookingNotificationService
             'deposit_amount' => (float) $booking->deposit_amount,
             'currency' => SettingsService::get('currency', 'IDR'),
             'customer' => [
-                'name' => $booking->customer_name,
-                'email' => $booking->customer_email,
-                'phone' => $booking->customer_phone,
-                'whatsapp' => $booking->customer_whatsapp,
+                // VERIFY-005: redact PII in logs. Full contact details are
+                // intentionally omitted — the operator's admin panel is the
+                // source of truth for contact info.
+                'name' => mb_substr((string) $booking->customer_name, 0, 1) . '***',
+                'phone_masked' => self::maskPhone($booking->customer_phone),
             ],
             'message' => $booking->message,
             'property' => $property ? [
@@ -117,6 +118,22 @@ class BookingNotificationService
             ] : null,
             'admin_url' => route('admin.bookings.show', $booking, false),
         ];
+    }
+
+    /**
+     * Keep only the last 4 digits of a phone number.
+     */
+    protected static function maskPhone(?string $phone): ?string
+    {
+        if ($phone === null || $phone === '') {
+            return $phone;
+        }
+
+        $digits = preg_replace('/\D/', '', $phone);
+
+        return $digits && strlen($digits) > 4
+            ? '***' . substr($digits, -4)
+            : '***';
     }
 
     protected static function logFailure(string $event, string $url, int $status, ?string $error = null): void
