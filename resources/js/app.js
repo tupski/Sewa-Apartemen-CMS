@@ -1,5 +1,3 @@
-
-
 import * as Turbo from '@hotwired/turbo';
 // ponytail: Turbo Drive aktif otomatis untuk link same-origin & submit form;
 // tidak dipasang Stimulus karena belum dibutuhkan — tambah saat butuh interaktivitas reaktif.
@@ -162,6 +160,10 @@ function escapeHtml(str) {
     return str.replace(/[&<>"']/g, (c) => '&#' + c.charCodeAt(0) + ';');
 }
 
+// Autocomplete client-side cache — simple Map, max 50 entries, keyed by query string.
+const searchCache = new Map();
+const SEARCH_CACHE_MAX = 50;
+
 // Autocomplete pencarian publik (Turbo-compatible).
 // Data komponen dipakai via `x-data="searchAutocomplete({ action: '...' })"`
 // pada wrapper input; Alpine.start() sekali + MutationObserver otomatis
@@ -173,6 +175,7 @@ Alpine.data('searchAutocomplete', (config = {}) => ({
     loading: false,
     highlighted: -1,
     timer: null,
+    controller: null,
     label: config.label ?? '',
     placeholder: config.placeholder ?? '',
     action: config.action ?? '',
@@ -215,20 +218,46 @@ Alpine.data('searchAutocomplete', (config = {}) => ({
                 this.loading = false;
                 return;
             }
+
+            const key = this.query.trim().toLowerCase();
+
+            // Client-side cache hit
+            if (searchCache.has(key)) {
+                this.results = searchCache.get(key);
+                this.highlighted = this.results.length ? 0 : -1;
+                this.open = true;
+                return;
+            }
+
             this.open = true;
             this.loading = true;
             try {
-                // Absolut URL + encodeURIComponent: hasil fetch boleh di-cache
-                // Turbo, dan aman dari race (setiap hasil attach ke response-nya).
-                const res = await fetch(this.action + '?q=' + encodeURIComponent(this.query.trim()), {
-                    headers: { 'Accept': 'application/json' },
-                });
+                // AbortController race protection — batalkan fetch sebelumnya
+                this.controller?.abort();
+                this.controller = new AbortController();
+
+                // 8s timeout race
+                const res = await Promise.race([
+                    fetch(this.action + '?q=' + encodeURIComponent(this.query.trim()), {
+                        headers: { 'Accept': 'application/json' },
+                        signal: this.controller.signal,
+                    }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+                ]);
                 const json = await res.json();
-                this.results = json.data ?? [];
+                const data = json.data ?? [];
+                this.results = data;
                 this.highlighted = this.results.length ? 0 : -1;
                 this.open = true;
+
+                // Cache the result, evict oldest if at limit
+                if (searchCache.size >= SEARCH_CACHE_MAX) {
+                    const firstKey = searchCache.keys().next().value;
+                    searchCache.delete(firstKey);
+                }
+                searchCache.set(key, data);
             } catch (e) {
-                // Abaikan: autocomplete non-kritis, form utama tetap jalan.
+                if (e?.name === 'AbortError') return; // silence abort
                 this.results = [];
                 this.open = false;
             } finally {
@@ -257,12 +286,11 @@ Alpine.data('searchAutocomplete', (config = {}) => ({
 
     go(result) {
         this.close();
-        window.location.href = result.url;
+        Turbo.visit(result.url);
     },
 
     close() {
         this.open = false;
-        this.results = [];
         this.highlighted = -1;
     },
 }));
