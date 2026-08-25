@@ -54,13 +54,20 @@
             <label for="{{ $prefix }}-checkin" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Tanggal Check-in
             </label>
-            <input type="text"
-                   id="{{ $prefix }}-checkin"
-                   class="bkf-checkin w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2"
-                   placeholder="Pilih tanggal"
-                   readonly
-                   aria-required="true">
-            <input type="hidden" id="{{ $prefix }}-checkin-raw" class="bkf-checkin-raw">
+            <div class="relative">
+                <input type="text"
+                       id="{{ $prefix }}-checkin"
+                       class="bkf-checkin w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2"
+                       placeholder="Pilih tanggal"
+                       readonly
+                       aria-required="true">
+                {{-- Overlay native date input: tap lands on real picker (works iOS/Android/desktop) --}}
+                <input type="date"
+                       class="bkf-checkin-native absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                       tabindex="-1"
+                       aria-label="Tanggal Check-in">
+                <input type="hidden" id="{{ $prefix }}-checkin-raw" class="bkf-checkin-raw">
+            </div>
         </div>
         <div>
             <label for="{{ $prefix }}-checkin-time" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
@@ -339,37 +346,28 @@
         var durationWrap = bkf.querySelector('[id$="-duration-wrap"]');
         var durationSuffix = bkf.querySelector('.bkf-duration-suffix');
 
-        // 1. Date picker with Indonesian format
+        // 1. Date picker with Indonesian format.
+        // Overlay native <input type="date"> (bkf-checkin-native) covers the readonly display field,
+        // so taps open the real native picker on iOS/Android/desktop. showPicker() is unsupported on iOS Safari.
         if (checkinDisplay) {
-            var today = new Date();
-            today.setHours(0, 0, 0, 0);
+            var nativeInput = bkf.querySelector('.bkf-checkin-native');
+            if (nativeInput) {
+                nativeInput.min = new Date().toISOString().split('T')[0];
 
-            checkinDisplay.addEventListener('click', function() {
-                var input = document.createElement('input');
-                input.type = 'date';
-                input.style.position = 'absolute';
-                input.style.opacity = '0';
-                input.style.pointerEvents = 'none';
-                input.min = new Date().toISOString().split('T')[0];
-                document.body.appendChild(input);
-
-                input.addEventListener('change', function() {
-                    if (input.value) {
-                        var parts = input.value.split('-');
+                nativeInput.addEventListener('change', function() {
+                    if (nativeInput.value) {
+                        var parts = nativeInput.value.split('-');
                         var d = new Date(parts[0], parts[1] - 1, parts[2]);
                         var formatted = d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
                         checkinDisplay.value = formatted;
-                        checkinRaw.value = input.value;
+                        checkinRaw.value = nativeInput.value;
 
                         // Trigger change for promo detection
                         var evt = new Event('change', { bubbles: true });
                         checkinDisplay.dispatchEvent(evt);
                     }
-                    document.body.removeChild(input);
                 });
-
-                input.showPicker();
-            });
+            }
         }
 
         // 2. Disable past hours for today

@@ -78,6 +78,8 @@ session.gc_maxlifetime = 1440
 │   └── ...
 ```
 
+> **Note:** This option requires the ability to set the document root to `/public`. If your shared hosting locks the document root at `/home/<user>/public_html` and you cannot change it, see [Option 3: Deploy Without Changing the Document Root](#option-3-deploy-without-changing-the-document-root).
+
 ### Option 2: Document Root at Project Root
 
 **Required when you can't change document root**
@@ -104,6 +106,173 @@ session.gc_maxlifetime = 1440
 │   ├── .env
 │   └── ...
 ```
+
+> **Note:** If your host prevents symlinks (or you prefer to copy files instead), the locked-document-root procedure in [Option 3: Deploy Without Changing the Document Root](#option-3-deploy-without-changing-the-document-root) applies.
+
+### Option 3: Deploy Without Changing the Document Root
+
+**For shared hosting where the document root is locked at `/home/<user>/public_html`**
+
+Some shared hosting plans (cPanel with "Document Root" disabled, or reseller accounts without shell access) force the web root to `/home/<user>/public_html` and do not allow pointing it at `/public`. Use Option 3A when you have any way to place files outside `public_html` (SSH, Terminal, or File Manager with access to the home directory); use Option 3B when you must keep everything inside `public_html`.
+
+#### Option 3A (Recommended): Application Outside the Document Root
+
+Keep all application code outside the web root, and let `public_html/` contain only the contents of `public/` plus a `storage` symlink.
+
+```
+/home/<user>/
+├── public_html/              # Apache document root (locked)
+│   ├── index.php            # Edited entry point
+│   ├── .htaccess
+│   ├── build/
+│   ├── css/
+│   ├── js/
+│   ├── favicon.ico
+│   ├── robots.txt
+│   └── storage -> /home/<user>/sewa-cms/storage/app/public
+│
+└── sewa-cms/                # Entire application (outside web root)
+    ├── app/
+    ├── bootstrap/
+    ├── config/
+    ├── database/
+    ├── resources/
+    ├── routes/
+    ├── storage/
+    ├── vendor/
+    ├── .env
+    ├── artisan
+    └── ...
+```
+
+**Steps:**
+
+1. **Upload and extract** the application ZIP into `/home/<user>/sewa-cms/` (cPanel File Manager can extract it there; do not extract into `public_html`).
+2. **Copy the contents of `public/`** from `sewa-cms/public/` into `/home/<user>/public_html/` — `index.php`, `.htaccess`, `build/`, `css/`, `js/`, `favicon.ico`, `robots.txt` — so the web root mirrors the Laravel public folder.
+3. **Edit `public_html/index.php`** so it loads the application from outside the web root:
+
+   ```php
+   require __DIR__.'/../sewa-cms/vendor/autoload.php';
+
+   $app = require_once __DIR__.'/../sewa-cms/bootstrap/app.php';
+   ```
+
+   Keep the rest of the stock `index.php` (the `$kernel->handle()` section) unchanged.
+4. **Create the storage symlink** (SSH/Terminal, or request it from your host):
+
+   ```bash
+   ln -s /home/<user>/sewa-cms/storage/app/public /home/<user>/public_html/storage
+   ```
+
+   If you have no shell access, open a support ticket with the template in [Notes](#notes).
+5. **Set permissions**:
+
+   ```bash
+   chmod -R 755 /home/<user>/sewa-cms/storage
+   chmod -R 755 /home/<user>/sewa-cms/bootstrap/cache
+   ```
+6. **Create the database** (see [Step 3: Configure Database](#step-3-configure-database)) and fill in `.env` (see [Step 4: Configure `.env` File](#step-4-configure-env-file)).
+7. **Run the installer** at `https://yourdomain.com/install` (see [Step 6: Run Installer](#step-6-run-installer)).
+8. **Cache the config**:
+
+   ```bash
+   cd /home/<user>/sewa-cms && php artisan config:cache
+   ```
+
+**Advantages:**
+
+- `.env`, `vendor/`, and all application code sit outside the document root, so they are never exposed to the web — no deny rules or `RedirectMatch 403` needed.
+- Only static, public-facing assets (`css/`, `js/`, `build/`, uploads) live in `public_html`.
+- Cleaner security posture with fewer moving parts to misconfigure.
+
+#### Option 3B: Everything Inside `public_html`
+
+Use this only when you have no way to place files outside the document root. The whole application lives in `public_html`, and the `public/` folder contents are moved to the web root.
+
+```
+/home/<user>/public_html/     # Apache document root AND application root
+├── app/
+├── bootstrap/
+├── config/
+├── database/
+├── resources/
+├── routes/
+├── storage/                  # Symlinked from outside (see below)
+├── vendor/
+├── .env
+├── .htaccess                # Edited: adds 403 rules
+├── index.php                # Edited entry point
+├── artisan
+├── build/
+├── css/
+├── js/
+├── favicon.ico
+└── robots.txt
+```
+
+**Steps:**
+
+1. **Extract the application ZIP** into `/home/<user>/public_html/` so the project root is the document root.
+2. **Move the contents of `public/`** (`.htaccess`, `index.php`, `build/`, `css/`, `js/`, `favicon.ico`, `robots.txt`) up into `public_html/`, and remove the now-empty `public/` directory.
+3. **Edit `public_html/index.php`** to load the application from the web root itself:
+
+   ```php
+   require __DIR__.'/vendor/autoload.php';
+
+   $app = require_once __DIR__.'/bootstrap/app.php';
+   ```
+4. **Fix the storage symlink (loop problem).** A symlink from `public_html/storage` to `public_html/storage/app/public` would point at itself. Move storage outside the document root instead:
+   - Create `/home/<user>/sewa-storage/` (e.g. copy `storage/app`, `storage/framework`, `storage/logs` from the extracted ZIP).
+   - Tell Laravel where it lives by adding this to `bootstrap/app.php` before `return $app;`:
+
+     ```php
+     $app->useStoragePath('/home/<user>/sewa-storage');
+     ```
+   - Create the symlink for public uploads:
+
+     ```bash
+     ln -s /home/<user>/sewa-storage/app/public /home/<user>/public_html/storage
+     ```
+
+     Without shell access, request this symlink from your host using the template in [Notes](#notes).
+5. **Protect sensitive directories and files** — add these rules to `public_html/.htaccess` (before the rewrite rules):
+
+   ```apache
+   RedirectMatch 403 ^/(app|bootstrap|config|database|routes|storage|vendor|lang|tests)/
+   RedirectMatch 403 ^/\.(env|git)
+   ```
+6. **Create the database and configure `.env`** as in [Step 3](#step-3-configure-database) and [Step 4](#step-4-configure-env-file), then run the installer at `https://yourdomain.com/install`.
+7. **Cache the config**:
+
+   ```bash
+   cd /home/<user>/public_html && php artisan config:cache
+   ```
+
+> **Warning:** Option 3B carries a higher security risk than 3A because the entire application — including `vendor/`, `config/`, and `.env` — sits inside the web-accessible document root. The `.htaccess` deny rules are your only protection; verify them after deployment (e.g. `curl -I https://yourdomain.com/.env` should return 403). Prefer Option 3A whenever the host allows files outside `public_html`.
+
+#### Notes
+
+- The installer ZIP already excludes `storage/installed.lock`, so `/install` is active immediately after upload — no need to delete the lock file first.
+- **Symlink support request template** (for hosts without shell access):
+
+  ```
+  Subject: Request to create a symbolic link (shared hosting)
+
+  Dear Support,
+
+  I need to deploy a Laravel application on my account. Please create the
+  following symbolic link for me:
+
+    ln -s /home/<user>/sewa-cms/storage/app/public /home/<user>/public_html/storage
+
+  (For Option 3B: ln -s /home/<user>/sewa-storage/app/public /home/<user>/public_html/storage)
+
+  The target directory already exists and is owned by my account. No other
+  changes to my account are required. Thank you.
+
+  Regards,
+  <your name>
+  ```
 
 ## Step-by-Step Deployment
 

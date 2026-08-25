@@ -19,8 +19,20 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Trust X-Forwarded-* from Cloudflare Tunnel (local daemon connects
+        // from loopback/private addresses) so isSecure() reflects the real
+        // scheme before ForceHttps runs.
+        $middleware->trustProxies(
+            at: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'],
+            headers: \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR
+                | \Illuminate\Http\Request::HEADER_X_FORWARDED_HOST
+                | \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT
+                | \Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO,
+        );
+
         $middleware->append([
             \App\Http\Middleware\CheckInstalled::class,
+            \App\Http\Middleware\ForceHttps::class,
             \App\Http\Middleware\RedirectMiddleware::class,
             \App\Http\Middleware\LocaleMiddleware::class,
         ]);
