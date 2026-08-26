@@ -363,5 +363,15 @@
     "media.url_too_large": "Berkas melebihi batas ukuran 10MB.",
     "media.url_fetch_failed": "Tidak dapat mengunduh berkas dari URL tersebut.",
     "media.url_resolve_failed": "Tidak dapat menemukan host untuk URL tersebut.",
-    "media.url_blocked_host": "Host tersebut tidak diizinkan karena alasan keamanan."
+    "media.url_blocked_host": "Host tersebut tidak diizinkan karena alasan keamanan.",
+    "lang.edit_translations": "Edit Terjemahan",
+    "lang.search_keys": "Cari kunci atau nilai...",
+    "lang.key": "kunci",
+    "lang.value": "Nilai",
+    "lang.save_translations": "Simpan Terjemahan",
+    "lang.translations_saved": "Terjemahan berhasil disimpan.",
+    "lang.reference": "Referensi",
+    "lang.no_keys": "Tidak ada kunci terjemahan.",
+    "lang.invalid_payload": "Data yang dikirim tidak valid. Terjemahan tidak disimpan.",
+    "lang.write_failed": "Gagal menulis berkas terjemahan. Periksa izin berkas."
 }

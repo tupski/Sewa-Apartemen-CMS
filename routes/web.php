@@ -147,6 +147,8 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix(slug('admin_prefix', 'a
     Route::resource('vouchers', VoucherController::class);
 
     // Language Management
+    Route::get('languages/{language}/translations', [LanguageController::class, 'editTranslations'])->name('languages.translations');
+    Route::match(['put', 'patch'], 'languages/{language}/translations', [LanguageController::class, 'updateTranslations'])->name('languages.translations.update');
     Route::resource('languages', LanguageController::class)->except(['show']);
     Route::patch('languages/{language}/toggle-status', [LanguageController::class, 'toggleStatus'])->name('languages.toggle-status');
 

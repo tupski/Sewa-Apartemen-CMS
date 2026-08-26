@@ -66,6 +66,10 @@
                     </td>
                     <td class="px-5 py-3 text-right">
                         <div class="flex items-center justify-end gap-2">
+                            <a href="{{ route('admin.languages.translations', $lang) }}"
+                               class="text-xs px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 rounded-lg hover:bg-indigo-100 transition">
+                                <i class="fa-solid fa-language"></i> {{ __('lang.edit_translations') }}
+                            </a>
                             <a href="{{ route('admin.languages.edit', $lang) }}"
                                class="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 transition">
                                 Edit

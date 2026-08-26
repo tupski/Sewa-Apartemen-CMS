@@ -363,5 +363,15 @@
     "media.url_too_large": "The file exceeds the 10MB size limit.",
     "media.url_fetch_failed": "Could not download the file from that URL.",
     "media.url_resolve_failed": "Could not resolve the host for that URL.",
-    "media.url_blocked_host": "That host is not allowed for security reasons."
+    "media.url_blocked_host": "That host is not allowed for security reasons.",
+    "lang.edit_translations": "Edit Translations",
+    "lang.search_keys": "Search keys or values...",
+    "lang.key": "keys",
+    "lang.value": "Value",
+    "lang.save_translations": "Save Translations",
+    "lang.translations_saved": "Translations saved successfully.",
+    "lang.reference": "Reference",
+    "lang.no_keys": "No translation keys found.",
+    "lang.invalid_payload": "Invalid data submitted. Translations were not saved.",
+    "lang.write_failed": "Failed to write the translation file. Check file permissions."
 }
