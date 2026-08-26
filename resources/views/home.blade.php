@@ -116,7 +116,9 @@
                                     {{ $property->city ?: 'Tangerang' }}{{ $property->province ? ', ' . $property->province : '' }}
                                 </div>
                                 @php
-                                    $cheapest = $property->cheapestNight();
+                                    // Fall back to lowestPrice() when no weekday nightly rate is set
+                                    // (e.g. properties with only transit / weekly / monthly pricing).
+                                    $cheapest = $property->cheapestNight() ?? $property->lowestPrice();
                                 @endphp
                                 <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
                                     @if ($cheapest)

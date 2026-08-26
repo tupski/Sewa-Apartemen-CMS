@@ -1217,7 +1217,7 @@
                                                   id="email_{{ $templateKey }}_body"
                                                   rows="6"
                                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm font-mono">{{ old('email_' . $templateKey . '_body', $settings['email_' . $templateKey . '_body'] ?? '') }}</textarea>
-                                        <p class="text-xs text-gray-500 mt-1">Gunakan {{ user.name }}, {{ booking.code }}, dll. sebagai placeholder.</p>
+                                        <p class="text-xs text-gray-500 mt-1">Gunakan @{{ user.name }}, @{{ booking.code }}, dll. sebagai placeholder.</p>
                                     </div>
                                 </div>
                             </div>
