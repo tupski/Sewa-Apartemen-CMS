@@ -100,12 +100,14 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     Route::patch('amenities/{amenity}/status', [AmenityController::class, 'updateStatus'])->name('amenities.status');
 
     // Booking Management (Admin)
+    // NOTE: export route must be declared BEFORE the resource so 'export' is not
+    // matched as a {booking} wildcard by the resource's show route.
+    Route::get('bookings/export/csv', [BookingController::class, 'export'])->name('bookings.export');
     Route::resource('bookings', BookingController::class)->only(['index', 'show', 'destroy']);
     Route::patch('bookings/{booking}/confirm', [BookingController::class, 'confirm'])->name('bookings.confirm');
     Route::patch('bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
     Route::patch('bookings/{booking}/complete', [BookingController::class, 'complete'])->name('bookings.complete');
     Route::post('bookings/{booking}/notes', [BookingController::class, 'updateNotes'])->name('bookings.notes');
-    Route::get('bookings/export/csv', [BookingController::class, 'export'])->name('bookings.export');
 
     // User Management
     Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
@@ -142,19 +144,21 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     Route::post('slug-settings', [SlugSettingsController::class, 'update'])->name('slug-settings.update');
 
     // Locale switcher (admin session)
+    // NOTE: inside name('admin.') group — use 'set-locale' not 'admin.set-locale'
+    // to avoid double-prefix (would register as admin.admin.set-locale otherwise).
     Route::post('set-locale', function (\Illuminate\Http\Request $request) {
         $code = $request->input('locale');
         $valid = \App\Models\Language::where('code', $code)->where('is_active', true)->exists();
         if ($valid) session(['locale' => $code]);
         return back();
-    })->name('admin.set-locale');
+    })->name('set-locale');
 
     // Currency switcher (admin session)
     Route::post('set-currency', function (\Illuminate\Http\Request $request) {
         $cur = strtoupper($request->input('currency', 'IDR'));
         session(['display_currency' => $cur]);
         return back();
-    })->name('admin.set-currency');
+    })->name('set-currency');
 });
 
 require __DIR__.'/auth.php';

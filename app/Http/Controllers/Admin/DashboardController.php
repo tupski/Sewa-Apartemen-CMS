@@ -66,9 +66,7 @@ class DashboardController extends Controller
                 'totalPosts', 'activeBookings', 'occupancyRate',
                 'labels', 'bookingMonthly', 'revenueMonthly',
                 'statusBreakdown', 'topProperties',
-                'totalRevenue', 'monthRevenue', 'maxValue',
-                // legacy aliases
-                'bookingChartLabels', 'bookingChartValues'
+                'totalRevenue', 'monthRevenue', 'maxValue'
             );
         });
 

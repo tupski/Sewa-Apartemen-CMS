@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Booking;
 
 class Property extends Model
 {
@@ -118,6 +119,14 @@ class Property extends Model
     public function featuredImage()
     {
         return $this->belongsTo(Media::class, 'featured_image_id');
+    }
+
+    /**
+     * Get all bookings for this property.
+     */
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class);
     }
 
     /**
