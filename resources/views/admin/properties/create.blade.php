@@ -417,7 +417,7 @@
 {{-- ── Floating Action Button ── --}}
 <button type="button"
         id="fab-save"
-        onclick="document.getElementById('property-form').submit()"
+        onclick="document.getElementById('property-form').requestSubmit()"
         title="Simpan Properti"
         class="fixed bottom-20 right-5 z-50 flex items-center gap-2 px-4 py-3 bg-blue-600 text-white text-sm font-semibold rounded-full shadow-lg hover:bg-blue-700 active:scale-95 transition-all duration-150 min-h-[48px]">
     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -427,11 +427,13 @@
 </button>
 
 @push('scripts')
-{{-- ── Leaflet JS ── --}}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{{-- ── Leaflet JS (loaded on demand so `L` is defined before use, even
+     after a Turbo body-swap) ── --}}
 <script>
 (function () {
     'use strict';
+
+    var LEAFLET_SRC = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 
     // ── Slug auto-generation ──────────────────────────────────────
     document.getElementById('name').addEventListener('input', function () {
@@ -441,7 +443,8 @@
             .replace(/^-+|-+$/g, '');
     });
 
-    // ── Leaflet map setup ─────────────────────────────────────────
+    // ── Leaflet map setup (deferred until Leaflet `L` is available) ──
+    function initMap() {
     var initLat = parseFloat('{{ old('latitude', '') }}') || null;
     var initLng = parseFloat('{{ old('longitude', '') }}') || null;
 
@@ -568,6 +571,19 @@
             closeSearchDropdown();
         }
     });
+    }
+    // end initMap()
+
+    // Load Leaflet on demand, then build the map. loadScript is defined in app.js.
+    if (document.getElementById('property-map')) {
+        if (typeof window.loadScript === 'function') {
+            window.loadScript(LEAFLET_SRC).then(initMap).catch(function () {
+                /* Leaflet failed to load — map is optional, fail silently */
+            });
+        } else if (typeof L !== 'undefined') {
+            initMap();
+        }
+    }
 })();
 </script>
 @endpush

@@ -2,8 +2,6 @@
 
 @section('page-title', 'Dashboard')
 
-@push('head')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 @endpush
 
 @section('content')
@@ -215,6 +213,13 @@
 @push('scripts')
 <script>
 (function () {
+    // Chart.js is loaded on-demand (deduped) so `Chart` is guaranteed to be
+    // defined before use — even after a Turbo body-swap, where an inline
+    // @push('head') CDN <script> could otherwise run after this code and throw
+    // "Chart is not defined". Only loaded on pages that actually draw charts.
+    var CHART_SRC = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js';
+
+    function renderCharts() {
     const isDark = document.documentElement.classList.contains('dark');
     const gridColor   = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
     const textColor   = isDark ? '#9ca3af' : '#6b7280';
@@ -319,6 +324,16 @@
                 </div>`
             );
         });
+    }
+    }
+
+    // Load Chart.js on demand, then render. loadScript is defined in app.js.
+    if (typeof window.loadScript === 'function') {
+        window.loadScript(CHART_SRC).then(renderCharts).catch(function () {
+            /* Chart.js failed to load — charts are non-critical, fail silently */
+        });
+    } else if (typeof Chart !== 'undefined') {
+        renderCharts();
     }
 })();
 </script>

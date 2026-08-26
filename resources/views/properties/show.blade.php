@@ -551,19 +551,31 @@
 @php
     $popupHtml = '<strong>' . e($property->name) . '</strong>' . ($property->address ? '<br>' . e($property->address) : '');
 @endphp
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function () {
-    var mapLat = {{ $property->latitude }};
-    var mapLng = {{ $property->longitude }};
-    var map = L.map('property-detail-map', { scrollWheelZoom: false }).setView([mapLat, mapLng], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19
-    }).addTo(map);
-    L.marker([mapLat, mapLng]).addTo(map)
-        .bindPopup({!! json_encode($popupHtml) !!})
-        .openPopup();
+    var LEAFLET_SRC = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+
+    function initDetailMap() {
+        var mapLat = {{ $property->latitude }};
+        var mapLng = {{ $property->longitude }};
+        var map = L.map('property-detail-map', { scrollWheelZoom: false }).setView([mapLat, mapLng], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        }).addTo(map);
+        L.marker([mapLat, mapLng]).addTo(map)
+            .bindPopup({!! json_encode($popupHtml) !!})
+            .openPopup();
+    }
+
+    // Load Leaflet on demand so `L` is defined before use (loadScript from app.js).
+    if (document.getElementById('property-detail-map')) {
+        if (typeof window.loadScript === 'function') {
+            window.loadScript(LEAFLET_SRC).then(initDetailMap).catch(function () {});
+        } else if (typeof L !== 'undefined') {
+            initDetailMap();
+        }
+    }
 })();
 </script>
 @endif

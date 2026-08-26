@@ -68,7 +68,10 @@ class PropertyRequest extends FormRequest
             'photo_categories' => ['nullable'],
             'gallery_uploads' => ['nullable', 'array'],
             'gallery_uploads.*' => ['array'],
-            'gallery_uploads.*.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
+            // Mirror the client-side uploader (JPEG, PNG, WebP, GIF · max 10 MB).
+            // `image` + `mimes` validate against the real (sniffed) file type, so a
+            // renamed/spoofed extension is rejected server-side (defence in depth).
+            'gallery_uploads.*.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:10240'],
             'gallery_media' => ['nullable', 'array'],
             'gallery_media.*' => ['array'],
             'gallery_media.*.*' => ['integer', 'exists:media,id'],

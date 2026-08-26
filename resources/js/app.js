@@ -9,6 +9,34 @@ window.Alpine = Alpine;
 // ─── Turbo Progress Bar — aktifkan dengan delay 0 agar langsung muncul ─────
 Turbo.config.drive.progressBarDelay = 0;
 
+// ─── Dynamic script loader ─────────────────────────────────────────────────
+// Loads a third-party <script src> once (deduped) and resolves when ready.
+// Needed because CDN libs (Leaflet `L`, Chart.js `Chart`) are used by inline
+// view scripts; with Turbo body-swaps the inline code can run before the async
+// CDN script finishes. Wrapping usage in loadScript(src).then(...) guarantees
+// the global is defined before it is referenced.
+window.loadScript = function (src) {
+    return new Promise(function (resolve, reject) {
+        var existing = document.querySelector('script[data-dyn-src="' + src + '"]');
+        if (existing) {
+            if (existing.dataset.loaded === 'true') {
+                resolve();
+            } else {
+                existing.addEventListener('load', function () { resolve(); });
+                existing.addEventListener('error', reject);
+            }
+            return;
+        }
+        var s = document.createElement('script');
+        s.src = src;
+        s.async = false;
+        s.setAttribute('data-dyn-src', src);
+        s.addEventListener('load', function () { s.dataset.loaded = 'true'; resolve(); });
+        s.addEventListener('error', reject);
+        document.head.appendChild(s);
+    });
+};
+
 // Escape HTML sebelum interpolasi ke x-html: title & highlight harus bersih
 // dari XSS (title dari server, query dari user — keduanya ikut dirender).
 function escapeHtml(str) {
@@ -150,6 +178,235 @@ Alpine.data('searchAutocomplete', (config = {}) => ({
         this.highlighted = -1;
     },
 }));
+
+// ─── photoGallery — property photo uploader / gallery ──────────────────────
+// Registered here (before Alpine.start()) so the component is guaranteed to
+// exist when x-data="photoGallery({...})" is initialised, including after
+// Turbo body-swaps. Previously this lived in an `alpine:init` listener inside
+// a @push('scripts') block that ran AFTER Alpine.start(), so it never
+// registered — causing "isDragging/errors/existingPhotos/... is not defined"
+// and "init is not defined" ReferenceErrors.
+//
+// Config object:
+//   existing        – array of {id, media_id, url, category} from server
+//   initialFeatured – current featured_image_id (media ID) or null
+//   categories      – ordered array of category option strings
+Alpine.data('photoGallery', function (config = {}) {
+    return {
+        /* ── state ──────────────────────────────────────────────────── */
+        categories:      config.categories  || [],
+        existingPhotos:  JSON.parse(JSON.stringify(config.existing || [])),
+        newPhotos:       [],          // {uid, file, preview, category}
+        deletedIds:      [],          // PropertyPhoto IDs to delete
+        featuredMediaId: config.initialFeatured || null,  // existing photo
+        featuredNewUid:  null,        // new photo uid (visual only)
+        errors:          [],
+        isDragging:      false,
+        isDragOver:      false,
+
+        /* ── constants ───────────────────────────────────────────────── */
+        MAX_MB:    10,
+        MIME_OK:   ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+
+        /* ── lifecycle ───────────────────────────────────────────────── */
+        init() {
+            // Hook into the parent form's submit event so we can inject
+            // the real file inputs + hidden fields before the browser
+            // serialises the form data.
+            var self    = this;
+            var section = this.$el;
+            var form    = section.closest('form');
+            if (form) {
+                form.addEventListener('submit', function (e) {
+                    self.prepareSubmit(e, form);
+                }, { capture: true });
+            }
+        },
+
+        /* ── drag & drop ─────────────────────────────────────────────── */
+        handleDrop(event) {
+            var files = event.dataTransfer ? event.dataTransfer.files : [];
+            this.processFiles(Array.from(files));
+        },
+
+        handleFileInput(event) {
+            var files = event.target.files || [];
+            this.processFiles(Array.from(files));
+            // Reset so the same file can be re-selected if removed
+            event.target.value = '';
+        },
+
+        /* ── file processing ─────────────────────────────────────────── */
+        processFiles(files) {
+            var self   = this;
+            var newErr = [];
+
+            files.forEach(function (file) {
+                if (!self.MIME_OK.includes(file.type)) {
+                    newErr.push(file.name + ': tipe file tidak didukung (gunakan JPEG, PNG, WebP, atau GIF).');
+                    return;
+                }
+                if (file.size > self.MAX_MB * 1024 * 1024) {
+                    newErr.push(file.name + ': ukuran melebihi ' + self.MAX_MB + ' MB.');
+                    return;
+                }
+
+                var uid    = Math.random().toString(36).slice(2) + Date.now().toString(36);
+                var reader = new FileReader();
+
+                reader.onload = function (e) {
+                    self.newPhotos.push({
+                        uid:      uid,
+                        file:     file,
+                        preview:  e.target.result,
+                        category: 'Others',
+                    });
+                };
+                reader.readAsDataURL(file);
+            });
+
+            if (newErr.length) {
+                this.errors = this.errors.concat(newErr);
+            }
+        },
+
+        /* ── star / featured ─────────────────────────────────────────── */
+        setFeatured(photo) {
+            // Toggle: clicking the active star deselects it
+            if (this.featuredMediaId === photo.media_id) {
+                this.featuredMediaId = null;
+            } else {
+                this.featuredMediaId = photo.media_id;
+                this.featuredNewUid  = null;  // clear new-photo star
+            }
+        },
+
+        setFeaturedNew(photo) {
+            if (this.featuredNewUid === photo.uid) {
+                this.featuredNewUid = null;
+            } else {
+                this.featuredNewUid  = photo.uid;
+                this.featuredMediaId = null;  // clear existing-photo star
+            }
+        },
+
+        /* ── deletion ────────────────────────────────────────────────── */
+        removeExisting(photo) {
+            this.deletedIds.push(photo.id);
+            this.existingPhotos = this.existingPhotos.filter(function (p) {
+                return p.id !== photo.id;
+            });
+            // If we deleted the featured photo, clear the selection
+            if (this.featuredMediaId === photo.media_id) {
+                this.featuredMediaId = null;
+            }
+        },
+
+        removeNew(photo) {
+            this.newPhotos = this.newPhotos.filter(function (p) {
+                return p.uid !== photo.uid;
+            });
+            if (this.featuredNewUid === photo.uid) {
+                this.featuredNewUid = null;
+            }
+            // Revoke the object URL to free memory (no-op for data URLs but harmless)
+            if (photo.preview && photo.preview.startsWith('blob:')) {
+                URL.revokeObjectURL(photo.preview);
+            }
+        },
+
+        /* ── form-submit preparation ─────────────────────────────────── */
+        // Called in the form's capture-phase submit listener. Injects all
+        // photo-related hidden inputs + real file inputs into
+        // #photo-submit-container so the browser includes them in the
+        // multipart/form-data body.
+        //
+        // Field mapping:
+        //   photo_categories            JSON array of distinct categories
+        //   gallery_uploads[N][]        file input per category index N
+        //   deleted_photo_ids           comma-separated existing photo IDs
+        //   photo_categories_update[id] already handled by x-model hidden inputs
+        //   featured_image_id           media_id of chosen photo (if existing)
+        prepareSubmit(event, form) {
+            var container = document.getElementById('photo-submit-container');
+            if (!container) { return; }
+
+            // Wipe any previous injections (e.g. failed validation re-submit)
+            container.innerHTML = '';
+
+            /* 1. Collect unique categories from new photos */
+            var catIndex = {};   // category → array index
+            var catList  = [];   // ordered list
+
+            this.newPhotos.forEach(function (p) {
+                if (!(p.category in catIndex)) {
+                    catIndex[p.category] = catList.length;
+                    catList.push(p.category);
+                }
+            });
+
+            /* 2. photo_categories (JSON) */
+            if (catList.length > 0) {
+                var catInput = document.createElement('input');
+                catInput.type  = 'hidden';
+                catInput.name  = 'photo_categories';
+                catInput.value = JSON.stringify(catList);
+                container.appendChild(catInput);
+            }
+
+            /* 3. gallery_uploads[N][] – one <input type="file"> per new photo */
+            //    We must use a DataTransfer to programmatically assign a File
+            //    to a file input cross-browser.
+            if (this.newPhotos.length > 0 && typeof DataTransfer !== 'undefined') {
+                var fileInputs = {};  // category → <input type="file">
+
+                this.newPhotos.forEach(function (p) {
+                    var idx = catIndex[p.category];
+                    var key = String(idx);
+                    if (!fileInputs[key]) {
+                        var fi = document.createElement('input');
+                        fi.type     = 'file';
+                        fi.name     = 'gallery_uploads[' + idx + '][]';
+                        fi.multiple = true;
+                        fi.style.display = 'none';
+                        var dt = new DataTransfer();
+                        dt.items.add(p.file);
+                        fi.files = dt.files;
+                        fileInputs[key] = { el: fi, dt: dt };
+                    } else {
+                        fileInputs[key].dt.items.add(p.file);
+                        fileInputs[key].el.files = fileInputs[key].dt.files;
+                    }
+                });
+
+                Object.values(fileInputs).forEach(function (entry) {
+                    container.appendChild(entry.el);
+                });
+            }
+
+            /* 4. deleted_photo_ids */
+            if (this.deletedIds.length > 0) {
+                var delInput = document.createElement('input');
+                delInput.type  = 'hidden';
+                delInput.name  = 'deleted_photo_ids';
+                delInput.value = this.deletedIds.join(',');
+                container.appendChild(delInput);
+            }
+
+            /* 5. featured_image_id — only when an EXISTING photo is starred */
+            if (this.featuredMediaId) {
+                var featInput = document.createElement('input');
+                featInput.type  = 'hidden';
+                featInput.name  = 'featured_image_id';
+                featInput.value = this.featuredMediaId;
+                container.appendChild(featInput);
+            }
+            // Note: if a NEW photo is starred (featuredNewUid set) we do NOT
+            // send featured_image_id — the controller will skip it, and the
+            // user can come back and star the photo after the first save.
+        },
+    };
+});
 
 // ponytail: Alpine.start() one-time app-level, sengaja dibiarkan di sini — TIDAK di `turbo:load`.
 // Aman: Alpine memakai MutationObserver pada document (lifecycle.js, startObservingMutations),
