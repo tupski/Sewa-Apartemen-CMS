@@ -6,7 +6,7 @@
     CAPTCHA is disabled or misconfigured (fail-safe), so forms keep working.
 
     Usage:  <x-captcha />
-            <x-captcha action="login" />   {{-- action label used by reCAPTCHA v3 --}}
+            <x-captcha action="login" />   action label used by reCAPTCHA v3
 
     Providers: recaptcha_v2 | recaptcha_v3 | hcaptcha | turnstile
 --}}

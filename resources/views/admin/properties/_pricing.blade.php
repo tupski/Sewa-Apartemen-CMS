@@ -13,6 +13,21 @@
     ];
 @endphp
 
+@push('head')
+<style>
+    /*
+     * Room-type rows are rendered once and reflow between a horizontally
+     * scrollable table (lg+) and stacked cards (< lg) using Tailwind's
+     * responsive `display` utilities (block ↔ table-row). The existing
+     * "hide unselected type" toggle flips the `.is-hidden` class; because the
+     * reflow relies on `lg:table-row` (a media-query rule that would otherwise
+     * win on desktop), we force the hidden state with !important so a
+     * deselected room type stays hidden at every breakpoint.
+     */
+    .price-row.is-hidden { display: none !important; }
+</style>
+@endpush
+
 <div class="border-b border-gray-200 pb-8">
     <h3 class="text-lg font-semibold text-gray-800 mb-1">Tipe Kamar & Harga</h3>
     <p class="text-sm text-gray-500 mb-5">
@@ -21,13 +36,13 @@
     </p>
 
     {{-- ===== ROOM TYPES ===== --}}
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 mb-6">
         @foreach(\App\Models\Property::UNIT_TYPES as $key => $label)
-            <label class="flex items-center p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
+            <label class="flex items-center min-h-[44px] px-3 py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition select-none">
                 <input type="checkbox"
                        name="unit_types[]"
                        value="{{ $key }}"
-                       class="type-check h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                       class="type-check h-5 w-5 lg:h-4 lg:w-4 text-blue-600 rounded focus:ring-blue-500"
                        data-type="{{ $key }}"
                        {{ in_array($key, (array) $selectedTypes) ? 'checked' : '' }}>
                 <span class="ml-2 text-sm text-gray-700">{{ $label }}</span>
@@ -44,13 +59,13 @@
             Pilih hari weekend untuk properti ini. Jika tidak dipilih, sistem akan menggunakan konfigurasi global
             dari <strong>Settings → Pricing</strong>. Centang semua hari yang ingin dikenakan harga weekend.
         </p>
-        <div class="flex flex-wrap gap-2">
+        <div class="grid grid-cols-3 sm:grid-cols-4 md:flex md:flex-wrap gap-2">
             @foreach($days as $day => $dayLabel)
-                <label class="inline-flex items-center px-3 py-2 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
+                <label class="inline-flex items-center justify-center md:justify-start min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition select-none">
                     <input type="checkbox"
                            name="weekend_days[]"
                            value="{{ $day }}"
-                           class="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                           class="h-5 w-5 md:h-4 md:w-4 text-blue-600 rounded focus:ring-blue-500"
                            {{ in_array($day, (array) $selectedWeekend) ? 'checked' : '' }}>
                     <span class="ml-2 text-sm text-gray-700">{{ $dayLabel }}</span>
                 </label>
@@ -71,39 +86,51 @@
                 </p>
             </div>
         </div>
-        <div class="overflow-x-auto rounded-lg border border-gray-200">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+
+        {{-- overflow-x scroll is scoped to THIS container on lg+; on mobile the
+             table reflows to stacked cards so the page body never scrolls. --}}
+        <div class="lg:overflow-x-auto lg:rounded-lg lg:border lg:border-gray-200">
+            <table class="w-full block lg:table lg:min-w-full lg:divide-y lg:divide-gray-200">
+                <thead class="hidden lg:table-header-group bg-gray-50">
                     <tr>
-                        <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Tipe</th>
+                        <th class="sticky left-0 z-10 bg-gray-50 border-r border-gray-100 px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Tipe</th>
                         @foreach($transitFields as $slot => $slotLabel)
                             <th class="px-3 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" colspan="2">{{ $slotLabel }}</th>
                         @endforeach
                     </tr>
                     <tr class="bg-gray-50 border-t border-gray-100">
-                        <th class="px-4 py-1.5 text-xs text-gray-400"></th>
+                        <th class="sticky left-0 z-10 bg-gray-50 border-r border-gray-100 px-4 py-1.5 text-xs text-gray-400"></th>
                         @foreach($transitFields as $slot => $slotLabel)
                             <th class="px-3 py-1.5 text-center text-xs text-gray-400 font-normal">Weekday</th>
                             <th class="px-3 py-1.5 text-center text-xs text-gray-400 font-normal">Weekend</th>
                         @endforeach
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-100">
+                <tbody class="block lg:table-row-group lg:bg-white lg:divide-y lg:divide-gray-100 space-y-3 lg:space-y-0">
                     @foreach(\App\Models\Property::UNIT_TYPES as $key => $label)
-                        <tr class="price-row {{ !in_array($key, (array)$selectedTypes) ? 'hidden' : '' }}" data-type="{{ $key }}">
-                            <td class="px-4 py-3 text-sm font-medium text-gray-800">{{ $label }}</td>
+                        <tr class="price-row {{ !in_array($key, (array)$selectedTypes) ? 'is-hidden' : '' }} block lg:table-row rounded-lg border border-gray-200 lg:border-0 overflow-hidden bg-white" data-type="{{ $key }}">
+                            <td class="block lg:table-cell lg:sticky lg:left-0 lg:z-10 lg:border-r lg:border-gray-100 bg-gray-50 lg:bg-white px-4 py-2.5 lg:py-3 text-sm font-semibold lg:font-medium text-gray-800 lg:w-24">{{ $label }}</td>
                             @foreach($transitFields as $slot => $slotLabel)
-                                <td class="px-3 py-3">
-                                    <x-money-input
-                                        :name="'prices['.$key.']['.$slot.'_wd]'"
-                                        :value="old('prices.'.$key.'.'.$slot.'_wd', $property?->prices[$key][$slot.'_wd'] ?? '')"
-                                        inputClass="w-28 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
+                                <td class="block lg:table-cell px-4 lg:px-3 py-2 lg:py-3 border-t border-gray-100 lg:border-t-0">
+                                    <div class="lg:hidden text-xs font-semibold text-gray-600 mb-1">{{ $slotLabel }}</div>
+                                    <div class="flex items-center justify-between gap-3 lg:block">
+                                        <span class="lg:hidden text-xs text-gray-500">Weekday</span>
+                                        <x-money-input
+                                            :name="'prices['.$key.']['.$slot.'_wd]'"
+                                            :value="old('prices.'.$key.'.'.$slot.'_wd', $property?->prices[$key][$slot.'_wd'] ?? '')"
+                                            wrapperClass="w-32 lg:w-auto shrink-0"
+                                            inputClass="w-full lg:w-28 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
+                                    </div>
                                 </td>
-                                <td class="px-3 py-3">
-                                    <x-money-input
-                                        :name="'prices['.$key.']['.$slot.'_we]'"
-                                        :value="old('prices.'.$key.'.'.$slot.'_we', $property?->prices[$key][$slot.'_we'] ?? '')"
-                                        inputClass="w-28 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
+                                <td class="block lg:table-cell px-4 lg:px-3 py-2 lg:py-3">
+                                    <div class="flex items-center justify-between gap-3 lg:block">
+                                        <span class="lg:hidden text-xs text-gray-500">Weekend</span>
+                                        <x-money-input
+                                            :name="'prices['.$key.']['.$slot.'_we]'"
+                                            :value="old('prices.'.$key.'.'.$slot.'_we', $property?->prices[$key][$slot.'_we'] ?? '')"
+                                            wrapperClass="w-32 lg:w-auto shrink-0"
+                                            inputClass="w-full lg:w-28 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
+                                    </div>
                                 </td>
                             @endforeach
                         </tr>
@@ -121,30 +148,38 @@
                 Dihitung per malam. Kosongkan jika tidak menawarkan sewa harian — tidak akan tampil di frontend.
             </p>
         </div>
-        <div class="overflow-x-auto rounded-lg border border-gray-200">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+        <div class="lg:overflow-x-auto lg:rounded-lg lg:border lg:border-gray-200">
+            <table class="w-full block lg:table lg:min-w-full lg:divide-y lg:divide-gray-200">
+                <thead class="hidden lg:table-header-group bg-gray-50">
                     <tr>
-                        <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Tipe</th>
+                        <th class="sticky left-0 z-10 bg-gray-50 border-r border-gray-100 px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Tipe</th>
                         <th class="px-3 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Weekday (per malam)</th>
                         <th class="px-3 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Weekend (per malam)</th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-100">
+                <tbody class="block lg:table-row-group lg:bg-white lg:divide-y lg:divide-gray-100 space-y-3 lg:space-y-0">
                     @foreach(\App\Models\Property::UNIT_TYPES as $key => $label)
-                        <tr class="price-row {{ !in_array($key, (array)$selectedTypes) ? 'hidden' : '' }}" data-type="{{ $key }}">
-                            <td class="px-4 py-3 text-sm font-medium text-gray-800">{{ $label }}</td>
-                            <td class="px-3 py-3">
-                                <x-money-input
-                                    :name="'prices['.$key.'][night_wd]'"
-                                    :value="old('prices.'.$key.'.night_wd', $property?->prices[$key]['night_wd'] ?? '')"
-                                    inputClass="w-36 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
+                        <tr class="price-row {{ !in_array($key, (array)$selectedTypes) ? 'is-hidden' : '' }} block lg:table-row rounded-lg border border-gray-200 lg:border-0 overflow-hidden bg-white" data-type="{{ $key }}">
+                            <td class="block lg:table-cell lg:sticky lg:left-0 lg:z-10 lg:border-r lg:border-gray-100 bg-gray-50 lg:bg-white px-4 py-2.5 lg:py-3 text-sm font-semibold lg:font-medium text-gray-800 lg:w-24">{{ $label }}</td>
+                            <td class="block lg:table-cell px-4 lg:px-3 py-2 lg:py-3 border-t border-gray-100 lg:border-t-0">
+                                <div class="flex items-center justify-between gap-3 lg:block">
+                                    <span class="lg:hidden text-xs text-gray-500">Weekday</span>
+                                    <x-money-input
+                                        :name="'prices['.$key.'][night_wd]'"
+                                        :value="old('prices.'.$key.'.night_wd', $property?->prices[$key]['night_wd'] ?? '')"
+                                        wrapperClass="w-40 lg:w-auto shrink-0"
+                                        inputClass="w-full lg:w-36 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
+                                </div>
                             </td>
-                            <td class="px-3 py-3">
-                                <x-money-input
-                                    :name="'prices['.$key.'][night_we]'"
-                                    :value="old('prices.'.$key.'.night_we', $property?->prices[$key]['night_we'] ?? '')"
-                                    inputClass="w-36 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
+                            <td class="block lg:table-cell px-4 lg:px-3 py-2 lg:py-3 border-t border-gray-100 lg:border-t-0">
+                                <div class="flex items-center justify-between gap-3 lg:block">
+                                    <span class="lg:hidden text-xs text-gray-500">Weekend</span>
+                                    <x-money-input
+                                        :name="'prices['.$key.'][night_we]'"
+                                        :value="old('prices.'.$key.'.night_we', $property?->prices[$key]['night_we'] ?? '')"
+                                        wrapperClass="w-40 lg:w-auto shrink-0"
+                                        inputClass="w-full lg:w-36 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
+                                </div>
                             </td>
                         </tr>
                     @endforeach
@@ -162,24 +197,28 @@
                 Kosongkan jika tidak menawarkan sewa mingguan — tidak akan tampil di frontend.
             </p>
         </div>
-        <div class="overflow-x-auto rounded-lg border border-gray-200">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+        <div class="lg:overflow-x-auto lg:rounded-lg lg:border lg:border-gray-200">
+            <table class="w-full block lg:table lg:min-w-full lg:divide-y lg:divide-gray-200">
+                <thead class="hidden lg:table-header-group bg-gray-50">
                     <tr>
-                        <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Tipe</th>
+                        <th class="sticky left-0 z-10 bg-gray-50 border-r border-gray-100 px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Tipe</th>
                         <th class="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga per Minggu</th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-100">
+                <tbody class="block lg:table-row-group lg:bg-white lg:divide-y lg:divide-gray-100 space-y-3 lg:space-y-0">
                     @foreach(\App\Models\Property::UNIT_TYPES as $key => $label)
-                        <tr class="price-row {{ !in_array($key, (array)$selectedTypes) ? 'hidden' : '' }}" data-type="{{ $key }}">
-                            <td class="px-4 py-3 text-sm font-medium text-gray-800">{{ $label }}</td>
-                            <td class="px-3 py-3">
-                                <x-money-input
-                                    :name="'prices['.$key.'][weekly]'"
-                                    :value="old('prices.'.$key.'.weekly', $property?->prices[$key]['weekly'] ?? '')"
-                                    placeholder="Kosongkan jika tidak tersedia"
-                                    inputClass="w-64 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
+                        <tr class="price-row {{ !in_array($key, (array)$selectedTypes) ? 'is-hidden' : '' }} block lg:table-row rounded-lg border border-gray-200 lg:border-0 overflow-hidden bg-white" data-type="{{ $key }}">
+                            <td class="block lg:table-cell lg:sticky lg:left-0 lg:z-10 lg:border-r lg:border-gray-100 bg-gray-50 lg:bg-white px-4 py-2.5 lg:py-3 text-sm font-semibold lg:font-medium text-gray-800 lg:w-24">{{ $label }}</td>
+                            <td class="block lg:table-cell px-4 lg:px-3 py-2 lg:py-3 border-t border-gray-100 lg:border-t-0">
+                                <div class="flex items-center justify-between gap-3 lg:block">
+                                    <span class="lg:hidden text-xs text-gray-500">Harga per Minggu</span>
+                                    <x-money-input
+                                        :name="'prices['.$key.'][weekly]'"
+                                        :value="old('prices.'.$key.'.weekly', $property?->prices[$key]['weekly'] ?? '')"
+                                        placeholder="Kosongkan jika tidak tersedia"
+                                        wrapperClass="w-48 sm:w-64 lg:w-auto shrink-0"
+                                        inputClass="w-full lg:w-64 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
+                                </div>
                             </td>
                         </tr>
                     @endforeach
@@ -197,24 +236,28 @@
                 Kosongkan jika tidak menawarkan sewa bulanan — tidak akan tampil di frontend.
             </p>
         </div>
-        <div class="overflow-x-auto rounded-lg border border-gray-200">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+        <div class="lg:overflow-x-auto lg:rounded-lg lg:border lg:border-gray-200">
+            <table class="w-full block lg:table lg:min-w-full lg:divide-y lg:divide-gray-200">
+                <thead class="hidden lg:table-header-group bg-gray-50">
                     <tr>
-                        <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Tipe</th>
+                        <th class="sticky left-0 z-10 bg-gray-50 border-r border-gray-100 px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Tipe</th>
                         <th class="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga per Bulan</th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-100">
+                <tbody class="block lg:table-row-group lg:bg-white lg:divide-y lg:divide-gray-100 space-y-3 lg:space-y-0">
                     @foreach(\App\Models\Property::UNIT_TYPES as $key => $label)
-                        <tr class="price-row {{ !in_array($key, (array)$selectedTypes) ? 'hidden' : '' }}" data-type="{{ $key }}">
-                            <td class="px-4 py-3 text-sm font-medium text-gray-800">{{ $label }}</td>
-                            <td class="px-3 py-3">
-                                <x-money-input
-                                    :name="'prices['.$key.'][monthly]'"
-                                    :value="old('prices.'.$key.'.monthly', $property?->prices[$key]['monthly'] ?? '')"
-                                    placeholder="Kosongkan jika tidak tersedia"
-                                    inputClass="w-64 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
+                        <tr class="price-row {{ !in_array($key, (array)$selectedTypes) ? 'is-hidden' : '' }} block lg:table-row rounded-lg border border-gray-200 lg:border-0 overflow-hidden bg-white" data-type="{{ $key }}">
+                            <td class="block lg:table-cell lg:sticky lg:left-0 lg:z-10 lg:border-r lg:border-gray-100 bg-gray-50 lg:bg-white px-4 py-2.5 lg:py-3 text-sm font-semibold lg:font-medium text-gray-800 lg:w-24">{{ $label }}</td>
+                            <td class="block lg:table-cell px-4 lg:px-3 py-2 lg:py-3 border-t border-gray-100 lg:border-t-0">
+                                <div class="flex items-center justify-between gap-3 lg:block">
+                                    <span class="lg:hidden text-xs text-gray-500">Harga per Bulan</span>
+                                    <x-money-input
+                                        :name="'prices['.$key.'][monthly]'"
+                                        :value="old('prices.'.$key.'.monthly', $property?->prices[$key]['monthly'] ?? '')"
+                                        placeholder="Kosongkan jika tidak tersedia"
+                                        wrapperClass="w-48 sm:w-64 lg:w-auto shrink-0"
+                                        inputClass="w-full lg:w-64 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
+                                </div>
                             </td>
                         </tr>
                     @endforeach
@@ -431,7 +474,7 @@
     document.querySelectorAll('.type-check').forEach(function (checkbox) {
         checkbox.addEventListener('change', function () {
             document.querySelectorAll('.price-row[data-type="' + this.dataset.type + '"]').forEach(function (row) {
-                row.classList.toggle('hidden', !checkbox.checked);
+                row.classList.toggle('is-hidden', !checkbox.checked);
             });
         });
     });
