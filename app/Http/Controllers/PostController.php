@@ -6,6 +6,7 @@ use App\Models\Post;
 use App\Models\Category;
 use App\Models\Tag;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class PostController extends Controller
@@ -49,12 +50,16 @@ class PostController extends Controller
     {
         $validated = $request->validate([
             'title'          => 'required|string|max:255',
+            // Slug is OPTIONAL: auto-generated from the title when empty.
             'slug'           => 'nullable|string|max:255|unique:posts,slug',
             'content'        => 'required|string',
             'excerpt'        => 'nullable|string',
-            'status'         => 'required|in:draft,published',
+            // Status now comes from a hidden field (draft/published) — kept
+            // nullable so legacy clients/tests that omit it still work (defaults to draft).
+            'status'         => 'nullable|in:draft,published',
             'category_id'    => 'nullable|exists:categories,id',
-            'featured_image' => 'nullable|image|max:2048',
+            // Client enforces images only + 5MB, keep server-side rules as the trust boundary.
+            'featured_image' => 'nullable|image|mimes:jpeg,png,webp,gif|max:5120',
             'tags'           => 'nullable|string',
             'seo'            => 'nullable|array',
             // BUG-024 FIX: Validasi field SEO agar tidak ada string tak terbatas
@@ -66,11 +71,14 @@ class PostController extends Controller
         try {
             $data = $validated;
             $data['user_id'] = auth()->id();
+            // Status is optional in the request; default to draft.
+            $data['status'] = $data['status'] ?? 'draft';
             // FIND-005: sanitize rich content before persistence
             $data['content'] = \App\Services\SafeHtmlService::sanitize($data['content'] ?? null);
 
+            // Slug is optional — generate from title with a uniqueness suffix.
             if (empty($data['slug'])) {
-                $data['slug'] = Str::slug($data['title']);
+                $data['slug'] = Post::uniqueSlug($data['title']);
             }
 
             if ($request->hasFile('featured_image')) {
@@ -129,12 +137,13 @@ class PostController extends Controller
     {
         $validated = $request->validate([
             'title'          => 'required|string|max:255',
+            // Slug is OPTIONAL: auto-generated from the title when empty.
             'slug'           => 'nullable|string|max:255|unique:posts,slug,' . $post->id,
             'content'        => 'required|string',
             'excerpt'        => 'nullable|string',
-            'status'         => 'required|in:draft,published',
+            'status'         => 'nullable|in:draft,published',
             'category_id'    => 'nullable|exists:categories,id',
-            'featured_image' => 'nullable|image|max:2048',
+            'featured_image' => 'nullable|image|mimes:jpeg,png,webp,gif|max:5120',
             'tags'           => 'nullable|string',
             'seo'            => 'nullable|array',
             // BUG-024 FIX: Konsisten dengan store() — validasi field SEO pada update juga
@@ -148,10 +157,16 @@ class PostController extends Controller
             $validated['content'] = \App\Services\SafeHtmlService::sanitize($validated['content'] ?? null);
             $data = $validated;
 
+            // Status is optional in the request; default to draft.
+            $data['status'] = $data['status'] ?? 'draft';
+
+            // Slug is optional — generate from title with a uniqueness suffix.
             if (empty($data['slug'])) {
-                $data['slug'] = Str::slug($data['title']);
+                $data['slug'] = Post::uniqueSlug($data['title'], $post->id);
             }
 
+            // An empty file input submits `featured_image = null`, so only touch
+            // the column when the user actually uploaded or explicitly removed it.
             if ($request->hasFile('featured_image')) {
                 $result = upload_file($request->file('featured_image'), [
                     'base_folder'   => 'Blog',
@@ -160,6 +175,14 @@ class PostController extends Controller
                     'name_category' => $data['title'] ?? 'post',
                 ]);
                 $data['featured_image'] = $result['path'];
+            } elseif ($request->boolean('remove_featured_image')) {
+                // The user removed the featured image in the form (× button).
+                if ($post->featured_image) {
+                    Storage::disk('public')->delete($post->featured_image);
+                }
+                $data['featured_image'] = null;
+            } else {
+                unset($data['featured_image']);
             }
 
             $post->update($data);
@@ -198,6 +221,40 @@ class PostController extends Controller
         } catch (\Exception $e) {
             return back()
                 ->with('error', 'Failed to delete post: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * AJAX image upload used by the Quill WYSIWYG editor.
+     * Stores the file via the shared upload_file() helper and returns the
+     * public /storage/... URL so it can be inserted into the editor content.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function uploadImage(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,webp,gif|max:5120',
+        ]);
+
+        try {
+            $result = upload_file($request->file('image'), [
+                'base_folder'   => 'Blog',
+                'sub_folders'   => ['content'],
+                'name_prefix'   => 'Blog',
+                'name_category' => 'content',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'url'     => Storage::url($result['path']),
+                'path'    => $result['path'],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Image upload failed: ' . $e->getMessage(),
+            ], 422);
         }
     }
 

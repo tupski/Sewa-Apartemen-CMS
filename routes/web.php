@@ -119,7 +119,12 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix(slug('admin_prefix', 'a
     Route::resource('redirects', RedirectController::class);
 
     // Blog Management
+    // NOTE: custom routes must be declared BEFORE the resource so 'upload-image'
+    // is not matched as a {post} wildcard by the resource's show/update routes.
+    Route::post('posts/upload-image', [PostController::class, 'uploadImage'])->name('posts.upload-image');
     Route::resource('posts', PostController::class);
+    // AJAX quick-create of a blog category from the post form (returns JSON).
+    Route::post('categories/store-ajax', [CategoryController::class, 'storeAjax'])->name('categories.store-ajax');
     Route::resource('categories', CategoryController::class);
     Route::resource('tags', TagController::class);
 

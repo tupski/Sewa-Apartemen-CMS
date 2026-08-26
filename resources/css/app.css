@@ -146,3 +146,32 @@ body {
         max-height: 75vh !important;
     }
 }
+
+/* =====================================================
+   Blog Post Form — sticky action bar
+   The JS sets margin-left dynamically based on sidebar
+   collapsed/expanded state.
+   ===================================================== */
+#sticky-bar {
+    transition: margin-left 0.3s ease;
+}
+
+/* =====================================================
+   Blog Post Form — featured image dropzone
+   ===================================================== */
+#featured-image-dropzone.has-image {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+}
+
+/* =====================================================
+   Blog Post Form — Quill editor overrides
+   ===================================================== */
+.wysiwyg-container {
+    min-height: 300px;
+}
+.wysiwyg-container .ql-editor {
+    min-height: 280px;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+}

@@ -51,6 +51,50 @@ class CategoryController extends Controller
         }
     }
 
+    /**
+     * AJAX quick-create of a category from the post create/edit form.
+     * Accepts a name (optionally a slug/description), persists it and returns JSON
+     * so the front-end can insert the new option into the category dropdown.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function storeAjax(Request $request)
+    {
+        $validated = $request->validate([
+            'name'        => 'required|string|max:255',
+            'slug'        => 'nullable|string|max:255|unique:categories,slug',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            $data = $validated;
+            if (empty($data['slug'])) {
+                $data['slug'] = Str::slug($data['name']);
+                // Ensure uniqueness by appending a numeric suffix if needed.
+                $base = $data['slug'];
+                $i = 1;
+                while (\App\Models\Category::where('slug', $data['slug'])->exists()) {
+                    $data['slug'] = $base . '-' . $i++;
+                }
+            }
+
+            $category = Category::create($data);
+
+            return response()->json([
+                'success' => true,
+                'id'      => $category->id,
+                'name'    => $category->name,
+                'slug'    => $category->slug,
+                'message' => 'Category created successfully.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create category: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
     public function edit(Category $category)
     {
         return view('admin.categories.edit', compact('category'));
