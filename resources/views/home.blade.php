@@ -87,6 +87,13 @@
                                 primaryColor: '{{ $primaryColor }}',
                                 resizeTimer: null,
 
+                                // ── drag / swipe state ─────────────────────────────
+                                isDragging: false,
+                                dragMoved: false,
+                                dragStartX: 0,
+                                dragCurrentX: 0,
+                                viewportWidth: 1,
+
                                 get maxIndex() {
                                     return this.total - this.visibleCount;
                                 },
@@ -102,6 +109,16 @@
                                 },
                                 get cardWidth() {
                                     return (100 / this.visibleCount) + '%';
+                                },
+                                get dragDelta() {
+                                    return this.isDragging ? (this.dragCurrentX - this.dragStartX) : 0;
+                                },
+                                get trackStyle() {
+                                    const transition = this.isDragging
+                                        ? 'none'
+                                        : 'transform 500ms cubic-bezier(0.4,0,0.2,1)';
+                                    const transform = 'translateX(calc(-' + (this.currentIndex * 100 / this.total) + '% + ' + this.dragDelta + 'px))';
+                                    return 'transition: ' + transition + '; will-change: transform; touch-action: pan-y; cursor: ' + (this.isDragging ? 'grabbing' : 'grab') + '; transform: ' + transform;
                                 },
 
                                 getVisibleCount() {
@@ -127,6 +144,47 @@
                                 init() {
                                     this.visibleCount = this.getVisibleCount();
                                     window.addEventListener('resize', () => this.handleResize());
+                                },
+
+                                // ── drag / swipe (pointer events cover mouse + touch + pen) ──
+                                pointX(e) {
+                                    return typeof e.clientX === 'number' ? e.clientX : 0;
+                                },
+                                onDragStart(e) {
+                                    // Only react to primary button / touch / pen
+                                    if (e.pointerType === 'mouse' && e.button !== 0) return;
+                                    this.isDragging = true;
+                                    this.dragMoved = false;
+                                    this.viewportWidth = this.$refs.viewport ? this.$refs.viewport.offsetWidth : window.innerWidth;
+                                    this.dragStartX = this.pointX(e);
+                                    this.dragCurrentX = this.dragStartX;
+                                },
+                                onDragMove(e) {
+                                    if (!this.isDragging) return;
+                                    this.dragCurrentX = this.pointX(e);
+                                    if (Math.abs(this.dragCurrentX - this.dragStartX) > 5) {
+                                        this.dragMoved = true;
+                                    }
+                                },
+                                onDragEnd() {
+                                    if (!this.isDragging) return;
+                                    const delta = this.dragCurrentX - this.dragStartX;
+                                    this.isDragging = false;
+                                    const cardPx = this.viewportWidth / this.visibleCount;
+                                    const threshold = Math.max(40, cardPx * 0.2);
+                                    if (delta <= -threshold) {
+                                        this.next();
+                                    } else if (delta >= threshold) {
+                                        this.prev();
+                                    }
+                                },
+                                onTrackClick(e) {
+                                    // Suppress the card link navigation if the user was dragging
+                                    if (this.dragMoved) {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        this.dragMoved = false;
+                                    }
                                 }
                             }"
                             x-init="init()"
@@ -150,11 +208,20 @@
                             </button>
 
                             {{-- Slider viewport --}}
-                            <div class="overflow-hidden">
+                            <div class="overflow-hidden"
+                                 x-ref="viewport"
+                                 @pointerdown="onDragStart($event)"
+                                 @pointermove="onDragMove($event)"
+                                 @pointerup="onDragEnd()"
+                                 @pointercancel="onDragEnd()"
+                                 @pointerleave="onDragEnd()"
+                                 @dragstart.prevent
+                                 style="user-select: none; -webkit-user-select: none; touch-action: pan-y;">
                                 {{-- Track: all cards in a single flex row, width = total * cardWidth --}}
                                 <div
-                                    class="flex"
-                                    :style="'transition: transform 500ms cubic-bezier(0.4,0,0.2,1); will-change: transform; transform: ' + trackTranslate">
+                                    class="flex select-none"
+                                    @click.capture="onTrackClick($event)"
+                                    :style="trackStyle">
                                     @foreach ($properties as $property)
                                         {{-- Card width is set by Alpine via :style so translation math stays exact --}}
                                         <div class="flex-shrink-0 px-3" :style="'width: ' + cardWidth">
@@ -162,10 +229,10 @@
                                                class="group property-card overflow-hidden dark:!bg-gray-800 dark:!shadow-gray-900/30 block">
                                                 <div class="relative aspect-[4/3] bg-gray-200">
                                                     @if ($property->featuredImage)
-                                                        <img src="{{ $property->featuredImage->url }}" alt="{{ $property->name }}"
+                                                        <img src="{{ $property->featuredImage->url }}" alt="{{ $property->name }}" draggable="false"
                                                              class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
                                                     @elseif ($property->photos->isNotEmpty() && $property->photos->first()->media)
-                                                        <img src="{{ $property->photos->first()->media->url }}" alt="{{ $property->name }}"
+                                                        <img src="{{ $property->photos->first()->media->url }}" alt="{{ $property->name }}" draggable="false"
                                                              class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
                                                     @else
                                                         <div class="w-full h-full flex items-center justify-center text-blue-400 bg-gradient-to-br from-blue-100 to-indigo-200">
