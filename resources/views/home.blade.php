@@ -164,6 +164,9 @@
                                                     @if ($property->featuredImage)
                                                         <img src="{{ $property->featuredImage->url }}" alt="{{ $property->name }}"
                                                              class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
+                                                    @elseif ($property->photos->isNotEmpty() && $property->photos->first()->media)
+                                                        <img src="{{ $property->photos->first()->media->url }}" alt="{{ $property->name }}"
+                                                             class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
                                                     @else
                                                         <div class="w-full h-full flex items-center justify-center text-blue-400 bg-gradient-to-br from-blue-100 to-indigo-200">
                                                             <i data-lucide="building-2" class="w-14 h-14"></i>
@@ -196,9 +199,8 @@
                                                         {{ $property->city ?: 'Tangerang' }}{{ $property->province ? ', ' . $property->province : '' }}
                                                     </div>
                                                     @php
-                                                        // Fall back to lowestPrice() when no weekday nightly rate is set
-                                                        // (e.g. properties with only transit / weekly / monthly pricing).
-                                                        $cheapest = $property->cheapestNight() ?? $property->lowestPrice();
+                                                        // Use lowestPrice() which includes transit (t3), daily, weekly, monthly
+                                                        $cheapest = $property->lowestPrice();
                                                     @endphp
                                                     <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
                                                         @if ($cheapest)
@@ -271,6 +273,9 @@
                                     @if ($property->featuredImage)
                                         <img src="{{ $property->featuredImage->url }}" alt="{{ $property->name }}"
                                              class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
+                                    @elseif ($property->photos->isNotEmpty() && $property->photos->first()->media)
+                                        <img src="{{ $property->photos->first()->media->url }}" alt="{{ $property->name }}"
+                                             class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
                                     @else
                                         <div class="w-full h-full flex items-center justify-center text-blue-400 bg-gradient-to-br from-blue-100 to-indigo-200">
                                             <i data-lucide="building-2" class="w-14 h-14"></i>
@@ -303,9 +308,8 @@
                                         {{ $property->city ?: 'Tangerang' }}{{ $property->province ? ', ' . $property->province : '' }}
                                     </div>
                                     @php
-                                        // Fall back to lowestPrice() when no weekday nightly rate is set
-                                        // (e.g. properties with only transit / weekly / monthly pricing).
-                                        $cheapest = $property->cheapestNight() ?? $property->lowestPrice();
+                                        // Use lowestPrice() which includes transit (t3), daily, weekly, monthly
+                                        $cheapest = $property->lowestPrice();
                                     @endphp
                                     <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
                                         @if ($cheapest)

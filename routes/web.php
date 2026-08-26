@@ -88,8 +88,8 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     Route::patch('navigations/{navigation}/status', [NavigationController::class, 'updateStatus'])->name('navigations.status');
 
     // Settings Management
-    Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
-    Route::post('settings', [SettingsController::class, 'update'])->name('settings.update');
+    Route::get('settings/{group?}', [SettingsController::class, 'index'])->name('settings.index');
+    Route::post('settings/{group}', [SettingsController::class, 'update'])->name('settings.update');
 
     // Property Management
     Route::resource('properties', PropertyController::class);

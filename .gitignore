@@ -72,3 +72,6 @@ Thumbs.db
 .roo
 .freebuff
 -p
+IDEA.md
+.phpunit.result.cache
+/docs

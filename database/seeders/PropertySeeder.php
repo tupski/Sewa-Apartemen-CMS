@@ -35,9 +35,9 @@ class PropertySeeder extends Seeder
                 array_merge($data, ['order' => $order])
             );
 
-            // Set featured_image ke media pertama jika belum ada
+            // Set featured_image dengan rotate media agar setiap properti punya foto berbeda
             if (is_null($property->featured_image_id) && !empty($allMediaIds)) {
-                $property->update(['featured_image_id' => $allMediaIds[0]]);
+                $property->update(['featured_image_id' => $allMediaIds[$order % count($allMediaIds)]]);
             }
 
             // Buat property_photos — rotate media supaya semua foto tampil

@@ -22,7 +22,7 @@ class PropertyController extends Controller
      */
     public function publicIndex(Request $request)
     {
-        $query = Property::published()->with(['featuredImage', 'amenities']);
+        $query = Property::published()->with(['featuredImage', 'photos.media', 'amenities']);
 
         // --- Search ---
         if ($request->filled('search')) {

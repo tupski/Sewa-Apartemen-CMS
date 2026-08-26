@@ -359,6 +359,11 @@
                                                  alt="{{ $property->name }}"
                                                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                  loading="lazy">
+                                        @elseif ($property->photos->isNotEmpty() && $property->photos->first()->media)
+                                            <img src="{{ $property->photos->first()->media->url }}"
+                                                 alt="{{ $property->name }}"
+                                                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                 loading="lazy">
                                         @else
                                             <div class="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
                                                 <svg class="w-12 h-12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">

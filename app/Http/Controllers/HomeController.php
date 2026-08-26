@@ -35,7 +35,7 @@ class HomeController extends Controller
 
         $properties = Property::published()
             ->featured()
-            ->with(['featuredImage', 'amenities'])
+            ->with(['featuredImage', 'photos.media', 'amenities'])
             ->orderBy('order')
             ->orderBy('created_at', 'desc')
             ->take(6)
@@ -44,7 +44,7 @@ class HomeController extends Controller
         // Fall back to the latest published properties when none are featured yet
         if ($properties->isEmpty()) {
             $properties = Property::published()
-                ->with(['featuredImage', 'amenities'])
+                ->with(['featuredImage', 'photos.media', 'amenities'])
                 ->orderBy('order')
                 ->orderBy('created_at', 'desc')
                 ->take(6)
