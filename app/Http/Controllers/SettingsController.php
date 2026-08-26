@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\SettingsService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -397,5 +398,31 @@ class SettingsController extends Controller
         }
 
         return 'general';
+    }
+
+    /**
+     * Clear application caches (cache, views, config, routes).
+     * Called via POST /admin/clear-cache — returns JSON.
+     */
+    public function clearCache()
+    {
+        try {
+            Artisan::call('cache:clear');
+            Artisan::call('view:clear');
+            Artisan::call('config:clear');
+            Artisan::call('route:clear');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cache cleared successfully',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Clear cache failed: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to clear cache: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

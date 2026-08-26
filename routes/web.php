@@ -102,8 +102,10 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix(slug('admin_prefix', 'a
     // Settings Management
     Route::get('settings/{group?}', [SettingsController::class, 'index'])->name('settings.index');
     Route::post('settings/{group}', [SettingsController::class, 'update'])->name('settings.update');
+    Route::post('clear-cache', [SettingsController::class, 'clearCache'])->name('clear-cache');
 
     // Property Management
+    Route::post('properties/bulk-action', [PropertyController::class, 'bulkAction'])->name('properties.bulk-action');
     Route::resource('properties', PropertyController::class);
     Route::patch('properties/{property}/status', [PropertyController::class, 'updateStatus'])->name('properties.status');
     Route::patch('properties/{property}/featured', [PropertyController::class, 'toggleFeatured'])->name('properties.featured');

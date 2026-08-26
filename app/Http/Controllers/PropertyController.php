@@ -448,6 +448,7 @@ class PropertyController extends Controller
         }
 
         // 2. Photos picked from the Media library (no file move, just link + category)
+        //    Legacy format: gallery_media[categoryIndex][] = mediaId
         foreach ((array) $request->input('gallery_media', []) as $index => $mediaIds) {
             $category = $categories[(int) $index] ?? null;
             if (!$category) {
@@ -465,6 +466,26 @@ class PropertyController extends Controller
                         'sort_order' => $property->photos()->count(),
                     ]);
                 }
+            }
+        }
+
+        // 2b. Photos picked from the Media library via the new picker modal.
+        //     Format: gallery_media_ids[mediaId] = 'Category Name'
+        //     Sent by prepareSubmit() for each item in libraryPhotos[].
+        foreach ((array) $request->input('gallery_media_ids', []) as $mediaId => $category) {
+            $mediaId  = (int) $mediaId;
+            $category = trim((string) $category) ?: 'Others';
+            if (!$mediaId || !\App\Models\Media::whereKey($mediaId)->exists()) {
+                continue;
+            }
+            // Skip if this media is already attached to this property
+            $alreadyAttached = $property->photos()->where('media_id', $mediaId)->exists();
+            if (!$alreadyAttached) {
+                $property->photos()->create([
+                    'media_id'   => $mediaId,
+                    'category'   => $category,
+                    'sort_order' => $property->photos()->count(),
+                ]);
             }
         }
 
@@ -632,6 +653,54 @@ class PropertyController extends Controller
             'success' => true,
             'is_featured' => $property->is_featured
         ]);
+    }
+
+    /**
+     * Bulk action on multiple properties.
+     */
+    public function bulkAction(Request $request)
+    {
+        $request->validate([
+            'action' => 'required|in:publish,draft,feature,unfeature,delete',
+            'ids'    => 'required|array|min:1',
+            'ids.*'  => 'integer|exists:properties,id',
+        ]);
+
+        $action = $request->input('action');
+        $ids    = $request->input('ids');
+        $count  = count($ids);
+
+        switch ($action) {
+            case 'publish':
+                Property::whereIn('id', $ids)->update(['status' => 'published']);
+                $message = "{$count} " . ($count === 1 ? 'property' : 'properties') . " published.";
+                break;
+
+            case 'draft':
+                Property::whereIn('id', $ids)->update(['status' => 'draft']);
+                $message = "{$count} " . ($count === 1 ? 'property' : 'properties') . " set to draft.";
+                break;
+
+            case 'feature':
+                Property::whereIn('id', $ids)->update(['is_featured' => true]);
+                $message = "{$count} " . ($count === 1 ? 'property' : 'properties') . " featured.";
+                break;
+
+            case 'unfeature':
+                Property::whereIn('id', $ids)->update(['is_featured' => false]);
+                $message = "{$count} " . ($count === 1 ? 'property' : 'properties') . " unfeatured.";
+                break;
+
+            case 'delete':
+                Property::whereIn('id', $ids)->delete();
+                $message = "{$count} " . ($count === 1 ? 'property' : 'properties') . " deleted.";
+                break;
+
+            default:
+                return response()->json(['success' => false, 'message' => 'Unknown action.'], 422);
+        }
+
+        return response()->json(['success' => true, 'message' => $message]);
     }
 
     /**

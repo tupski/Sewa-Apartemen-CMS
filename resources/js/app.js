@@ -333,12 +333,28 @@ Alpine.data('photoGallery', function (config = {}) {
         categories:      config.categories  || [],
         existingPhotos:  JSON.parse(JSON.stringify(config.existing || [])),
         newPhotos:       [],          // {uid, file, preview, category}
+        libraryPhotos:   [],          // {media_id, url, thumbnail_url, filename, category} — picked from media library, not yet saved
         deletedIds:      [],          // PropertyPhoto IDs to delete
         featuredMediaId: config.initialFeatured || null,  // existing photo
         featuredNewUid:  null,        // new photo uid (visual only)
         errors:          [],
         isDragging:      false,
         isDragOver:      false,
+
+        /* ── media picker modal state ────────────────────────────────── */
+        pickerOpen:        false,
+        pickerTab:         'gallery',   // 'gallery' | 'upload'
+        pickerMediaUrl:    config.mediaIndexUrl || '',
+        pickerCsrf:        config.csrf || '',
+        pickerItems:       [],
+        pickerLoading:     false,
+        pickerLoaded:      false,
+        pickerSearch:      '',
+        pickerPage:        1,
+        pickerLastPage:    1,
+        pickerSelected:    {},          // { media_id: true } — checked in modal
+        pickerUploading:   false,
+        pickerUploadUrl:   config.mediaUploadUrl || '',
 
         /* ── constants ───────────────────────────────────────────────── */
         MAX_MB:    10,
@@ -356,6 +372,140 @@ Alpine.data('photoGallery', function (config = {}) {
                 form.addEventListener('submit', function (e) {
                     self.prepareSubmit(e, form);
                 }, { capture: true });
+            }
+        },
+
+        /* ── media picker modal ──────────────────────────────────────── */
+        openPicker() {
+            this.pickerOpen    = true;
+            this.pickerTab     = 'gallery';
+            this.pickerSearch  = '';
+            this.pickerSelected = {};
+            if (!this.pickerLoaded) {
+                this.loadPickerMedia();
+            }
+        },
+
+        closePicker() {
+            this.pickerOpen = false;
+        },
+
+        loadPickerMedia(page) {
+            if (!this.pickerMediaUrl) return;
+            page = page || 1;
+            this.pickerLoading = true;
+            var url = this.pickerMediaUrl + '?json=1&type=image&page=' + page;
+            if (this.pickerSearch) {
+                url += '&search=' + encodeURIComponent(this.pickerSearch);
+            }
+            var self = this;
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (r) { return r.json(); })
+                .then(function (json) {
+                    if (page === 1) {
+                        self.pickerItems = json.data || [];
+                    } else {
+                        self.pickerItems = self.pickerItems.concat(json.data || []);
+                    }
+                    self.pickerPage     = json.meta ? json.meta.current_page : 1;
+                    self.pickerLastPage = json.meta ? json.meta.last_page    : 1;
+                    self.pickerLoaded   = true;
+                    self.pickerLoading  = false;
+                })
+                .catch(function () { self.pickerLoading = false; });
+        },
+
+        searchPickerMedia() {
+            this.pickerPage    = 1;
+            this.pickerLoaded  = false;
+            this.pickerItems   = [];
+            this.loadPickerMedia(1);
+        },
+
+        loadMorePickerMedia() {
+            if (this.pickerPage < this.pickerLastPage) {
+                this.loadPickerMedia(this.pickerPage + 1);
+            }
+        },
+
+        togglePickerSelect(item) {
+            var id = String(item.id);
+            if (this.pickerSelected[id]) {
+                var copy = Object.assign({}, this.pickerSelected);
+                delete copy[id];
+                this.pickerSelected = copy;
+            } else {
+                this.pickerSelected = Object.assign({}, this.pickerSelected, { [id]: true });
+            }
+        },
+
+        isPickerSelected(item) {
+            return !!this.pickerSelected[String(item.id)];
+        },
+
+        // Already-attached media IDs (existing saved photos) — used to dim them in the picker
+        alreadyAttachedMediaIds() {
+            var ids = {};
+            this.existingPhotos.forEach(function (p) { ids[String(p.media_id)] = true; });
+            this.libraryPhotos.forEach(function (p) { ids[String(p.media_id)] = true; });
+            return ids;
+        },
+
+        confirmPickerSelection() {
+            var self    = this;
+            var already = this.alreadyAttachedMediaIds();
+            Object.keys(this.pickerSelected).forEach(function (idStr) {
+                if (already[idStr]) return;   // skip duplicates
+                var item = self.pickerItems.find(function (m) { return String(m.id) === idStr; });
+                if (!item) return;
+                self.libraryPhotos.push({
+                    media_id:      item.id,
+                    url:           item.url           || item.thumbnail_url || '',
+                    thumbnail_url: item.thumbnail_url || item.url           || '',
+                    filename:      item.original_filename || item.filename  || '',
+                    category:      'Others',
+                });
+            });
+            this.pickerSelected = {};
+            this.pickerOpen     = false;
+        },
+
+        removeLibraryPhoto(photo) {
+            this.libraryPhotos = this.libraryPhotos.filter(function (p) {
+                return p.media_id !== photo.media_id;
+            });
+            if (this.featuredMediaId === photo.media_id) {
+                this.featuredMediaId = null;
+            }
+        },
+
+        setFeaturedLibrary(photo) {
+            if (this.featuredMediaId === photo.media_id) {
+                this.featuredMediaId = null;
+            } else {
+                this.featuredMediaId = photo.media_id;
+                this.featuredNewUid  = null;
+            }
+        },
+
+        /* ── modal upload tab ────────────────────────────────────────── */
+        handlePickerDrop(event) {
+            var files = event.dataTransfer ? event.dataTransfer.files : [];
+            this.processPickerFiles(Array.from(files));
+        },
+
+        handlePickerFileInput(event) {
+            var files = event.target.files || [];
+            this.processPickerFiles(Array.from(files));
+            event.target.value = '';
+        },
+
+        processPickerFiles(files) {
+            // Adds files to newPhotos (same as the drag-drop zone)
+            // then closes the modal so the user can see the grid
+            this.processFiles(files);
+            if (files.length > 0) {
+                this.pickerOpen = false;
             }
         },
 
@@ -529,7 +679,16 @@ Alpine.data('photoGallery', function (config = {}) {
                 container.appendChild(delInput);
             }
 
-            /* 5. featured_image_id — only when an EXISTING photo is starred */
+            /* 5. gallery_media_ids[mediaId] = category — library-picked photos */
+            this.libraryPhotos.forEach(function (p) {
+                var libInput = document.createElement('input');
+                libInput.type  = 'hidden';
+                libInput.name  = 'gallery_media_ids[' + p.media_id + ']';
+                libInput.value = p.category || 'Others';
+                container.appendChild(libInput);
+            });
+
+            /* 6. featured_image_id — existing or library photo starred */
             if (this.featuredMediaId) {
                 var featInput = document.createElement('input');
                 featInput.type  = 'hidden';
@@ -537,7 +696,7 @@ Alpine.data('photoGallery', function (config = {}) {
                 featInput.value = this.featuredMediaId;
                 container.appendChild(featInput);
             }
-            // Note: if a NEW photo is starred (featuredNewUid set) we do NOT
+            // Note: if a NEW upload is starred (featuredNewUid set) we do NOT
             // send featured_image_id — the controller will skip it, and the
             // user can come back and star the photo after the first save.
         },

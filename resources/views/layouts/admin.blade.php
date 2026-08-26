@@ -61,10 +61,10 @@
     <div x-data="{ sidebarOpen: false, sidebarCollapsed: localStorage.getItem('admin.sidebar') === 'collapsed', dark: document.documentElement.classList.contains('dark') }"
          x-init="$watch('sidebarCollapsed', v => localStorage.setItem('admin.sidebar', v ? 'collapsed' : 'expanded'));
                  $watch('dark', v => { document.documentElement.classList.toggle('dark', v); localStorage.setItem('admin.theme', v ? 'dark' : 'light'); })"
-         class="min-h-screen lg:flex">
+         class="h-screen lg:flex overflow-hidden">
         <!-- Sidebar -->
         <aside :class="[sidebarOpen ? 'translate-x-0' : '-translate-x-full', sidebarCollapsed ? 'lg:w-20' : 'lg:w-64']"
-               class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 lg:shrink-0 flex flex-col h-full overflow-hidden">
+               class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 lg:inset-0 lg:h-screen lg:shrink-0 flex flex-col overflow-y-auto overflow-x-hidden">
             <div class="flex items-center justify-between h-16 px-4 bg-gray-900 shrink-0">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2 overflow-hidden min-w-0"
                    :class="sidebarCollapsed ? 'lg:justify-center' : ''">
@@ -244,7 +244,7 @@
         </aside>
 
         <!-- Main Content Area -->
-        <div class="lg:flex-1 flex flex-col min-h-screen min-w-0">
+        <div class="lg:flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
             <!-- Header -->
             <header class="bg-white shadow-sm sticky top-0 z-40 dark:bg-gray-900 dark:border-b dark:border-gray-800">
                 <div class="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
@@ -269,6 +269,36 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                             </svg>
                         </a>
+
+                        <!-- Clear Cache button (Task 4) -->
+                        <div x-data="{ cacheClearing: false }" class="relative">
+                            <button @click="
+                                cacheClearing = true;
+                                fetch('{{ route('admin.clear-cache') }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                        'Accept': 'application/json'
+                                    }
+                                })
+                                .then(r => r.json())
+                                .then(d => {
+                                    cacheClearing = false;
+                                    if (d.success) window.toast(d.message, 'success');
+                                    else window.toast(d.message || 'Failed to clear cache', 'error');
+                                })
+                                .catch(() => { cacheClearing = false; window.toast('Failed to clear cache', 'error'); })"
+                                :disabled="cacheClearing"
+                                class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 transition disabled:opacity-50"
+                                aria-label="Clear Cache" title="Clear Cache">
+                                <svg x-show="!cacheClearing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                                <svg x-show="cacheClearing" x-cloak class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                </svg>
+                            </button>
+                        </div>
 
                         <!-- Language Switcher -->
                         @php
@@ -416,6 +446,89 @@
             <main id="main-content" class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6" role="main">
                 @yield('content')
             </main>
+
+            <!-- ─── Toast Notification Container (Task 2) ──────────────────────── -->
+            <div id="toast-container"
+                 x-data="toastManager()"
+                 x-init="init()"
+                 class="fixed bottom-6 right-6 z-[9999] flex flex-col-reverse gap-3 pointer-events-none"
+                 aria-live="polite"
+                 aria-atomic="false">
+                <template x-for="toast in toasts" :key="toast.id">
+                    <div x-show="toast.visible"
+                         x-transition:enter="transition ease-out duration-300"
+                         x-transition:enter-start="opacity-0 translate-y-4"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-200"
+                         x-transition:leave-start="opacity-100 translate-y-0"
+                         x-transition:leave-end="opacity-0 translate-y-4"
+                         :class="{
+                             'bg-green-600 text-white': toast.type === 'success',
+                             'bg-red-600 text-white': toast.type === 'error',
+                             'bg-yellow-500 text-white': toast.type === 'warning',
+                             'bg-blue-600 text-white': toast.type === 'info'
+                         }"
+                         class="pointer-events-auto flex items-start gap-3 min-w-[280px] max-w-sm px-4 py-3 rounded-lg shadow-xl">
+                        <!-- Icon -->
+                        <span class="shrink-0 mt-0.5 text-lg leading-none">
+                            <template x-if="toast.type === 'success'">✅</template>
+                            <template x-if="toast.type === 'error'">❌</template>
+                            <template x-if="toast.type === 'warning'">⚠️</template>
+                            <template x-if="toast.type === 'info'">ℹ️</template>
+                        </span>
+                        <span class="flex-1 text-sm font-medium leading-snug" x-text="toast.message"></span>
+                        <button @click="remove(toast.id)"
+                                class="shrink-0 ml-1 opacity-75 hover:opacity-100 focus:outline-none"
+                                aria-label="Dismiss">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Toast bootstrap: expose window.toast(), auto-show flash messages -->
+            <script>
+            function toastManager() {
+                return {
+                    toasts: [],
+                    _counter: 0,
+                    init() {
+                        // Expose global window.toast(message, type) function
+                        window.toast = (message, type = 'info') => this.add(message, type);
+
+                        // Auto-show Laravel flash session messages
+                        @if(session('success'))
+                            this.$nextTick(() => this.add(@json(session('success')), 'success'));
+                        @endif
+                        @if(session('error'))
+                            this.$nextTick(() => this.add(@json(session('error')), 'error'));
+                        @endif
+                        @if(session('warning'))
+                            this.$nextTick(() => this.add(@json(session('warning')), 'warning'));
+                        @endif
+                        @if(session('info'))
+                            this.$nextTick(() => this.add(@json(session('info')), 'info'));
+                        @endif
+                    },
+                    add(message, type = 'info') {
+                        const id = ++this._counter;
+                        this.toasts.push({ id, message, type, visible: true });
+                        setTimeout(() => this.remove(id), 4000);
+                    },
+                    remove(id) {
+                        const t = this.toasts.find(t => t.id === id);
+                        if (t) {
+                            t.visible = false;
+                            setTimeout(() => {
+                                this.toasts = this.toasts.filter(t => t.id !== id);
+                            }, 300);
+                        }
+                    }
+                };
+            }
+            </script>
 
             <!-- Footer -->
             <footer class="bg-white border-t border-gray-200 py-4 px-4 sm:px-6 lg:px-8 dark:bg-gray-900 dark:border-gray-800">
