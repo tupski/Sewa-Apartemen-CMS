@@ -235,8 +235,8 @@
                                                        @checked(in_array((string)$amenity->id, array_map('strval', $amenityFilter)))
                                                        class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-2">
                                                 <span class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition flex items-center gap-1">
-                                                    @if($amenity->icon)
-                                                        <span aria-hidden="true">{{ $amenity->icon }}</span>
+                                                    @if($amenity->icon_class)
+                                                        <i class="{{ $amenity->icon_class }}" aria-hidden="true"></i>
                                                     @endif
                                                     {{ $amenity->name }}
                                                 </span>
@@ -284,7 +284,7 @@
                                 if($priceMax) $chips[] = ['key' => 'price_max', 'label' => '≤ Rp '.number_format($priceMax,0,',','.')];
                                 foreach($amenityFilter as $aid) {
                                     $am = $availableAmenities->firstWhere('id', $aid);
-                                    if($am) $chips[] = ['key' => 'amenity_'.$aid, 'label' => ($am->icon ? $am->icon.' ' : '').$am->name, 'amenity_id' => $aid];
+                                    if($am) $chips[] = ['key' => 'amenity_'.$aid, 'label' => $am->name, 'amenity_id' => $aid];
                                 }
                             @endphp
                             @if(!empty($chips))
@@ -557,7 +557,7 @@
                                            @checked(in_array((string)$amenity->id, array_map('strval', $amenityFilter)))
                                            class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-2">
                                     <span class="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-1 truncate">
-                                        @if($amenity->icon)<span aria-hidden="true">{{ $amenity->icon }}</span>@endif
+                                        @if($amenity->icon_class)<i class="{{ $amenity->icon_class }}" aria-hidden="true"></i>@endif
                                         {{ $amenity->name }}
                                     </span>
                                 </label>

@@ -104,7 +104,7 @@
             <div class="flex flex-wrap gap-1.5">
                 @foreach($amenityBadges as $amenity)
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700/60">
-                        @if($amenity->icon)<span aria-hidden="true">{{ $amenity->icon }}</span>@endif
+                        @if($amenity->icon_class)<i class="{{ $amenity->icon_class }}" aria-hidden="true"></i>@endif
                         {{ $amenity->name }}
                     </span>
                 @endforeach

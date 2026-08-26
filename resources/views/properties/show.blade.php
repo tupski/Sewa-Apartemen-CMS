@@ -156,29 +156,33 @@
                             <div class="flex flex-wrap gap-3">
                                 @foreach ($property->amenities as $amenity)
                                     @php
-                                        // Resolve icon: try exact match first, then substring match, then fallback.
-                                        // The fallback strips any non-ASCII/emoji values from $amenity->icon.
-                                        $amenityKey = strtolower($amenity->name);
-                                        $iconName = $iconMap[$amenityKey] ?? null;
-                                        if (!$iconName) {
-                                            foreach ($iconMap as $keyword => $icon) {
-                                                if (str_contains($amenityKey, $keyword)) {
-                                                    $iconName = $icon;
-                                                    break;
+                                        // Prefer the admin-selected Font Awesome icon (normalised to valid FA6).
+                                        // Fall back to a Lucide keyword map, then a neutral default, when no FA icon is set.
+                                        $faIcon = $amenity->icon_class;
+                                        $lucideName = null;
+                                        if (!$faIcon) {
+                                            $amenityKey = strtolower($amenity->name);
+                                            $lucideName = $iconMap[$amenityKey] ?? null;
+                                            if (!$lucideName) {
+                                                foreach ($iconMap as $keyword => $icon) {
+                                                    if (str_contains($amenityKey, $keyword)) {
+                                                        $lucideName = $icon;
+                                                        break;
+                                                    }
                                                 }
                                             }
-                                        }
-                                        if (!$iconName) {
-                                            $rawIcon = $amenity->icon ?? '';
-                                            // Only use $amenity->icon if it contains only ASCII printable characters (valid Lucide name)
-                                            $iconName = (preg_match('/^[a-z0-9\-]+$/i', $rawIcon) && $rawIcon !== '') ? $rawIcon : 'check-circle';
+                                            $lucideName = $lucideName ?: 'check-circle';
                                         }
                                     @endphp
                                     <div class="relative group amenity-item"
                                          title="{{ $amenity->name }}"
                                          data-tooltip="{{ $amenity->name }}">
                                         <div class="flex flex-col items-center justify-center w-16 h-16 bg-white border border-gray-200 dark:bg-gray-700 dark:border-gray-600 rounded-xl shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-500 transition-all duration-200 cursor-default">
-                                            <i data-lucide="{{ $iconName }}" class="w-6 h-6 text-blue-600 dark:text-blue-400 mb-1"></i>
+                                            @if ($faIcon)
+                                                <i class="{{ $faIcon }} text-xl text-blue-600 dark:text-blue-400 mb-1" aria-hidden="true"></i>
+                                            @else
+                                                <i data-lucide="{{ $lucideName }}" class="w-6 h-6 text-blue-600 dark:text-blue-400 mb-1"></i>
+                                            @endif
                                             <span class="text-xs text-gray-600 dark:text-gray-300 text-center leading-tight truncate w-full px-1">{{ \Illuminate\Support\Str::limit($amenity->name, 10) }}</span>
                                         </div>
                                         {{-- Tooltip (desktop hover) --}}
@@ -282,7 +286,7 @@
                     <!-- ===== Accommodation Policy ===== -->
                     @if ($property->checkin_time || $property->checkout_time || $property->required_documents || $property->checkin_method)
                         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 md:p-8">
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5">Accommodation Policy & General Information in {{ $property->name }}</h2>
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5">Kebijakan Akomodasi & Informasi Umum di {{ $property->name }}</h2>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div>
                                     <div class="flex items-center gap-2 mb-3">
@@ -297,7 +301,7 @@
                                 <div>
                                     <div class="flex items-center gap-2 mb-3">
                                         <svg class="w-5 h-5" style="color: {{ $primaryColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                        <h3 class="text-sm font-bold text-gray-900 dark:text-white">Required Documents</h3>
+                                        <h3 class="text-sm font-bold text-gray-900 dark:text-white">Dokumen yang Diperlukan</h3>
                                     </div>
                                     <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                                         @forelse ($property->required_documents ?? [] as $doc)

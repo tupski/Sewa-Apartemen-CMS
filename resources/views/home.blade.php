@@ -254,7 +254,7 @@
                                                                 <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 text-white backdrop-blur-sm">{{ $property->typeLabel($typeBadge) }}</span>
                                                             @endif
                                                             @foreach ($amenityBadges as $amenity)
-                                                                <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-white/90 text-gray-800 backdrop-blur-sm">{{ $amenity->icon ? $amenity->icon . ' ' : '' }}{{ $amenity->name }}</span>
+                                                                <span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-white/90 text-gray-800 backdrop-blur-sm">@if($amenity->icon_class)<i class="{{ $amenity->icon_class }}" aria-hidden="true"></i>@endif{{ $amenity->name }}</span>
                                                             @endforeach
                                                         </div>
                                                     @endif
@@ -363,7 +363,7 @@
                                                 <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 text-white backdrop-blur-sm">{{ $property->typeLabel($typeBadge) }}</span>
                                             @endif
                                             @foreach ($amenityBadges as $amenity)
-                                                <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-white/90 text-gray-800 backdrop-blur-sm">{{ $amenity->icon ? $amenity->icon . ' ' : '' }}{{ $amenity->name }}</span>
+                                                <span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-white/90 text-gray-800 backdrop-blur-sm">@if($amenity->icon_class)<i class="{{ $amenity->icon_class }}" aria-hidden="true"></i>@endif{{ $amenity->name }}</span>
                                             @endforeach
                                         </div>
                                     @endif
