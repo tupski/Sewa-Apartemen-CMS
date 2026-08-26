@@ -126,6 +126,7 @@
                                        id="site_logo"
                                        accept="image/*"
                                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <p class="text-xs text-gray-500 mt-1">Rekomendasi: PNG atau SVG transparan, ukuran maks 400×120px, maks 2MB.</p>
                                 @if(!empty($settings['site_logo']))
                                     <div class="mt-2">
                                         <img src="{{ asset('storage/' . $settings['site_logo']) }}"

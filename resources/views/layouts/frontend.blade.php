@@ -97,12 +97,14 @@
                 <!-- Brand -->
                 <a href="{{ url('/') }}" class="flex items-center space-x-2">
                     @if ($siteLogo)
-                        <img src="{{ asset('storage/' . $siteLogo) }}" alt="{{ $siteName }}" class="h-10 w-auto">
+                        <img src="{{ asset('storage/' . $siteLogo) }}"
+                             alt="{{ $siteName }}"
+                             class="h-10 w-auto object-contain">
                     @else
                         <span class="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold"
                               style="background-color: {{ $primaryColor }}">{{ mb_substr($siteName, 0, 1) }}</span>
+                        <span class="text-lg md:text-xl font-bold text-gray-900 dark:text-white">{{ $siteName }}</span>
                     @endif
-                    <span class="text-lg md:text-xl font-bold text-gray-900 dark:text-white">{{ $siteName }}</span>
                 </a>
 
                 <!-- Desktop Nav -->
@@ -199,12 +201,14 @@
                 <div class="md:col-span-2">
                     <div class="flex items-center space-x-2 mb-4">
                         @if ($siteLogo)
-                            <img src="{{ asset('storage/' . $siteLogo) }}" alt="{{ $siteName }}" class="h-10 w-auto">
+                            <img src="{{ asset('storage/' . $siteLogo) }}"
+                                 alt="{{ $siteName }}"
+                                 class="h-10 w-auto object-contain">
                         @else
                             <span class="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold"
                                   style="background-color: {{ $primaryColor }}">{{ mb_substr($siteName, 0, 1) }}</span>
+                            <span class="text-lg font-bold text-white">{{ $siteName }}</span>
                         @endif
-                        <span class="text-lg font-bold text-white">{{ $siteName }}</span>
                     </div>
                     @if ($siteDescription)
                         <p class="text-sm text-gray-400 mb-4 leading-relaxed">{{ $siteDescription }}</p>

@@ -22,8 +22,8 @@
                     @else
                         <x-application-logo class="w-12 h-12 fill-current"
                                             style="color: {{ $primaryColor }}" />
+                        <span class="text-xl font-bold text-gray-800 leading-tight">{{ $siteName }}</span>
                     @endif
-                    <span class="text-xl font-bold text-gray-800 leading-tight">{{ $siteName }}</span>
                 </a>
             </div>
 
