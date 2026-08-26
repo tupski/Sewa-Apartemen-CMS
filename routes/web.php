@@ -46,6 +46,13 @@ Route::get('/search/suggest', [SearchController::class, 'suggest'])
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('sitemap');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('robots');
 
+// Public Contact page + form submission
+Route::get('/kontak', [\App\Http\Controllers\ContactController::class, 'index'])->name('contact');
+Route::post('/kontak', [\App\Http\Controllers\ContactController::class, 'store'])->name('contact.store')->middleware('throttle:5,1');
+
+// Public Promotions page
+Route::get('/promosi', [\App\Http\Controllers\PromotionController::class, 'index'])->name('promotions');
+
 // Public CMS Pages (legacy /pages/{slug} path kept for backward compatibility;
 // the catch-all /{slug} route is registered at the bottom of this file)
 Route::get('/pages/{page:slug}', [PageController::class, 'publicShow'])->name('pages.show');

@@ -32,6 +32,8 @@
                 (object) ['title' => __('nav.home'), 'url' => url('/')],
                 (object) ['title' => __('nav.find_apartments'), 'url' => slug_url('slug_apartments', 'apartments')],
                 (object) ['title' => 'Blog', 'url' => slug_url('slug_blog', 'blog')],
+                (object) ['title' => __('nav.promo'), 'url' => route('promotions')],
+                (object) ['title' => __('nav.contact'), 'url' => route('contact')],
             ]);
         }
         $footerMenu = \App\Models\Navigation::with('page')->active()->inLocation('footer')->rootItems()->ordered()->get();
