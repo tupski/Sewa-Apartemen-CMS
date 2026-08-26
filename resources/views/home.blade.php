@@ -76,70 +76,283 @@
             </div>
 
             @if ($properties->isNotEmpty())
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                    @foreach ($properties as $property)
-                        <a href="{{ route('properties.public.show', $property->slug) }}"
-                           class="group property-card overflow-hidden dark:!bg-gray-800 dark:!shadow-gray-900/30">
-                            <div class="relative aspect-[4/3] bg-gray-200">
-                                @if ($property->featuredImage)
-                                    <img src="{{ $property->featuredImage->url }}" alt="{{ $property->name }}"
-                                         class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
-                                @else
-                                    <div class="w-full h-full flex items-center justify-center text-blue-400 bg-gradient-to-br from-blue-100 to-indigo-200">
-                                        <i data-lucide="building-2" class="w-14 h-14"></i>
+                @if ($properties->count() > 3)
+                    {{-- ===================== SLIDER (> 3 properties) ===================== --}}
+                    <div class="relative" id="featured-slider-wrapper">
+                        {{-- Prev button --}}
+                        <button id="slider-prev"
+                                aria-label="{{ __('home.prev') }}"
+                                class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10
+                                       w-10 h-10 flex items-center justify-center
+                                       bg-white dark:bg-gray-700 rounded-full shadow-lg
+                                       text-gray-700 dark:text-gray-200
+                                       hover:bg-gray-50 dark:hover:bg-gray-600
+                                       focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+                                       transition disabled:opacity-30 disabled:cursor-not-allowed"
+                                style="focus-visible:ring-color: {{ $primaryColor }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                            </svg>
+                        </button>
+
+                        {{-- Slider viewport --}}
+                        <div class="overflow-hidden" id="slider-viewport">
+                            {{-- Track: all cards in a single flex row --}}
+                            <div id="slider-track"
+                                 class="flex transition-transform duration-500 ease-in-out"
+                                 style="will-change: transform;">
+                                @foreach ($properties as $property)
+                                    {{-- Each card takes exactly 1/3 width on desktop, 1/2 on tablet, full on mobile --}}
+                                    <div class="w-full sm:w-1/2 lg:w-1/3 flex-shrink-0 px-4">
+                                        <a href="{{ route('properties.public.show', $property->slug) }}"
+                                           class="group property-card overflow-hidden dark:!bg-gray-800 dark:!shadow-gray-900/30 block">
+                                            <div class="relative aspect-[4/3] bg-gray-200">
+                                                @if ($property->featuredImage)
+                                                    <img src="{{ $property->featuredImage->url }}" alt="{{ $property->name }}"
+                                                         class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
+                                                @else
+                                                    <div class="w-full h-full flex items-center justify-center text-blue-400 bg-gradient-to-br from-blue-100 to-indigo-200">
+                                                        <i data-lucide="building-2" class="w-14 h-14"></i>
+                                                    </div>
+                                                @endif
+                                                @if ($property->is_featured)
+                                                    <span class="absolute top-3 left-3 bg-white/95 text-xs font-bold px-3 py-1 rounded-full shadow" style="color: {{ $primaryColor }}">
+                                                        {{ __('home.featured_badge') }}
+                                                    </span>
+                                                @endif
+                                                @php
+                                                    $typeBadge = $property->unit_types[0] ?? null;
+                                                    $amenityBadges = $property->amenities->take(3);
+                                                @endphp
+                                                @if ($typeBadge || $amenityBadges->isNotEmpty())
+                                                    <div class="absolute bottom-3 left-3 flex flex-wrap gap-1.5">
+                                                        @if ($typeBadge)
+                                                            <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 text-white backdrop-blur-sm">{{ $property->typeLabel($typeBadge) }}</span>
+                                                        @endif
+                                                        @foreach ($amenityBadges as $amenity)
+                                                            <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-white/90 text-gray-800 backdrop-blur-sm">{{ $amenity->icon ? $amenity->icon . ' ' : '' }}{{ $amenity->name }}</span>
+                                                        @endforeach
+                                                    </div>
+                                                @endif
+                                            </div>
+                                            <div class="p-6">
+                                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white group-hover:opacity-80 transition">{{ $property->name }}</h3>
+                                                <div class="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                                    {{ $property->city ?: 'Tangerang' }}{{ $property->province ? ', ' . $property->province : '' }}
+                                                </div>
+                                                @php
+                                                    // Fall back to lowestPrice() when no weekday nightly rate is set
+                                                    // (e.g. properties with only transit / weekly / monthly pricing).
+                                                    $cheapest = $property->cheapestNight() ?? $property->lowestPrice();
+                                                @endphp
+                                                <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                                                    @if ($cheapest)
+                                                        <div>
+                                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('home.from') }}</p>
+                                                            <p class="text-lg font-bold" style="color: {{ $primaryColor }}">
+                                                                Rp {{ number_format((float) $cheapest, 0, ',', '.') }}
+                                                            </p>
+                                                        </div>
+                                                    @else
+                                                        <span class="text-sm text-gray-400 dark:text-gray-500">{{ __('home.contact_for_price') }}</span>
+                                                    @endif
+                                                    <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-white group-hover:translate-x-1 transition"
+                                                          style="background-color: {{ $primaryColor }}">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </a>
                                     </div>
-                                @endif
-                                @if ($property->is_featured)
-                                    <span class="absolute top-3 left-3 bg-white/95 text-xs font-bold px-3 py-1 rounded-full shadow" style="color: {{ $primaryColor }}">
-                                        {{ __('home.featured_badge') }}
-                                    </span>
-                                @endif
-                                @php
-                                    $typeBadge = $property->unit_types[0] ?? null;
-                                    $amenityBadges = $property->amenities->take(3);
-                                @endphp
-                                @if ($typeBadge || $amenityBadges->isNotEmpty())
-                                    <div class="absolute bottom-3 left-3 flex flex-wrap gap-1.5">
-                                        @if ($typeBadge)
-                                            <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 text-white backdrop-blur-sm">{{ $property->typeLabel($typeBadge) }}</span>
-                                        @endif
-                                        @foreach ($amenityBadges as $amenity)
-                                            <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-white/90 text-gray-800 backdrop-blur-sm">{{ $amenity->icon ? $amenity->icon . ' ' : '' }}{{ $amenity->name }}</span>
-                                        @endforeach
-                                    </div>
-                                @endif
+                                @endforeach
                             </div>
-                            <div class="p-6">
-                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white group-hover:opacity-80 transition">{{ $property->name }}</h3>
-                                <div class="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                    {{ $property->city ?: 'Tangerang' }}{{ $property->province ? ', ' . $property->province : '' }}
-                                </div>
-                                @php
-                                    // Fall back to lowestPrice() when no weekday nightly rate is set
-                                    // (e.g. properties with only transit / weekly / monthly pricing).
-                                    $cheapest = $property->cheapestNight() ?? $property->lowestPrice();
-                                @endphp
-                                <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                                    @if ($cheapest)
-                                        <div>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('home.from') }}</p>
-                                            <p class="text-lg font-bold" style="color: {{ $primaryColor }}">
-                                                Rp {{ number_format((float) $cheapest, 0, ',', '.') }}
-                                            </p>
-                                        </div>
+                        </div>
+
+                        {{-- Next button --}}
+                        <button id="slider-next"
+                                aria-label="{{ __('home.next') }}"
+                                class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10
+                                       w-10 h-10 flex items-center justify-center
+                                       bg-white dark:bg-gray-700 rounded-full shadow-lg
+                                       text-gray-700 dark:text-gray-200
+                                       hover:bg-gray-50 dark:hover:bg-gray-600
+                                       focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+                                       transition disabled:opacity-30 disabled:cursor-not-allowed"
+                                style="focus-visible:ring-color: {{ $primaryColor }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    {{-- Dot navigation --}}
+                    <div id="slider-dots" class="flex items-center justify-center gap-2 mt-6" role="tablist" aria-label="{{ __('home.slider_nav') }}"></div>
+
+                    {{-- Vanilla JS slider --}}
+                    <script>
+                    (function () {
+                        var total      = {{ $properties->count() }};
+                        var primaryColor = '{{ $primaryColor }}';
+                        var track      = document.getElementById('slider-track');
+                        var dotsWrap   = document.getElementById('slider-dots');
+                        var btnPrev    = document.getElementById('slider-prev');
+                        var btnNext    = document.getElementById('slider-next');
+                        var current    = 0;
+                        var perPage    = 3; // recalculated on resize
+
+                        function getPerPage() {
+                            var w = window.innerWidth;
+                            if (w < 640)  return 1;
+                            if (w < 1024) return 2;
+                            return 3;
+                        }
+
+                        function totalPages() {
+                            return Math.ceil(total / perPage);
+                        }
+
+                        function buildDots() {
+                            dotsWrap.innerHTML = '';
+                            var pages = totalPages();
+                            for (var i = 0; i < pages; i++) {
+                                var btn = document.createElement('button');
+                                btn.setAttribute('role', 'tab');
+                                btn.setAttribute('aria-label', 'Slide ' + (i + 1));
+                                btn.setAttribute('aria-selected', i === current ? 'true' : 'false');
+                                btn.setAttribute('data-index', i);
+                                btn.className = 'w-2.5 h-2.5 rounded-full transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1';
+                                btn.style.backgroundColor = i === current ? primaryColor : '#D1D5DB';
+                                btn.style.transform = i === current ? 'scale(1.25)' : 'scale(1)';
+                                btn.addEventListener('click', function () {
+                                    goTo(parseInt(this.getAttribute('data-index')));
+                                });
+                                dotsWrap.appendChild(btn);
+                            }
+                        }
+
+                        function updateDots() {
+                            var dots = dotsWrap.querySelectorAll('button');
+                            dots.forEach(function (dot, idx) {
+                                var active = idx === current;
+                                dot.setAttribute('aria-selected', active ? 'true' : 'false');
+                                dot.style.backgroundColor = active ? primaryColor : '#D1D5DB';
+                                dot.style.transform = active ? 'scale(1.25)' : 'scale(1)';
+                            });
+                        }
+
+                        function updateButtons() {
+                            btnPrev.disabled = current === 0;
+                            btnNext.disabled = current >= totalPages() - 1;
+                        }
+
+                        function goTo(page) {
+                            var pages = totalPages();
+                            current = Math.max(0, Math.min(page, pages - 1));
+                            // Each "page" shifts by (perPage * cardWidth%) of the track
+                            // Each card is (100 / total)% of the track, but we shift by perPage cards per page.
+                            // Since the track holds `total` cards each at (100/perPage)% of the viewport (per breakpoint),
+                            // moving one page = moving perPage cards = 100% of the visible area.
+                            track.style.transform = 'translateX(-' + (current * 100) + '%)';
+                            updateDots();
+                            updateButtons();
+                        }
+
+                        function init() {
+                            perPage = getPerPage();
+                            // Ensure current page is still valid after resize
+                            if (current >= totalPages()) current = totalPages() - 1;
+                            buildDots();
+                            updateButtons();
+                            // Re-apply transform without animation during resize
+                            track.style.transition = 'none';
+                            track.style.transform = 'translateX(-' + (current * 100) + '%)';
+                            // Re-enable animation on next frame
+                            requestAnimationFrame(function () {
+                                track.style.transition = '';
+                            });
+                        }
+
+                        btnPrev.addEventListener('click', function () { goTo(current - 1); });
+                        btnNext.addEventListener('click', function () { goTo(current + 1); });
+
+                        var resizeTimer;
+                        window.addEventListener('resize', function () {
+                            clearTimeout(resizeTimer);
+                            resizeTimer = setTimeout(init, 150);
+                        });
+
+                        init();
+                    }());
+                    </script>
+
+                @else
+                    {{-- ===================== STATIC GRID (≤ 3 properties) ===================== --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                        @foreach ($properties as $property)
+                            <a href="{{ route('properties.public.show', $property->slug) }}"
+                               class="group property-card overflow-hidden dark:!bg-gray-800 dark:!shadow-gray-900/30">
+                                <div class="relative aspect-[4/3] bg-gray-200">
+                                    @if ($property->featuredImage)
+                                        <img src="{{ $property->featuredImage->url }}" alt="{{ $property->name }}"
+                                             class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
                                     @else
-                                        <span class="text-sm text-gray-400 dark:text-gray-500">{{ __('home.contact_for_price') }}</span>
+                                        <div class="w-full h-full flex items-center justify-center text-blue-400 bg-gradient-to-br from-blue-100 to-indigo-200">
+                                            <i data-lucide="building-2" class="w-14 h-14"></i>
+                                        </div>
                                     @endif
-                                    <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-white group-hover:translate-x-1 transition"
-                                          style="background-color: {{ $primaryColor }}">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-                                    </span>
+                                    @if ($property->is_featured)
+                                        <span class="absolute top-3 left-3 bg-white/95 text-xs font-bold px-3 py-1 rounded-full shadow" style="color: {{ $primaryColor }}">
+                                            {{ __('home.featured_badge') }}
+                                        </span>
+                                    @endif
+                                    @php
+                                        $typeBadge = $property->unit_types[0] ?? null;
+                                        $amenityBadges = $property->amenities->take(3);
+                                    @endphp
+                                    @if ($typeBadge || $amenityBadges->isNotEmpty())
+                                        <div class="absolute bottom-3 left-3 flex flex-wrap gap-1.5">
+                                            @if ($typeBadge)
+                                                <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 text-white backdrop-blur-sm">{{ $property->typeLabel($typeBadge) }}</span>
+                                            @endif
+                                            @foreach ($amenityBadges as $amenity)
+                                                <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-white/90 text-gray-800 backdrop-blur-sm">{{ $amenity->icon ? $amenity->icon . ' ' : '' }}{{ $amenity->name }}</span>
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 </div>
-                            </div>
-                        </a>
-                    @endforeach
-                </div>
+                                <div class="p-6">
+                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white group-hover:opacity-80 transition">{{ $property->name }}</h3>
+                                    <div class="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                        {{ $property->city ?: 'Tangerang' }}{{ $property->province ? ', ' . $property->province : '' }}
+                                    </div>
+                                    @php
+                                        // Fall back to lowestPrice() when no weekday nightly rate is set
+                                        // (e.g. properties with only transit / weekly / monthly pricing).
+                                        $cheapest = $property->cheapestNight() ?? $property->lowestPrice();
+                                    @endphp
+                                    <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                                        @if ($cheapest)
+                                            <div>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('home.from') }}</p>
+                                                <p class="text-lg font-bold" style="color: {{ $primaryColor }}">
+                                                    Rp {{ number_format((float) $cheapest, 0, ',', '.') }}
+                                                </p>
+                                            </div>
+                                        @else
+                                            <span class="text-sm text-gray-400 dark:text-gray-500">{{ __('home.contact_for_price') }}</span>
+                                        @endif
+                                        <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-white group-hover:translate-x-1 transition"
+                                              style="background-color: {{ $primaryColor }}">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                                        </span>
+                                    </div>
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                @endif
 
                 <div class="mt-10 text-center md:hidden">
                     <a href="{{ route('properties.public.index') }}"

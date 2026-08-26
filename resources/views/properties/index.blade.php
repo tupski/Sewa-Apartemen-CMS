@@ -96,7 +96,7 @@
 
                 {{-- ══ SIDEBAR FILTER (Desktop) ═══════════════════════════════════ --}}
                 <aside id="filter-section" class="hidden lg:block w-72 xl:w-80 shrink-0">
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 sticky top-24 overflow-hidden">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 sticky top-24">
                         <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                             <h2 class="text-base font-semibold text-gray-800 dark:text-gray-100">{{ __('prop.filter_title') }}</h2>
                             @if($activeFilterCount > 0)
@@ -144,8 +144,7 @@
                                             @php $isActive = ($typeFilter === $typeVal) || ($typeVal === '' && !$typeFilter); @endphp
                                             <label class="cursor-pointer">
                                                 <input type="radio" name="type" value="{{ $typeVal }}"
-                                                       class="sr-only peer" @checked($isActive)
-                                                       onchange="document.getElementById('filter-form-desktop').submit()">
+                                                       class="sr-only peer" @checked($isActive)>
                                                 <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border transition
                                                     peer-checked:text-white peer-checked:border-transparent
                                                     text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -165,17 +164,27 @@
                                     <div class="grid grid-cols-2 gap-2">
                                         <div>
                                             <label for="price_min_d" class="sr-only">{{ __('prop.filter_price_min') }}</label>
-                                            <input type="number" id="price_min_d" name="price_min"
-                                                   value="{{ $priceMin }}" min="0" step="50000"
-                                                   placeholder="Min"
-                                                   class="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800">
+                                            <input type="hidden" id="price_min_d" name="price_min" value="{{ $priceMin }}">
+                                            <div class="flex items-center h-9 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 overflow-hidden focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-800">
+                                                <span class="px-2 text-xs text-gray-400 bg-gray-100 dark:bg-gray-600/60 border-r border-gray-200 dark:border-gray-600 h-full flex items-center select-none shrink-0">Rp</span>
+                                                <input type="text" id="price_min_d_display"
+                                                       data-price-hidden="price_min_d"
+                                                       value="{{ $priceMin ? number_format($priceMin, 0, ',', '.') : '' }}"
+                                                       placeholder="Min"
+                                                       class="w-full h-full px-2 text-sm bg-transparent text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none">
+                                            </div>
                                         </div>
                                         <div>
                                             <label for="price_max_d" class="sr-only">{{ __('prop.filter_price_max') }}</label>
-                                            <input type="number" id="price_max_d" name="price_max"
-                                                   value="{{ $priceMax }}" min="0" step="50000"
-                                                   placeholder="Max"
-                                                   class="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800">
+                                            <input type="hidden" id="price_max_d" name="price_max" value="{{ $priceMax }}">
+                                            <div class="flex items-center h-9 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 overflow-hidden focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-800">
+                                                <span class="px-2 text-xs text-gray-400 bg-gray-100 dark:bg-gray-600/60 border-r border-gray-200 dark:border-gray-600 h-full flex items-center select-none shrink-0">Rp</span>
+                                                <input type="text" id="price_max_d_display"
+                                                       data-price-hidden="price_max_d"
+                                                       value="{{ $priceMax ? number_format($priceMax, 0, ',', '.') : '' }}"
+                                                       placeholder="Max"
+                                                       class="w-full h-full px-2 text-sm bg-transparent text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none">
+                                            </div>
                                         </div>
                                     </div>
                                 </fieldset>
@@ -188,7 +197,6 @@
                                     </legend>
                                     <label for="city_d" class="sr-only">{{ __('prop.filter_location') }}</label>
                                     <select id="city_d" name="city"
-                                            onchange="document.getElementById('filter-form-desktop').submit()"
                                             class="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 appearance-none"
                                             style="background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E\"); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1rem;">
                                         <option value="">{{ __('prop.filter_all_cities') }}</option>
@@ -209,7 +217,6 @@
                                             <label class="flex items-center gap-2.5 cursor-pointer group">
                                                 <input type="radio" name="unit_type" value="{{ $typeKey }}"
                                                        @checked($unitTypeFilter === $typeKey)
-                                                       onchange="document.getElementById('filter-form-desktop').submit()"
                                                        class="w-4 h-4 rounded text-blue-600 border-gray-300 dark:border-gray-600 focus:ring-2">
                                                 <span class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition">
                                                     {{ $typeLabel }}
@@ -219,9 +226,8 @@
                                         @if($unitTypeFilter)
                                             <label class="flex items-center gap-2.5 cursor-pointer group">
                                                 <input type="radio" name="unit_type" value=""
-                                                       @checked(!$unitTypeFilter)
-                                                       onchange="document.getElementById('filter-form-desktop').submit()"
-                                                       class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 focus:ring-2">
+                                                           @checked(!$unitTypeFilter)
+                                                           class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 focus:ring-2">
                                                 <span class="text-sm text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition">
                                                     {{ __('prop.all_types') }}
                                                 </span>
@@ -241,7 +247,6 @@
                                             <label class="flex items-center gap-2.5 cursor-pointer group">
                                                 <input type="checkbox" name="amenities[]" value="{{ $amenity->id }}"
                                                        @checked(in_array((string)$amenity->id, array_map('strval', $amenityFilter)))
-                                                       onchange="document.getElementById('filter-form-desktop').submit()"
                                                        class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-2">
                                                 <span class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition flex items-center gap-1">
                                                     @if($amenity->icon)
@@ -576,15 +581,27 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label for="price_min_m" class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ __('prop.filter_price_min') }}</label>
-                                <input type="number" id="price_min_m" name="price_min"
-                                       value="{{ $priceMin }}" min="0" step="50000" placeholder="0"
-                                       class="w-full h-11 px-3 text-sm rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2">
+                                <input type="hidden" id="price_min_m" name="price_min" value="{{ $priceMin }}">
+                                <div class="flex items-center h-11 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 overflow-hidden focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-800">
+                                    <span class="px-2.5 text-xs text-gray-400 bg-gray-100 dark:bg-gray-700/60 border-r border-gray-200 dark:border-gray-600 h-full flex items-center select-none shrink-0">Rp</span>
+                                    <input type="text" id="price_min_m_display"
+                                           data-price-hidden="price_min_m"
+                                           value="{{ $priceMin ? number_format($priceMin, 0, ',', '.') : '' }}"
+                                           placeholder="0"
+                                           class="w-full h-full px-2.5 text-sm bg-transparent text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none">
+                                </div>
                             </div>
                             <div>
                                 <label for="price_max_m" class="block text-xs text-gray-500 dark:text-gray-400 mb-1">{{ __('prop.filter_price_max') }}</label>
-                                <input type="number" id="price_max_m" name="price_max"
-                                       value="{{ $priceMax }}" min="0" step="50000" placeholder="Max"
-                                       class="w-full h-11 px-3 text-sm rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2">
+                                <input type="hidden" id="price_max_m" name="price_max" value="{{ $priceMax }}">
+                                <div class="flex items-center h-11 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 overflow-hidden focus-within:ring-2 focus-within:ring-blue-200 dark:focus-within:ring-blue-800">
+                                    <span class="px-2.5 text-xs text-gray-400 bg-gray-100 dark:bg-gray-700/60 border-r border-gray-200 dark:border-gray-600 h-full flex items-center select-none shrink-0">Rp</span>
+                                    <input type="text" id="price_max_m_display"
+                                           data-price-hidden="price_max_m"
+                                           value="{{ $priceMax ? number_format($priceMax, 0, ',', '.') : '' }}"
+                                           placeholder="Max"
+                                           class="w-full h-full px-2.5 text-sm bg-transparent text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none">
+                                </div>
                             </div>
                         </div>
                     </fieldset>
@@ -707,5 +724,52 @@ function listingPage() {
         },
     };
 }
+</script>
+
+<script>
+// ── Price input: Rp prefix + thousand-separator formatting ───────────────────
+(function () {
+    function formatThousands(raw) {
+        // Strip everything except digits
+        var digits = raw.replace(/\D/g, '');
+        if (!digits) return '';
+        // Format with dots as thousand separators (Indonesian: 1.000.000)
+        return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    function initPriceInput(displayId) {
+        var display = document.getElementById(displayId);
+        if (!display) return;
+
+        var hiddenId = display.getAttribute('data-price-hidden');
+        var hidden   = document.getElementById(hiddenId);
+        if (!hidden) return;
+
+        display.addEventListener('input', function () {
+            var digits = display.value.replace(/\D/g, '');
+            // Update the visible formatted display
+            display.value = digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '';
+            // Keep raw numeric value in the hidden field for form submission
+            hidden.value = digits;
+        });
+
+        // Also handle paste
+        display.addEventListener('paste', function (e) {
+            e.preventDefault();
+            var pasted = (e.clipboardData || window.clipboardData).getData('text');
+            var digits = pasted.replace(/\D/g, '');
+            display.value = digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '';
+            hidden.value  = digits;
+        });
+    }
+
+    // Desktop price inputs
+    initPriceInput('price_min_d_display');
+    initPriceInput('price_max_d_display');
+
+    // Mobile price inputs
+    initPriceInput('price_min_m_display');
+    initPriceInput('price_max_m_display');
+})();
 </script>
 @endpush

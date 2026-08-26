@@ -511,6 +511,9 @@
 
 @push('scripts')
 @if($hasMap)
+@php
+    $popupHtml = '<strong>' . e($property->name) . '</strong>' . ($property->address ? '<br>' . e($property->address) : '');
+@endphp
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function () {
@@ -522,7 +525,7 @@
         maxZoom: 19
     }).addTo(map);
     L.marker([mapLat, mapLng]).addTo(map)
-        .bindPopup('<strong>{{ addslashes($property->name) }}</strong>{{ $property->address ? "<br>" . addslashes($property->address) : "" }}')
+        .bindPopup({!! json_encode($popupHtml) !!})
         .openPopup();
 })();
 </script>

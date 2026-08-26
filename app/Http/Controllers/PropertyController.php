@@ -438,6 +438,19 @@ class PropertyController extends Controller
                 $media->delete();
             }
         }
+
+        // 5. Category updates for existing saved photos
+        //    Submitted as photo_categories_update[{photo_id}] = 'Category Name'
+        foreach ((array) $request->input('photo_categories_update', []) as $photoId => $newCategory) {
+            $newCategory = trim((string) $newCategory);
+            if (!$newCategory) {
+                continue;
+            }
+            $photo = $property->photos()->find($photoId);
+            if ($photo) {
+                $photo->update(['category' => $newCategory]);
+            }
+        }
     }
 
     /**

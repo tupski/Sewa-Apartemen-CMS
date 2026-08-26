@@ -112,6 +112,7 @@
     "prop.all_types": "All Types",
     "prop.all_durations": "All Durations",
     "prop.transit_hour": "Hourly Transit",
+    "prop.search_label": "Search Properties",
     "passwords.sent": "We have emailed your password reset link.",
     "Backup & Restore": "Backup & Restore",
     "Backup": "Backup",

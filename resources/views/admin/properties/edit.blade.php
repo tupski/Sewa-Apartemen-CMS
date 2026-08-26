@@ -415,6 +415,9 @@
                                            value="{{ $amenity->id }}"
                                            {{ in_array($amenity->id, (array) $selectedAmenities) ? 'checked' : '' }}
                                            class="h-4 w-4 text-blue-600 rounded focus:ring-blue-500 shrink-0">
+                                    @if($amenity->icon)
+                                        <i class="{{ $amenity->icon }} w-4 text-center text-gray-500 shrink-0"></i>
+                                    @endif
                                     <span class="text-xs text-gray-700 leading-tight">{{ $amenity->name }}</span>
                                 </label>
                             @empty
