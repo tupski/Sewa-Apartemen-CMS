@@ -328,8 +328,8 @@
                         </div>
                     @endif
 
-                    {{-- ===== PRICING TABLE (shown when mode is 'both' or 'pricing_only') ===== --}}
-                    @if ($showPricingTable)
+                    {{-- ===== PRICING TABLE (left column, only in 'both' mode — sits below Available Room Type) ===== --}}
+                    @if ($showPricingTable && $displayMode === 'both')
                         @include('properties._pricing-table', [
                             'property'       => $property,
                             'whatsappNumber' => $whatsappNumber,
@@ -380,6 +380,15 @@
                                 </ul>
                             </div>
                         </div>
+                    </div>
+                @elseif ($showPricingTable && $displayMode === 'pricing_only')
+                    {{-- Pricing-only mode: price table REPLACES the booking form in the sidebar --}}
+                    <div class="lg:sticky lg:top-24 lg:self-start space-y-6">
+                        @include('properties._pricing-table', [
+                            'property'       => $property,
+                            'whatsappNumber' => $whatsappNumber,
+                            'primaryColor'   => $primaryColor,
+                        ])
                     </div>
                 @endif
             </div>
