@@ -378,10 +378,12 @@ class PropertyController extends Controller
 
             $property->update($data);
 
-            // Sync amenities
-            if ($request->has('amenities')) {
-                $property->amenities()->sync($request->amenities);
-            }
+            // Sync amenities. Always sync (default to an empty array) so that
+            // unchecking every amenity on Edit actually detaches them — with the
+            // previous `$request->has('amenities')` guard, an all-unchecked form
+            // omits the `amenities` key entirely and the stale pivot rows were
+            // never removed (a silent "cannot delete amenities" bug).
+            $property->amenities()->sync($request->input('amenities', []));
 
             $this->saveGallery($request, $property);
 

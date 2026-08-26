@@ -110,10 +110,25 @@
 
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var catOptions = '<?php echo json_encode($categories); ?>';
+    // Turbo-safe: this block runs on every full load AND every Turbo body-swap
+    // (Turbo re-executes <script> tags inside the swapped <body>). It must NOT
+    // be wrapped in a DOMContentLoaded listener — that event does not fire again
+    // after a Turbo navigation, which previously left the "+ Tambah dokumen" /
+    // "×" (remove) buttons completely inert (the reported bug: Required Documents
+    // could not be deleted on the Edit page).
+    (function () {
+        'use strict';
+
+        var categories = @json($categories);
+
+        function makeOptions(selected) {
+            return categories.map(function (c) {
+                return '<option value="' + c + '"' + (c === selected ? ' selected' : '') + '>' + c + '</option>';
+            }).join('');
+        }
 
         function addDocRow(container) {
+            if (!container) return;
             var row = document.createElement('div');
             row.className = 'flex gap-2';
             row.innerHTML = '<input type="text" name="required_documents[]" placeholder="Contoh: KTP, SIM" class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">' +
@@ -122,23 +137,74 @@
         }
 
         function addPlaceRow(container) {
+            if (!container) return;
             var row = document.createElement('div');
             row.className = 'flex gap-2 items-center';
-            var opts = JSON.parse(catOptions).map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
             row.innerHTML = '<input type="text" name="nearby_places[][name]" placeholder="Nama tempat" class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">' +
-                '<select name="nearby_places[][category]" class="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">' + opts + '</select>' +
+                '<select name="nearby_places[][category]" class="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">' + makeOptions(null) + '</select>' +
                 '<input type="number" name="nearby_places[][distance_km]" step="0.01" min="0" placeholder="km" class="w-20 px-2 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">' +
                 '<button type="button" class="place-remove px-3 py-2 text-red-500 border border-gray-300 rounded-md hover:bg-red-50">&times;</button>';
             container.appendChild(row);
+            reindexPlaces();
         }
 
-        document.getElementById('doc-add').addEventListener('click', function () { addDocRow(document.getElementById('doc-list')); });
-        document.getElementById('place-add').addEventListener('click', function () { addPlaceRow(document.getElementById('place-list')); });
+        // Give every nearby-place row a SHARED explicit index across its 3 fields.
+        // Blade renders the rows with name="nearby_places[][name]" etc.; the bare
+        // "[]" makes PHP start a NEW array element for every field, so name,
+        // category and distance land in DIFFERENT array entries and never group
+        // into a single place. Reindexing to nearby_places[i][key] fixes that.
+        function reindexPlaces() {
+            var list = document.getElementById('place-list');
+            if (!list) return;
+            var rows = list.children;
+            for (var i = 0; i < rows.length; i++) {
+                var nameEl = rows[i].querySelector('input[name^="nearby_places"]:not([type="number"])');
+                var catEl  = rows[i].querySelector('select[name^="nearby_places"]');
+                var kmEl   = rows[i].querySelector('input[type="number"][name^="nearby_places"]');
+                if (nameEl) nameEl.name = 'nearby_places[' + i + '][name]';
+                if (catEl)  catEl.name  = 'nearby_places[' + i + '][category]';
+                if (kmEl)   kmEl.name   = 'nearby_places[' + i + '][distance_km]';
+            }
+        }
 
-        document.addEventListener('click', function (e) {
-            if (e.target.classList.contains('doc-remove')) e.target.closest('.flex').remove();
-            if (e.target.classList.contains('place-remove')) e.target.closest('.flex').remove();
-        });
-    });
+        // Delegated listeners are attached to `document`, which PERSISTS across
+        // Turbo body-swaps, so we bind them exactly once (guarded by a global
+        // flag) to avoid stacking duplicate handlers on every navigation.
+        if (!window.__propertyPolicyBound) {
+            window.__propertyPolicyBound = true;
+
+            document.addEventListener('click', function (e) {
+                if (e.target.closest('#doc-add')) {
+                    addDocRow(document.getElementById('doc-list'));
+                    return;
+                }
+                if (e.target.closest('#place-add')) {
+                    addPlaceRow(document.getElementById('place-list'));
+                    return;
+                }
+                if (e.target.closest('.doc-remove')) {
+                    var docRow = e.target.closest('.flex');
+                    if (docRow) docRow.remove();
+                    return;
+                }
+                if (e.target.closest('.place-remove')) {
+                    var placeRow = e.target.closest('.flex');
+                    if (placeRow) placeRow.remove();
+                    reindexPlaces();
+                    return;
+                }
+            });
+
+            // Reindex nearby-place rows right before the property form submits.
+            document.addEventListener('submit', function (e) {
+                if (e.target && e.target.id === 'property-form') {
+                    reindexPlaces();
+                }
+            }, true);
+        }
+
+        // Normalise any server-rendered nearby-place rows on initial parse.
+        reindexPlaces();
+    })();
 </script>
 @endpush
