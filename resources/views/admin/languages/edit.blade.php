@@ -7,7 +7,7 @@
         <h1 class="text-xl font-bold text-gray-800 dark:text-white mt-1">Edit Bahasa: {{ $language->name }}</h1>
     </div>
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-        <form method="POST" action="{{ route('admin.languages.update', $language) }}">
+        <form method="POST" action="{{ route('admin.languages.update', $language) }}" data-warn-unsaved>
             @csrf @method('PUT')
             @include('admin.languages._form')
         </form>

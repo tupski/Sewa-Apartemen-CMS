@@ -70,7 +70,8 @@
           method="POST"
           action="{{ route('admin.properties.update', $property) }}"
           enctype="multipart/form-data"
-          data-turbo="false">
+          data-turbo="false"
+          data-warn-unsaved>
         @csrf
         @method('PUT')
 

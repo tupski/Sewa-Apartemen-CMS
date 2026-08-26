@@ -18,7 +18,7 @@
 
     <!-- Form Card -->
     <div class="bg-white rounded-lg shadow-sm">
-        <form method="POST" action="{{ route('admin.pages.update', $page) }}">
+        <form method="POST" action="{{ route('admin.pages.update', $page) }}" data-warn-unsaved>
             @csrf
             @method('PATCH')
 

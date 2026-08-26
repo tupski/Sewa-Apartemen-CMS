@@ -16,7 +16,7 @@
     </div>
 
     <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
-        <form action="{{ route('admin.media.store') }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('admin.media.store') }}" method="POST" enctype="multipart/form-data" data-warn-unsaved>
             @csrf
 
             <div class="space-y-6">

@@ -9,7 +9,7 @@
     </div>
 
     <div class="bg-white rounded-lg shadow-sm p-6">
-        <form action="{{ route('admin.users.store') }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('admin.users.store') }}" method="POST" enctype="multipart/form-data" data-warn-unsaved>
             @csrf
             @include('admin.users._form')
             <div class="mt-6 flex items-center gap-3">

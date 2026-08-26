@@ -102,7 +102,8 @@
                         <form method="POST"
                               action="{{ route('admin.settings.update', $group) }}"
                               @if($group === 'general') enctype="multipart/form-data" @endif
-                              class="space-y-6">
+                              class="space-y-6"
+                              data-warn-unsaved>
                             @csrf
                             @include('admin.settings.partials.' . $formGroups[$group], ['settings' => $settings, 'group' => $group])
                         </form>

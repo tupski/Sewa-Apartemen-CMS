@@ -30,7 +30,7 @@
 
     <div class="bg-white rounded-lg shadow-sm p-6"
          x-data="{ discountType: '{{ old('discount_type', 'percent') }}' }">
-        <form method="POST" action="{{ route('admin.vouchers.store') }}">
+        <form method="POST" action="{{ route('admin.vouchers.store') }}" data-warn-unsaved>
             @csrf
 
             @include('admin.vouchers._form')

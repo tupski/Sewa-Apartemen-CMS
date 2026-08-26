@@ -18,7 +18,7 @@
 
     <!-- Form Card -->
     <div class="bg-white rounded-lg shadow-sm">
-        <form method="POST" action="{{ route('admin.redirects.update', $redirect) }}">
+        <form method="POST" action="{{ route('admin.redirects.update', $redirect) }}" data-warn-unsaved>
             @csrf
             @method('PATCH')
             <div class="p-6">

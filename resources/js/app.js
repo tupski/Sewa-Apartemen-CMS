@@ -620,6 +620,137 @@ Alpine.data('photoGallery', function (config = {}) {
     }, true);
 })();
 
+// ─── Unsaved-changes guard for admin forms ─────────────────────────────────
+// Warns the user before they navigate away (Turbo visit) or close/refresh the
+// tab (beforeunload) when a marked form has unsaved edits.
+//
+// Opt-in: add `data-warn-unsaved` to the primary create/edit <form>. Search /
+// filter bars are NOT marked so they never trigger the warning.
+//
+// Turbo-safe design:
+//   • Global listeners (beforeunload, turbo:before-visit, delegated
+//     input/change/submit) are attached exactly ONCE via a module-level flag,
+//     so Turbo body-swaps never stack duplicate handlers.
+//   • Forms are (re-)snapshotted on every turbo:load / turbo:render / initial
+//     DOMContentLoaded, because Turbo replaces <body> without reloading JS.
+(function () {
+    var DEFAULT_MSG = 'You have unsaved changes. Are you sure you want to leave this page?';
+
+    // The currently-tracked marked form and its baseline serialized snapshot.
+    // We track a single active form (admin create/edit pages show one main form).
+    var trackedForm = null;
+    var baseline = '';
+    var isDirty = false;
+    var submitting = false;
+
+    // Read the translated warning message from the <meta> tag injected by the
+    // admin layout; fall back to the English default when absent.
+    function warningMessage() {
+        var meta = document.querySelector('meta[name="unsaved-warning"]');
+        var content = meta && meta.getAttribute('content');
+        return content && content.trim() ? content : DEFAULT_MSG;
+    }
+
+    // Serialize a form's user-editable fields into a stable string. We iterate
+    // elements (rather than FormData) so we can include unchecked checkboxes,
+    // disabled-then-enabled fields, and keep ordering deterministic.
+    function serialize(form) {
+        if (!form || !form.elements) return '';
+        var parts = [];
+        for (var i = 0; i < form.elements.length; i++) {
+            var el = form.elements[i];
+            if (!el.name) continue;
+            var type = (el.type || '').toLowerCase();
+            // Skip buttons and CSRF/method tokens (never user-editable state).
+            if (type === 'submit' || type === 'button' || type === 'reset' || type === 'file') continue;
+            if (el.name === '_token' || el.name === '_method') continue;
+            if (type === 'checkbox' || type === 'radio') {
+                parts.push(el.name + '=' + (el.checked ? '1' : '0'));
+            } else {
+                parts.push(el.name + '=' + (el.value == null ? '' : el.value));
+            }
+        }
+        return parts.join('&');
+    }
+
+    // Find the marked form on the current page and take a fresh baseline.
+    function snapshot() {
+        trackedForm = document.querySelector('form[data-warn-unsaved]');
+        isDirty = false;
+        submitting = false;
+        baseline = trackedForm ? serialize(trackedForm) : '';
+    }
+
+    // Re-serialize and compare against the baseline to update the dirty flag.
+    function refreshDirty() {
+        if (!trackedForm) { isDirty = false; return; }
+        // If the tracked form was removed from the DOM (Turbo swap between two
+        // marked pages before re-snapshot), bail out safely.
+        if (!document.contains(trackedForm)) { isDirty = false; return; }
+        isDirty = serialize(trackedForm) !== baseline;
+    }
+
+    function attachGlobalListeners() {
+        // Mark dirty on any input/change bubbling up from the tracked form.
+        document.addEventListener('input', function (e) {
+            if (submitting || !trackedForm) return;
+            if (trackedForm.contains(e.target)) refreshDirty();
+        });
+        document.addEventListener('change', function (e) {
+            if (submitting || !trackedForm) return;
+            if (trackedForm.contains(e.target)) refreshDirty();
+        });
+
+        // Submitting the tracked form is a save — never warn for it. Clear the
+        // flag so neither beforeunload nor turbo:before-visit fires.
+        document.addEventListener('submit', function (e) {
+            if (trackedForm && e.target === trackedForm) {
+                submitting = true;
+                isDirty = false;
+            }
+        }, true);
+
+        // Native tab close / refresh / external navigation.
+        window.addEventListener('beforeunload', function (e) {
+            if (submitting || !isDirty) return;
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+        });
+
+        // In-app Turbo navigation (link clicks, Turbo.visit). beforeunload does
+        // NOT fire for these, so guard here with a confirm() dialog.
+        document.addEventListener('turbo:before-visit', function (e) {
+            if (submitting || !isDirty) return;
+            if (!window.confirm(warningMessage())) {
+                e.preventDefault();
+            }
+        });
+
+        // A Turbo form submission that succeeds triggers a visit; make sure the
+        // submit-start clears dirty even for Turbo-driven forms.
+        document.addEventListener('turbo:submit-start', function (e) {
+            if (trackedForm && e.target === trackedForm) {
+                submitting = true;
+                isDirty = false;
+            }
+        });
+    }
+
+    var initialized = false;
+    function init() {
+        if (!initialized) {
+            attachGlobalListeners();
+            initialized = true;
+        }
+        snapshot();
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('turbo:load', init);
+    document.addEventListener('turbo:render', init);
+})();
+
 // ─── Media Library (WordPress-style uploader) ──────────────────────────────
 // Powers resources/views/admin/media/index.blade.php: grid, Add-Media modal
 // (upload / library / from-URL tabs) and the details editor modal.

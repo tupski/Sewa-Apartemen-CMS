@@ -28,7 +28,7 @@
         </div>
 
         <div class="lg:col-span-2 bg-white rounded-lg shadow-sm p-6">
-            <form action="{{ route('admin.media.update', $media) }}" method="POST">
+            <form action="{{ route('admin.media.update', $media) }}" method="POST" data-warn-unsaved>
                 @csrf
                 @method('PUT')
 

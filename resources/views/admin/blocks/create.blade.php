@@ -18,7 +18,7 @@
 
     <!-- Form Card -->
     <div class="bg-white rounded-lg shadow-sm">
-        <form method="POST" action="{{ route('admin.blocks.store') }}">
+        <form method="POST" action="{{ route('admin.blocks.store') }}" data-warn-unsaved>
             @csrf
 
             <div class="p-6">

@@ -13,7 +13,7 @@
     @endif
 
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-        <form method="POST" action="{{ route('admin.slug-settings.update') }}">
+        <form method="POST" action="{{ route('admin.slug-settings.update') }}" data-warn-unsaved>
             @csrf
             <div class="space-y-5">
                 @foreach($slugs as $key => $meta)

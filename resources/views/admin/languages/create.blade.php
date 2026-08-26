@@ -7,7 +7,7 @@
         <h1 class="text-xl font-bold text-gray-800 dark:text-white mt-1">Tambah Bahasa</h1>
     </div>
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-        <form method="POST" action="{{ route('admin.languages.store') }}">
+        <form method="POST" action="{{ route('admin.languages.store') }}" data-warn-unsaved>
             @csrf
             @include('admin.languages._form')
         </form>

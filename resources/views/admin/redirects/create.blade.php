@@ -18,7 +18,7 @@
 
     <!-- Form Card -->
     <div class="bg-white rounded-lg shadow-sm">
-        <form method="POST" action="{{ route('admin.redirects.store') }}">
+        <form method="POST" action="{{ route('admin.redirects.store') }}" data-warn-unsaved>
             @csrf
             <div class="p-6">
                 @include('admin.redirects._form')

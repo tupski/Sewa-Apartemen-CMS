@@ -1,5 +1,6 @@
 {
     "admin.money_prefix": "Rp",
+    "admin.unsaved_warning": "Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman ini?",
     "nav.find_apartments": "Cari Apartemen",
     "nav.whatsapp": "WhatsApp",
     "nav.home": "Beranda",

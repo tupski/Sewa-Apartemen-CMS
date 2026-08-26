@@ -57,7 +57,8 @@
           method="POST"
           action="{{ route('admin.properties.store') }}"
           enctype="multipart/form-data"
-          data-turbo="false">
+          data-turbo="false"
+          data-warn-unsaved>
         @csrf
 
         {{-- ═══════════════════════════════════════════════════════

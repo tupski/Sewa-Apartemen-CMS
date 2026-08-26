@@ -9,7 +9,7 @@
     </div>
 
     <div class="bg-white rounded-lg shadow-sm p-6">
-        <form action="{{ route('admin.users.update', $user) }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('admin.users.update', $user) }}" method="POST" enctype="multipart/form-data" data-warn-unsaved>
             @csrf
             @method('PUT')
             @include('admin.users._form')

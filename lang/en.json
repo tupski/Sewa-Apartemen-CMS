@@ -1,5 +1,6 @@
 {
     "admin.money_prefix": "Rp",
+    "admin.unsaved_warning": "You have unsaved changes. Are you sure you want to leave this page?",
     "nav.find_apartments": "Find Apartments",
     "nav.whatsapp": "WhatsApp",
     "nav.home": "Home",

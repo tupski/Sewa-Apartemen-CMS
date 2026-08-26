@@ -16,7 +16,7 @@
     </div>
 
     <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
-        <form action="{{ route('admin.amenities.store') }}" method="POST">
+        <form action="{{ route('admin.amenities.store') }}" method="POST" data-warn-unsaved>
             @csrf
             @include('admin.amenities._form')
 

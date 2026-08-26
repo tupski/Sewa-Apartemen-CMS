@@ -39,7 +39,7 @@
 
     <div class="bg-white rounded-lg shadow-sm p-6"
          x-data="{ discountType: '{{ old('discount_type', $voucher->discount_type) }}' }">
-        <form method="POST" action="{{ route('admin.vouchers.update', $voucher) }}">
+        <form method="POST" action="{{ route('admin.vouchers.update', $voucher) }}" data-warn-unsaved>
             @csrf @method('PUT')
 
             @include('admin.vouchers._form')

@@ -9,7 +9,7 @@
     </div>
     <div class="bg-white rounded-lg shadow-sm p-6">
         <h2 class="text-2xl font-bold text-gray-800 mb-6">Create New Category</h2>
-        <form action="{{ route('admin.categories.store') }}" method="POST">
+        <form action="{{ route('admin.categories.store') }}" method="POST" data-warn-unsaved>
             @csrf
             @include('admin.categories._form')
         </form>

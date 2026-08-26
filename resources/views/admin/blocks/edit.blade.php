@@ -18,7 +18,7 @@
 
     <!-- Form Card -->
     <div class="bg-white rounded-lg shadow-sm">
-        <form method="POST" action="{{ route('admin.blocks.update', $block) }}">
+        <form method="POST" action="{{ route('admin.blocks.update', $block) }}" data-warn-unsaved>
             @csrf
             @method('PATCH')
 

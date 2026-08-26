@@ -16,7 +16,7 @@
     </div>
 
     <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
-        <form action="{{ route('admin.amenities.update', $amenity) }}" method="POST">
+        <form action="{{ route('admin.amenities.update', $amenity) }}" method="POST" data-warn-unsaved>
             @csrf
             @method('PUT')
             @include('admin.amenities._form', ['amenity' => $amenity])
