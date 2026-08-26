@@ -56,20 +56,6 @@
 
             {{-- Mobile: Filter + Sort bar --}}
             <div id="mobile-filter-bar" class="flex lg:hidden items-center gap-3 mb-5">
-                {{-- Tombol Filter mobile --}}
-                <button @click="filterOpen = true"
-                        type="button"
-                        class="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700/60 transition"
-                        aria-label="{{ __('prop.filter') }}">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" d="M3 6h18M7 12h10M11 18h2"/>
-                    </svg>
-                    {{ __('prop.filter') }}
-                    @if($activeFilterCount > 0)
-                        <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white rounded-full"
-                              style="background-color: {{ $primaryColor }}">{{ $activeFilterCount }}</span>
-                    @endif
-                </button>
 
                 {{-- Sort dropdown mobile --}}
                 <form action="{{ route('properties.public.index') }}" method="GET" class="flex-1">
@@ -96,7 +82,7 @@
 
                 {{-- ══ SIDEBAR FILTER (Desktop) ═══════════════════════════════════ --}}
                 <aside id="filter-section" class="hidden lg:block w-72 xl:w-80 shrink-0">
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 sticky top-24">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 sticky top-8 max-h-[calc(100vh-4rem)] overflow-y-auto">
                         <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                             <h2 class="text-base font-semibold text-gray-800 dark:text-gray-100">{{ __('prop.filter_title') }}</h2>
                             @if($activeFilterCount > 0)
@@ -489,6 +475,21 @@
             </div>{{-- end flex row --}}
         </div>{{-- end max-w container --}}
 
+        {{-- ══ MOBILE FILTER TRIGGER (Fixed bottom-center pill) ════════════ --}}
+        <button @click="filterOpen = true"
+                type="button"
+                class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-6 py-3 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-200 shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700/70 transition lg:hidden"
+                aria-label="{{ __('prop.filter') }}">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" d="M3 6h18M7 12h10M11 18h2"/>
+            </svg>
+            {{ __('prop.filter') }}
+            @if($activeFilterCount > 0)
+                <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white rounded-full"
+                      style="background-color: {{ $primaryColor }}">{{ $activeFilterCount }}</span>
+            @endif
+        </button>
+
         {{-- ══ MOBILE FILTER DRAWER ══════════════════════════════════════════ --}}
         {{-- Backdrop --}}
         <div x-show="filterOpen"
@@ -514,7 +515,7 @@
              x-transition:leave-start="translate-y-0"
              x-transition:leave-end="translate-y-full"
              role="dialog" aria-modal="true" aria-label="{{ __('prop.filter_title') }}"
-             class="fixed bottom-0 inset-x-0 z-50 lg:hidden bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl max-h-[90dvh] flex flex-col">
+             class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-xl z-50 lg:hidden bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl max-h-[90dvh] flex flex-col">
 
             {{-- Drag handle --}}
             <div class="flex justify-center pt-3 pb-1">

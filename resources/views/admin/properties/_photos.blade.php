@@ -1,588 +1,504 @@
 {{--
     _photos.blade.php
     ─────────────────────────────────────────────────────────────────────────────
-    Redesigned photo upload section for the property edit form.
+    Photo upload / gallery section for the property form (create + edit).
 
-    HOW IT WORKS
+    WORKS FOR BOTH CREATE AND EDIT
     ─────────────────────────────────────────────────────────────────────────────
-    • Drag-and-drop / click-to-browse dropzone (vanilla JS, no npm packages).
-    • Files are previewed immediately via FileReader (no server round-trip until
-      the main property form is submitted).
-    • On submit, each pending file is injected as a real <input type="file">
-      named gallery_uploads[{catIndex}][] so the existing saveGallery() method
-      in PropertyController picks them up unchanged.
-    • Existing photos (already saved) display in the same grid. Their category
-      can be changed via a <select>; the choice is persisted in a hidden input
-      photo_categories_update[{photo_id}] that the controller can consume.
-    • The ★ / ☆ star marks the primary photo. It writes the media_id of the
-      chosen photo into the existing hidden input #featured-image-id (present
-      in edit.blade.php) so the controller saves it as featured_image_id on
-      the Property model.
-    • Deleting a saved photo appends its ID to deleted_photo_ids (existing field).
-    • Deleting a pending (not-yet-uploaded) photo just removes it from the queue.
+    • Dropzone: drag-and-drop or click-to-select, multiple files, images only.
+    • Client-side preview grid is shown immediately — no server round-trip until
+      the main property form is submitted.
+    • Each photo card has:
+        - Thumbnail (object-cover)
+        - ★/☆ star overlay (top-right) — marks the featured/primary image
+        - ✕ delete button overlay (top-left)
+        - Category <select> below the image
+    • On form submit an @submit.prevent handler on the wrapping Alpine component
+      (hoisted to the parent form via a custom event) injects the hidden inputs
+      needed by saveGallery():
 
-    FIELDS SUBMITTED
+    FORM FIELDS SUBMITTED
     ─────────────────────────────────────────────────────────────────────────────
-    photo_categories            JSON array – category names (existing field)
-    gallery_uploads[N][]        files for category at index N (existing field)
-    deleted_photo_ids           comma-separated IDs (existing field)
-    photo_categories_update[id] new category string per saved photo (new field)
-    featured_image_id           media_id of the primary photo (existing field)
+    photo_categories            JSON-encoded array of unique category names
+                                (one entry per distinct category present)
+    gallery_uploads[N][]        actual <input type="file"> for new photos,
+                                N = index into photo_categories array
+    photo_categories_update[id] new category for an already-saved photo
+    deleted_photo_ids           comma-separated PropertyPhoto IDs to delete
+    featured_image_id           media_id of the chosen featured photo
+                                (only set when an existing photo is starred)
+
+    NOTES
+    ─────────────────────────────────────────────────────────────────────────────
+    • Alpine.js is loaded globally via resources/js/app.js — no CDN needed.
+    • No external dropzone library — native HTML5 drag-and-drop + FileReader.
+    • Max file size: 10 MB. Accepted: jpeg, png, webp, gif.
+    • For NEW photos (not yet saved): star selection is client-side only; since
+      there is no media_id yet, featured_image_id is NOT sent for new photos.
+      The user can re-star after the first save.
 --}}
 
 @php
     /** @var \App\Models\Property|null $property */
-    $photoCategories = $property?->photoCategories() ?? \App\Models\Property::DEFAULT_PHOTO_CATEGORIES;
+    $categoryOptions = ['Exterior', 'Building', 'Lobby', 'Lift', 'Bedroom', 'Toilet', 'Swimming Pool', 'Others'];
 
-    // Fixed category options shown in the per-photo dropdown
-    $categoryOptions = [
-        'Exterior', 'Building', 'Lobby', 'Lift',
-        'Bedroom', 'Toilet', 'Swimming Pool', 'Others',
-    ];
-
-    // Existing saved photos – flat list with all the info JS needs
-    $savedPhotos = $property
+    // Existing saved photos serialised for Alpine initial state
+    $savedPhotos = isset($property) && $property
         ? $property->photos->map(fn ($p) => [
             'id'       => $p->id,
             'media_id' => $p->media_id,
-            'url'      => $p->media?->url ?? '',
-            'category' => $p->category ?? '',
+            'url'      => $p->media?->url ?? asset('images/placeholder.jpg'),
+            'category' => $p->category ?? 'Others',
         ])->values()->toArray()
         : [];
 
-    $featuredMediaId = $property?->featured_image_id;
+    $featuredMediaId = isset($property) && $property ? ($property->featured_image_id ?? null) : null;
 @endphp
 
-{{-- ── Inline styles (scoped to this component only) ── --}}
-@push('head')
-<style>
-    /* Dropzone states */
-    #photo-dropzone.dz-active  { border-color: #3b82f6; background-color: #eff6ff; }
-    #photo-dropzone.dz-over    { border-color: #2563eb; background-color: #dbeafe; transform: scale(1.01); }
-
-    /* Photo card star button */
-    .photo-card .btn-star       { transition: color .15s, transform .15s; }
-    .photo-card .btn-star:hover { transform: scale(1.25); }
-    .photo-card .btn-star.starred { color: #f59e0b; }
-
-    /* Upload progress overlay */
-    .photo-card .upload-overlay {
-        position: absolute; inset: 0;
-        display: flex; align-items: center; justify-content: center;
-        background: rgba(0,0,0,.45); border-radius: .5rem;
-    }
-    .photo-card .upload-overlay .spinner {
-        width: 2rem; height: 2rem;
-        border: 3px solid rgba(255,255,255,.4);
-        border-top-color: #fff;
-        border-radius: 50%;
-        animation: spin .7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* Category select inside card */
-    .photo-card select {
-        font-size: .72rem;
-        padding: .2rem .35rem;
-        line-height: 1.3;
-        max-width: 100%;
-    }
-</style>
-@endpush
-
-<div class="border-b border-gray-200 pb-8" id="photo-section">
+{{-- ─── Alpine component root ─────────────────────────────────────────── --}}
+<div
+    id="photo-section"
+    class="border-b border-gray-200 pb-8"
+    x-data="photoGallery({
+        existing: @json($savedPhotos),
+        initialFeatured: @json($featuredMediaId),
+        categories: @json($categoryOptions)
+    })"
+    x-init="init()"
+>
     <h3 class="text-lg font-semibold text-gray-800 mb-1">Foto Properti</h3>
-    <p class="text-sm text-gray-500 mb-5">
-        Drag &amp; drop atau klik area di bawah untuk menambah foto. Atur kategori dan tandai foto utama (★).
+    <p class="text-sm text-gray-500 mb-4">
+        Upload foto properti. Klik bintang (★) untuk menetapkan foto utama. Maksimal 10 MB per file.
     </p>
 
-    {{-- ── Hidden fields consumed by PropertyController::saveGallery() ── --}}
-    <input type="hidden" name="photo_categories"  id="photo-categories-input"
-           value="{{ json_encode($photoCategories) }}">
-    <input type="hidden" name="deleted_photo_ids" id="deleted-photo-ids" value="">
-
-    {{-- ── Dropzone ── --}}
-    <div id="photo-dropzone"
-         role="button" tabindex="0" aria-label="Upload area: drag and drop photos or click to browse"
-         class="relative flex flex-col items-center justify-center gap-3
-                border-2 border-dashed border-gray-300 rounded-xl
-                bg-gray-50 hover:bg-blue-50 hover:border-blue-400
-                transition-all duration-200 cursor-pointer
-                px-6 py-10 mb-6 select-none">
-
-        {{-- cloud-upload icon --}}
-        <svg class="w-12 h-12 text-gray-400 pointer-events-none" fill="none" stroke="currentColor"
-             stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M12 16.5V9.75m0 0-3 3m3-3 3 3M6.75 19.5a4.5 4.5 0 0 1-1.632-8.683
-                     1.942 1.942 0 0 1 .023-.095A5.25 5.25 0 0 1 17.25 9a5.25 5.25 0
-                     0 1 .9 10.413" />
-        </svg>
-
-        <div class="text-center pointer-events-none">
-            <p class="text-sm font-medium text-gray-700">
-                Drag &amp; drop foto di sini atau
-                <span class="text-blue-600 font-semibold">klik untuk memilih</span>
-            </p>
-            <p class="text-xs text-gray-400 mt-1">JPEG, PNG, WebP — maks. 10 MB per file</p>
+    {{-- ─── Dropzone ───────────────────────────────────────────────────── --}}
+    <div
+        id="photo-dropzone"
+        class="relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center transition-colors duration-150 cursor-pointer hover:border-blue-400 hover:bg-blue-50"
+        :class="{
+            'border-blue-500 bg-blue-50': isDragging,
+            'border-blue-600 bg-blue-100 scale-[1.01]': isDragOver
+        }"
+        @click="$refs.fileInput.click()"
+        @dragenter.prevent="isDragging = true; isDragOver = false"
+        @dragover.prevent="isDragging = true; isDragOver = true"
+        @dragleave.prevent="isDragging = false; isDragOver = false"
+        @drop.prevent="isDragging = false; isDragOver = false; handleDrop($event)"
+    >
+        {{-- Upload icon --}}
+        <div class="pointer-events-none flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-500">
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+            </svg>
         </div>
-
-        {{-- Progress bar shown during batch upload (while form processes) --}}
-        <div id="dz-progress-bar"
-             class="hidden absolute bottom-0 left-0 h-1 rounded-b-xl bg-blue-500 transition-all duration-300"
-             style="width: 0%"></div>
-
+        <div class="pointer-events-none">
+            <p class="text-sm font-medium text-gray-700">Drop photos here or <span class="text-blue-600 underline">click to select</span></p>
+            <p class="mt-1 text-xs text-gray-400">JPEG, PNG, WebP, GIF · max 10 MB each</p>
+        </div>
         {{-- Hidden real file input --}}
-        <input type="file" id="photo-file-input"
-               accept="image/jpeg,image/png,image/webp,image/gif"
-               multiple class="sr-only" aria-hidden="true" tabindex="-1">
+        <input
+            type="file"
+            multiple
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            class="sr-only"
+            x-ref="fileInput"
+            @change="handleFileInput($event)"
+        >
     </div>
 
-    {{-- ── Photo grid ── --}}
-    <div id="photo-grid"
-         class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
-         aria-label="Photo gallery">
-        {{-- Existing saved photos rendered server-side, JS will also manage them --}}
-        @foreach ($savedPhotos as $photo)
-        <div class="photo-card relative rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white"
-             data-photo-id="{{ $photo['id'] }}"
-             data-media-id="{{ $photo['media_id'] }}"
-             data-saved="1">
-
-            {{-- Thumbnail --}}
-            <div class="aspect-square bg-gray-100">
-                <img src="{{ $photo['url'] }}"
-                     alt="Property photo"
-                     class="w-full h-full object-cover"
-                     loading="lazy">
-            </div>
-
-            {{-- Star button (top-right) --}}
-            <button type="button"
-                    class="btn-star absolute top-1.5 right-1.5 z-10
-                           w-7 h-7 flex items-center justify-center
-                           bg-black/40 hover:bg-black/60 rounded-full
-                           text-white text-base leading-none
-                           {{ $photo['media_id'] == $featuredMediaId ? 'starred' : '' }}"
-                    aria-label="Set as primary photo"
-                    title="Jadikan foto utama">
-                {{ $photo['media_id'] == $featuredMediaId ? '★' : '☆' }}
-            </button>
-
-            {{-- Delete button (top-left) --}}
-            <button type="button"
-                    class="btn-delete absolute top-1.5 left-1.5 z-10
-                           w-7 h-7 flex items-center justify-center
-                           bg-red-500/80 hover:bg-red-600 rounded-full
-                           text-white text-sm leading-none font-bold"
-                    aria-label="Delete photo"
-                    title="Hapus foto">
-                &times;
-            </button>
-
-            {{-- Category select (below image) --}}
-            <div class="px-2 py-1.5 bg-white border-t border-gray-100">
-                <select class="cat-select w-full rounded border-gray-300 text-gray-700
-                               focus:ring-blue-500 focus:border-blue-500"
-                        aria-label="Photo category">
-                    @foreach ($categoryOptions as $opt)
-                        <option value="{{ $opt }}"
-                            {{ $photo['category'] === $opt ? 'selected' : '' }}>
-                            {{ $opt }}
-                        </option>
-                    @endforeach
-                </select>
-                {{-- Hidden input carrying the (possibly updated) category for this saved photo --}}
-                <input type="hidden"
-                       name="photo_categories_update[{{ $photo['id'] }}]"
-                       class="cat-hidden"
-                       value="{{ $photo['category'] }}">
-            </div>
-        </div>
-        @endforeach
-        {{-- Pending (not-yet-uploaded) photo cards are inserted here by JS --}}
+    {{-- ─── Error banner ───────────────────────────────────────────────── --}}
+    <div
+        x-show="errors.length > 0"
+        x-transition
+        class="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3"
+    >
+        <ul class="space-y-0.5">
+            <template x-for="(err, i) in errors" :key="i">
+                <li class="flex items-start gap-2 text-sm text-red-700">
+                    <svg class="mt-0.5 h-4 w-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.75-4.75a.75.75 0 001.5 0v-4.5a.75.75 0 00-1.5 0v4.5zm.75-7a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd"/>
+                    </svg>
+                    <span x-text="err"></span>
+                </li>
+            </template>
+        </ul>
+        <button type="button" @click="errors = []" class="mt-1 text-xs text-red-500 hover:text-red-700 underline">Dismiss</button>
     </div>
 
-    {{-- Empty state message --}}
-    @if (empty($savedPhotos))
-    <p id="photo-empty-msg" class="text-sm text-gray-400 text-center mt-4">
-        Belum ada foto. Upload foto di atas.
-    </p>
-    @else
-    <p id="photo-empty-msg" class="hidden text-sm text-gray-400 text-center mt-4">
-        Belum ada foto. Upload foto di atas.
-    </p>
-    @endif
-</div>
+    {{-- ─── Photo grid ─────────────────────────────────────────────────── --}}
+    <div
+        class="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
+        x-show="existingPhotos.length > 0 || newPhotos.length > 0"
+        x-transition
+    >
+
+        {{-- ── Existing (saved) photos ── --}}
+        <template x-for="photo in existingPhotos" :key="'ex-' + photo.id">
+            <div class="group relative flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+
+                {{-- Image wrapper --}}
+                <div class="relative aspect-[4/3] overflow-hidden bg-gray-100">
+                    <img
+                        :src="photo.url"
+                        :alt="photo.category"
+                        class="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+                        loading="lazy"
+                    >
+
+                    {{-- ✕ Delete button — top-left --}}
+                    <button
+                        type="button"
+                        @click.stop="removeExisting(photo)"
+                        class="absolute left-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-600 focus:opacity-100 focus:outline-none"
+                        title="Hapus foto"
+                        aria-label="Hapus foto"
+                    >
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+
+                    {{-- ★ Star button — top-right --}}
+                    <button
+                        type="button"
+                        @click.stop="setFeatured(photo)"
+                        class="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-lg leading-none transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                        :class="featuredMediaId === photo.media_id ? 'text-yellow-400' : 'text-white/70 hover:text-yellow-300'"
+                        :title="featuredMediaId === photo.media_id ? 'Foto utama' : 'Jadikan foto utama'"
+                        :aria-label="featuredMediaId === photo.media_id ? 'Foto utama aktif' : 'Jadikan foto utama'"
+                        :aria-pressed="featuredMediaId === photo.media_id"
+                    >
+                        <span x-text="featuredMediaId === photo.media_id ? '★' : '☆'"></span>
+                    </button>
+
+                    {{-- Featured badge --}}
+                    <span
+                        x-show="featuredMediaId === photo.media_id"
+                        class="absolute bottom-1.5 left-1.5 rounded bg-yellow-400 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-yellow-900"
+                    >Utama</span>
+                </div>
+
+                {{-- Category select --}}
+                <div class="px-2 py-2">
+                    <select
+                        class="w-full rounded-md border border-gray-200 bg-white py-1.5 pl-2 pr-6 text-xs text-gray-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        x-model="photo.category"
+                        :aria-label="'Kategori untuk foto ' + photo.id"
+                    >
+                        <template x-for="opt in categories" :key="opt">
+                            <option :value="opt" x-text="opt" :selected="photo.category === opt"></option>
+                        </template>
+                    </select>
+                </div>
+
+                {{-- Hidden: category update for this photo --}}
+                <input type="hidden" :name="'photo_categories_update[' + photo.id + ']'" :value="photo.category">
+            </div>
+        </template>
+
+        {{-- ── New (pending) photos ── --}}
+        <template x-for="photo in newPhotos" :key="'new-' + photo.uid">
+            <div class="group relative flex flex-col overflow-hidden rounded-xl border border-blue-200 bg-white shadow-sm ring-1 ring-blue-100">
+
+                {{-- Image wrapper --}}
+                <div class="relative aspect-[4/3] overflow-hidden bg-gray-100">
+                    <img
+                        :src="photo.preview"
+                        :alt="photo.category"
+                        class="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+                    >
+
+                    {{-- ✕ Delete button — top-left --}}
+                    <button
+                        type="button"
+                        @click.stop="removeNew(photo)"
+                        class="absolute left-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-600 focus:opacity-100 focus:outline-none"
+                        title="Hapus foto"
+                        aria-label="Hapus foto baru"
+                    >
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+
+                    {{-- ★ Star button — top-right (visual only, no media_id yet) --}}
+                    <button
+                        type="button"
+                        @click.stop="setFeaturedNew(photo)"
+                        class="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-lg leading-none transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                        :class="featuredNewUid === photo.uid ? 'text-yellow-400' : 'text-white/70 hover:text-yellow-300'"
+                        :title="featuredNewUid === photo.uid ? 'Tandai sebagai foto utama (simpan dulu untuk menyimpan pilihan ini)' : 'Tandai sebagai foto utama'"
+                        :aria-pressed="featuredNewUid === photo.uid"
+                    >
+                        <span x-text="featuredNewUid === photo.uid ? '★' : '☆'"></span>
+                    </button>
+
+                    {{-- "New" badge --}}
+                    <span class="absolute bottom-1.5 left-1.5 rounded bg-blue-500 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">Baru</span>
+                </div>
+
+                {{-- Category select --}}
+                <div class="px-2 py-2">
+                    <select
+                        class="w-full rounded-md border border-gray-200 bg-white py-1.5 pl-2 pr-6 text-xs text-gray-700 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        x-model="photo.category"
+                        :aria-label="'Kategori untuk foto baru'"
+                    >
+                        <template x-for="opt in categories" :key="opt">
+                            <option :value="opt" x-text="opt" :selected="photo.category === opt"></option>
+                        </template>
+                    </select>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    {{-- ─── Empty state ─────────────────────────────────────────────────── --}}
+    <p
+        x-show="existingPhotos.length === 0 && newPhotos.length === 0"
+        x-transition
+        class="mt-4 text-center text-sm text-gray-400"
+    >Belum ada foto. Upload foto di atas.</p>
+
+    {{-- ─── Hidden submit-time inputs (injected by prepareSubmit) ─────── --}}
+    {{--
+        These are populated by prepareSubmit() right before the form submits.
+        They live here so they are inside the same <form> element.
+    --}}
+    <div id="photo-submit-container" aria-hidden="true"></div>
+
+</div>{{-- end x-data --}}
+
 
 @push('scripts')
 <script>
-(function () {
-    'use strict';
+/**
+ * photoGallery Alpine component
+ *
+ * Config object:
+ *   existing        – array of {id, media_id, url, category} from server
+ *   initialFeatured – current featured_image_id (media ID) or null
+ *   categories      – ordered array of category option strings
+ */
+document.addEventListener('alpine:init', function () {
+    Alpine.data('photoGallery', function (config) {
+        return {
+            /* ── state ──────────────────────────────────────────────────── */
+            categories:      config.categories  || [],
+            existingPhotos:  JSON.parse(JSON.stringify(config.existing || [])),
+            newPhotos:       [],          // {uid, file, preview, category}
+            deletedIds:      [],          // PropertyPhoto IDs to delete
+            featuredMediaId: config.initialFeatured || null,  // existing photo
+            featuredNewUid:  null,        // new photo uid (visual only)
+            errors:          [],
+            isDragging:      false,
+            isDragOver:      false,
 
-    /* ── Config ─────────────────────────────────────────────────────────────── */
-    var MAX_FILE_SIZE_MB = 10;
-    var ALLOWED_TYPES    = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    var CATEGORY_OPTIONS = @json($categoryOptions);
-    var DEFAULT_CATEGORY = 'Others';
+            /* ── constants ───────────────────────────────────────────────── */
+            MAX_MB:    10,
+            MIME_OK:   ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
 
-    /* ── DOM refs ────────────────────────────────────────────────────────────── */
-    var dropzone      = document.getElementById('photo-dropzone');
-    var fileInput     = document.getElementById('photo-file-input');
-    var grid          = document.getElementById('photo-grid');
-    var emptyMsg      = document.getElementById('photo-empty-msg');
-    var deletedInput  = document.getElementById('deleted-photo-ids');
+            /* ── lifecycle ───────────────────────────────────────────────── */
+            init() {
+                // Hook into the parent form's submit event so we can inject
+                // the real file inputs + hidden fields before the browser
+                // serialises the form data.
+                var self    = this;
+                var section = this.$el;
+                var form    = section.closest('form');
+                if (form) {
+                    form.addEventListener('submit', function (e) {
+                        self.prepareSubmit(e, form);
+                    }, { capture: true });
+                }
+            },
 
-    // Featured image hidden input is rendered by edit.blade.php as #featured-image-id
-    // Fall back to a local hidden input if the section is used standalone.
-    var featuredInput = document.getElementById('featured-image-id');
-    if (!featuredInput) {
-        featuredInput = document.createElement('input');
-        featuredInput.type = 'hidden';
-        featuredInput.name = 'featured_image_id';
-        featuredInput.id   = 'featured-image-id';
-        dropzone.parentNode.insertBefore(featuredInput, dropzone);
-    }
+            /* ── drag & drop ─────────────────────────────────────────────── */
+            handleDrop(event) {
+                var files = event.dataTransfer ? event.dataTransfer.files : [];
+                this.processFiles(Array.from(files));
+            },
 
-    /* ── State ───────────────────────────────────────────────────────────────── */
-    // Pending files: array of { file: File, objectUrl: string, category: string, inputEl: HTMLInputElement }
-    var pendingFiles = [];
+            handleFileInput(event) {
+                var files = event.target.files || [];
+                this.processFiles(Array.from(files));
+                // Reset so the same file can be re-selected if removed
+                event.target.value = '';
+            },
 
-    /* ─────────────────────────────────────────────────────────────────────────
-       DROPZONE INTERACTIONS
-    ───────────────────────────────────────────────────────────────────────── */
-    dropzone.addEventListener('click', function (e) {
-        if (e.target === fileInput) return;
-        fileInput.click();
-    });
+            /* ── file processing ─────────────────────────────────────────── */
+            processFiles(files) {
+                var self   = this;
+                var newErr = [];
 
-    dropzone.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
-    });
+                files.forEach(function (file) {
+                    if (!self.MIME_OK.includes(file.type)) {
+                        newErr.push(file.name + ': tipe file tidak didukung (gunakan JPEG, PNG, WebP, atau GIF).');
+                        return;
+                    }
+                    if (file.size > self.MAX_MB * 1024 * 1024) {
+                        newErr.push(file.name + ': ukuran melebihi ' + self.MAX_MB + ' MB.');
+                        return;
+                    }
 
-    dropzone.addEventListener('dragover', function (e) {
-        e.preventDefault();
-        dropzone.classList.add('dz-over');
-    });
+                    var uid    = Math.random().toString(36).slice(2) + Date.now().toString(36);
+                    var reader = new FileReader();
 
-    dropzone.addEventListener('dragleave', function (e) {
-        if (!dropzone.contains(e.relatedTarget)) {
-            dropzone.classList.remove('dz-over');
-        }
-    });
+                    reader.onload = function (e) {
+                        self.newPhotos.push({
+                            uid:      uid,
+                            file:     file,
+                            preview:  e.target.result,
+                            category: 'Others',
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                });
 
-    dropzone.addEventListener('drop', function (e) {
-        e.preventDefault();
-        dropzone.classList.remove('dz-over');
-        handleFiles(e.dataTransfer.files);
-    });
+                if (newErr.length) {
+                    this.errors = this.errors.concat(newErr);
+                }
+            },
 
-    fileInput.addEventListener('change', function () {
-        handleFiles(fileInput.files);
-        // Reset so the same file can be re-selected if removed
-        fileInput.value = '';
-    });
+            /* ── star / featured ─────────────────────────────────────────── */
+            setFeatured(photo) {
+                // Toggle: clicking the active star deselects it
+                if (this.featuredMediaId === photo.media_id) {
+                    this.featuredMediaId = null;
+                } else {
+                    this.featuredMediaId = photo.media_id;
+                    this.featuredNewUid  = null;  // clear new-photo star
+                }
+            },
 
-    /* ─────────────────────────────────────────────────────────────────────────
-       FILE HANDLING
-    ───────────────────────────────────────────────────────────────────────── */
-    function handleFiles(fileList) {
-        var files = Array.from(fileList);
-        var errors = [];
+            setFeaturedNew(photo) {
+                if (this.featuredNewUid === photo.uid) {
+                    this.featuredNewUid = null;
+                } else {
+                    this.featuredNewUid  = photo.uid;
+                    this.featuredMediaId = null;  // clear existing-photo star
+                }
+            },
 
-        files.forEach(function (file) {
-            if (!ALLOWED_TYPES.includes(file.type)) {
-                errors.push(file.name + ': tipe file tidak didukung');
-                return;
-            }
-            if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-                errors.push(file.name + ': ukuran melebihi ' + MAX_FILE_SIZE_MB + ' MB');
-                return;
-            }
-            addPendingFile(file);
-        });
+            /* ── deletion ────────────────────────────────────────────────── */
+            removeExisting(photo) {
+                this.deletedIds.push(photo.id);
+                this.existingPhotos = this.existingPhotos.filter(function (p) {
+                    return p.id !== photo.id;
+                });
+                // If we deleted the featured photo, clear the selection
+                if (this.featuredMediaId === photo.media_id) {
+                    this.featuredMediaId = null;
+                }
+            },
 
-        if (errors.length) {
-            alert('Beberapa file dilewati:\n' + errors.join('\n'));
-        }
+            removeNew(photo) {
+                this.newPhotos = this.newPhotos.filter(function (p) {
+                    return p.uid !== photo.uid;
+                });
+                if (this.featuredNewUid === photo.uid) {
+                    this.featuredNewUid = null;
+                }
+                // Revoke the object URL to free memory (no-op for data URLs but harmless)
+                if (photo.preview && photo.preview.startsWith('blob:')) {
+                    URL.revokeObjectURL(photo.preview);
+                }
+            },
 
-        updateEmptyState();
-    }
+            /* ── form-submit preparation ─────────────────────────────────── */
+            /**
+             * Called in the form's capture-phase submit listener.
+             * Injects all photo-related hidden inputs + real file inputs into
+             * #photo-submit-container so the browser includes them in the
+             * multipart/form-data body.
+             *
+             * Field mapping:
+             *   photo_categories            JSON array of distinct categories
+             *   gallery_uploads[N][]        file input per category index N
+             *   deleted_photo_ids           comma-separated existing photo IDs
+             *   photo_categories_update[id] already handled by x-model hidden inputs in the DOM
+             *   featured_image_id           media_id of chosen photo (if existing)
+             */
+            prepareSubmit(event, form) {
+                var container = document.getElementById('photo-submit-container');
+                if (!container) { return; }
 
-    function addPendingFile(file) {
-        var objectUrl = URL.createObjectURL(file);
+                // Wipe any previous injections (e.g. failed validation re-submit)
+                container.innerHTML = '';
 
-        // Create a real <input type="file"> that will be submitted with the form.
-        // The name is set when the card's category is chosen (or defaults to 'Others').
-        // We inject into the form's hidden container so it submits properly.
-        var hiddenFileInput = createFileInput(file, DEFAULT_CATEGORY);
+                /* 1. Collect unique categories from new photos */
+                var catIndex = {};   // category → array index
+                var catList  = [];   // ordered list
 
-        var entry = {
-            file:      file,
-            objectUrl: objectUrl,
-            category:  DEFAULT_CATEGORY,
-            inputEl:   hiddenFileInput,
+                this.newPhotos.forEach(function (p) {
+                    if (!(p.category in catIndex)) {
+                        catIndex[p.category] = catList.length;
+                        catList.push(p.category);
+                    }
+                });
+
+                /* 2. photo_categories (JSON) */
+                if (catList.length > 0) {
+                    var catInput = document.createElement('input');
+                    catInput.type  = 'hidden';
+                    catInput.name  = 'photo_categories';
+                    catInput.value = JSON.stringify(catList);
+                    container.appendChild(catInput);
+                }
+
+                /* 3. gallery_uploads[N][] – one <input type="file"> per new photo */
+                //    We must use a DataTransfer to programmatically assign a File
+                //    to a file input cross-browser.
+                if (this.newPhotos.length > 0 && typeof DataTransfer !== 'undefined') {
+                    var fileInputs = {};  // category → <input type="file">
+
+                    this.newPhotos.forEach(function (p) {
+                        var idx = catIndex[p.category];
+                        var key = String(idx);
+                        if (!fileInputs[key]) {
+                            var fi = document.createElement('input');
+                            fi.type     = 'file';
+                            fi.name     = 'gallery_uploads[' + idx + '][]';
+                            fi.multiple = true;
+                            fi.style.display = 'none';
+                            var dt = new DataTransfer();
+                            dt.items.add(p.file);
+                            fi.files = dt.files;
+                            fileInputs[key] = { el: fi, dt: dt };
+                        } else {
+                            fileInputs[key].dt.items.add(p.file);
+                            fileInputs[key].el.files = fileInputs[key].dt.files;
+                        }
+                    });
+
+                    Object.values(fileInputs).forEach(function (entry) {
+                        container.appendChild(entry.el);
+                    });
+                }
+
+                /* 4. deleted_photo_ids */
+                if (this.deletedIds.length > 0) {
+                    var delInput = document.createElement('input');
+                    delInput.type  = 'hidden';
+                    delInput.name  = 'deleted_photo_ids';
+                    delInput.value = this.deletedIds.join(',');
+                    container.appendChild(delInput);
+                }
+
+                /* 5. featured_image_id — only when an EXISTING photo is starred */
+                if (this.featuredMediaId) {
+                    var featInput = document.createElement('input');
+                    featInput.type  = 'hidden';
+                    featInput.name  = 'featured_image_id';
+                    featInput.value = this.featuredMediaId;
+                    container.appendChild(featInput);
+                }
+                // Note: if a NEW photo is starred (featuredNewUid set) we do NOT
+                // send featured_image_id — the controller will skip it, and the
+                // user can come back and star the photo after the first save.
+            },
         };
-        pendingFiles.push(entry);
-
-        var card = buildPendingCard(entry);
-        entry.cardEl = card;
-        grid.appendChild(card);
-
-        // Animate in
-        requestAnimationFrame(function () {
-            card.classList.remove('opacity-0', 'scale-95');
-        });
-    }
-
-    /**
-     * Create a hidden file input whose DataTransfer carries the given File.
-     * This is the only reliable way to programmatically place a File object
-     * into a named <input type="file"> for form submission.
-     */
-    function createFileInput(file, category) {
-        var catIndex = getCategoryIndex(category);
-        var input = document.createElement('input');
-        input.type    = 'file';
-        input.name    = 'gallery_uploads[' + catIndex + '][]';
-        input.classList.add('sr-only');
-        input.setAttribute('aria-hidden', 'true');
-
-        // Use DataTransfer to assign the file to the input
-        var dt = new DataTransfer();
-        dt.items.add(file);
-        input.files = dt.files;
-
-        // Append near the dropzone so it's inside the form
-        dropzone.parentNode.appendChild(input);
-        return input;
-    }
-
-    /**
-     * Returns the index of the category in photo_categories array,
-     * appending it if it doesn't exist (so the controller can map index→category).
-     */
-    function getCategoryIndex(category) {
-        var categories = getCategories();
-        var idx = categories.indexOf(category);
-        if (idx === -1) {
-            categories.push(category);
-            saveCategories(categories);
-            idx = categories.length - 1;
-        }
-        return idx;
-    }
-
-    function getCategories() {
-        var raw = document.getElementById('photo-categories-input').value;
-        try { return JSON.parse(raw) || []; } catch (e) { return []; }
-    }
-
-    function saveCategories(cats) {
-        document.getElementById('photo-categories-input').value = JSON.stringify(cats);
-    }
-
-    /* ─────────────────────────────────────────────────────────────────────────
-       CARD BUILDERS
-    ───────────────────────────────────────────────────────────────────────── */
-    function buildPendingCard(entry) {
-        var card = document.createElement('div');
-        card.className = [
-            'photo-card relative rounded-xl overflow-hidden',
-            'border border-blue-200 shadow-sm bg-white',
-            'opacity-0 scale-95 transition-all duration-200',
-        ].join(' ');
-
-        // Thumbnail
-        var imgWrap = document.createElement('div');
-        imgWrap.className = 'aspect-square bg-gray-100 relative';
-
-        var img = document.createElement('img');
-        img.src       = entry.objectUrl;
-        img.alt       = 'Preview';
-        img.className = 'w-full h-full object-cover';
-        imgWrap.appendChild(img);
-
-        // Pending badge
-        var badge = document.createElement('span');
-        badge.className = 'absolute bottom-1 left-1 text-[9px] bg-blue-600 text-white px-1.5 py-0.5 rounded-full pointer-events-none';
-        badge.textContent = 'Pending';
-        imgWrap.appendChild(badge);
-
-        card.appendChild(imgWrap);
-
-        // Star button (top-right)
-        var star = document.createElement('button');
-        star.type      = 'button';
-        star.className = 'btn-star absolute top-1.5 right-1.5 z-10 w-7 h-7 flex items-center justify-center bg-black/40 hover:bg-black/60 rounded-full text-white text-base leading-none';
-        star.setAttribute('aria-label', 'Set as primary photo');
-        star.title     = 'Jadikan foto utama';
-        star.textContent = '☆';
-        card.appendChild(star);
-
-        // Delete button (top-left)
-        var del = document.createElement('button');
-        del.type      = 'button';
-        del.className = 'btn-delete absolute top-1.5 left-1.5 z-10 w-7 h-7 flex items-center justify-center bg-red-500/80 hover:bg-red-600 rounded-full text-white text-sm leading-none font-bold';
-        del.setAttribute('aria-label', 'Delete photo');
-        del.title     = 'Hapus foto';
-        del.innerHTML = '&times;';
-        card.appendChild(del);
-
-        // Category select + hidden input (below image)
-        var footer = document.createElement('div');
-        footer.className = 'px-2 py-1.5 bg-white border-t border-gray-100';
-
-        var select = buildCategorySelect(entry.category);
-        select.addEventListener('change', function () {
-            // Re-wire the hidden file input to the new category index
-            entry.category = select.value;
-            var newCatIdx = getCategoryIndex(select.value);
-            entry.inputEl.name = 'gallery_uploads[' + newCatIdx + '][]';
-        });
-        footer.appendChild(select);
-        card.appendChild(footer);
-
-        // Wire delete
-        del.addEventListener('click', function () {
-            deletePendingCard(card, entry);
-        });
-
-        // Wire star — pending photos don't have a DB media_id yet;
-        // we store a temporary blob URL reference so it can be visually starred,
-        // but the real featured_image_id will only stick if you star a saved photo.
-        star.addEventListener('click', function () {
-            handleStarClick(card, null);
-        });
-
-        return card;
-    }
-
-    function buildCategorySelect(selectedValue) {
-        var select = document.createElement('select');
-        select.className = 'cat-select w-full rounded border-gray-300 text-gray-700 focus:ring-blue-500 focus:border-blue-500';
-        select.setAttribute('aria-label', 'Photo category');
-
-        CATEGORY_OPTIONS.forEach(function (opt) {
-            var option = document.createElement('option');
-            option.value       = opt;
-            option.textContent = opt;
-            if (opt === selectedValue) option.selected = true;
-            select.appendChild(option);
-        });
-        return select;
-    }
-
-    /* ─────────────────────────────────────────────────────────────────────────
-       STAR / PRIMARY LOGIC
-    ───────────────────────────────────────────────────────────────────────── */
-    function handleStarClick(clickedCard, mediaId) {
-        // Un-star all cards
-        grid.querySelectorAll('.photo-card .btn-star').forEach(function (btn) {
-            btn.classList.remove('starred');
-            btn.textContent = '☆';
-        });
-
-        // Star this card
-        var btn = clickedCard.querySelector('.btn-star');
-        btn.classList.add('starred');
-        btn.textContent = '★';
-
-        // Write the media_id into the featured_image_id field
-        featuredInput.value = mediaId !== null ? mediaId : '';
-    }
-
-    /* ─────────────────────────────────────────────────────────────────────────
-       DELETE LOGIC
-    ───────────────────────────────────────────────────────────────────────── */
-    function deleteSavedCard(card) {
-        var photoId = card.dataset.photoId;
-        var mediaId = card.dataset.mediaId;
-
-        // Append to deleted_photo_ids
-        var existing = deletedInput.value
-            ? deletedInput.value.split(',').map(function (s) { return s.trim(); })
-            : [];
-        existing.push(String(photoId));
-        deletedInput.value = existing.join(',');
-
-        // If this was the primary photo, clear featured_image_id
-        if (String(mediaId) === String(featuredInput.value)) {
-            featuredInput.value = '';
-        }
-
-        removeCard(card);
-    }
-
-    function deletePendingCard(card, entry) {
-        // If it was starred, clear featured_image_id
-        if (card.querySelector('.btn-star.starred')) {
-            featuredInput.value = '';
-        }
-
-        // Remove hidden file input from DOM
-        if (entry.inputEl && entry.inputEl.parentNode) {
-            entry.inputEl.parentNode.removeChild(entry.inputEl);
-        }
-
-        // Revoke object URL
-        URL.revokeObjectURL(entry.objectUrl);
-
-        // Remove from pendingFiles array
-        pendingFiles = pendingFiles.filter(function (e) { return e !== entry; });
-
-        removeCard(card);
-    }
-
-    function removeCard(card) {
-        card.style.transition = 'opacity .15s, transform .15s';
-        card.style.opacity    = '0';
-        card.style.transform  = 'scale(0.9)';
-        setTimeout(function () {
-            if (card.parentNode) card.parentNode.removeChild(card);
-            updateEmptyState();
-        }, 160);
-    }
-
-    /* ─────────────────────────────────────────────────────────────────────────
-       EVENT DELEGATION FOR SERVER-RENDERED SAVED CARDS
-    ───────────────────────────────────────────────────────────────────────── */
-    grid.addEventListener('click', function (e) {
-        var card = e.target.closest('.photo-card[data-saved="1"]');
-        if (!card) return;
-
-        // Star
-        if (e.target.closest('.btn-star')) {
-            var mediaId = card.dataset.mediaId;
-            handleStarClick(card, mediaId);
-            return;
-        }
-
-        // Delete
-        if (e.target.closest('.btn-delete')) {
-            deleteSavedCard(card);
-            return;
-        }
     });
-
-    // Category change on saved cards → update the hidden input
-    grid.addEventListener('change', function (e) {
-        if (!e.target.classList.contains('cat-select')) return;
-        var card = e.target.closest('.photo-card[data-saved="1"]');
-        if (!card) return;
-        var hidden = card.querySelector('.cat-hidden');
-        if (hidden) hidden.value = e.target.value;
-    });
-
-    /* ─────────────────────────────────────────────────────────────────────────
-       UTILITIES
-    ───────────────────────────────────────────────────────────────────────── */
-    function updateEmptyState() {
-        var hasCards = grid.querySelector('.photo-card') !== null;
-        emptyMsg.classList.toggle('hidden', hasCards);
-    }
-
-    updateEmptyState();
-})();
+});
 </script>
 @endpush
