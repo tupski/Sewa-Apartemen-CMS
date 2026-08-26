@@ -18,6 +18,7 @@ use App\Http\Controllers\SeoController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\VoucherController;
+use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\CurrencyRateController;
 use App\Http\Controllers\Admin\LanguageController;
 use App\Http\Controllers\Admin\SlugSettingsController;
@@ -138,6 +139,11 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     Route::put('currency-rates/{currencyRate}', [CurrencyRateController::class, 'update'])->name('currency-rates.update');
     Route::delete('currency-rates/{currencyRate}', [CurrencyRateController::class, 'destroy'])->name('currency-rates.destroy');
     Route::post('currency-rates/fetch', [CurrencyRateController::class, 'fetchNow'])->name('currency-rates.fetch');
+
+    // Backup & Restore
+    Route::get('backup', [BackupController::class, 'index'])->name('backup.index');
+    Route::post('backup/download', [BackupController::class, 'download'])->name('backup.download');
+    Route::post('backup/restore', [BackupController::class, 'restore'])->name('backup.restore');
 
     // Slug Settings
     Route::get('slug-settings', [SlugSettingsController::class, 'index'])->name('slug-settings.index');

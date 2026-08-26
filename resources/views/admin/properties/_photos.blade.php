@@ -4,7 +4,7 @@
         ? $property->photos->groupBy('category')->map(fn ($group) => $group->map(fn ($p) => [
             'id' => $p->id,
             'media_id' => $p->media_id,
-            'url' => $p->media->url,
+            'url' => $p->media?->url ?? '',
         ])->values())->toArray()
         : [];
 @endphp

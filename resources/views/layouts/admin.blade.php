@@ -220,6 +220,13 @@
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Redirects</span>
                 </a>
 
+                <a href="{{ route('admin.backup.index') }}"
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.backup.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-solid fa-database w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Backup &amp; Restore</span>
+                </a>
+
                 <a href="{{ route('admin.settings.index') }}"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
                    class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.settings.*') ? 'bg-gray-700 text-white' : '' }}">
