@@ -467,7 +467,7 @@ class PropertyController extends Controller
             $places[] = [
                 'name' => $name,
                 'category' => $place['category'] ?? 'Others',
-                'distance_km' => $place['distance_km'] !== '' && $place['distance_km'] !== null
+                'distance_km' => ($place['distance_km'] ?? null) !== '' && ($place['distance_km'] ?? null) !== null
                     ? (float) $place['distance_km']
                     : null,
             ];

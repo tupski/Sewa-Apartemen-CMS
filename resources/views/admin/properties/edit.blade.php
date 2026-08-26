@@ -12,6 +12,23 @@
     .leaflet-container { border-radius: 0.5rem; }
     /* FAB focus ring */
     #fab-update:focus { outline: 2px solid #3b82f6; outline-offset: 2px; }
+    /* Nominatim results dropdown */
+    #map-search-results {
+        position: absolute; top: 100%; left: 0; right: 0; z-index: 9999;
+        background: #fff; border: 1px solid #d1d5db; border-top: none;
+        border-radius: 0 0 0.5rem 0.5rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        max-height: 220px; overflow-y: auto;
+    }
+    #map-search-results li {
+        padding: 0.55rem 1rem; font-size: 0.8125rem; color: #374151;
+        cursor: pointer; border-bottom: 1px solid #f3f4f6; line-height: 1.35;
+    }
+    #map-search-results li:last-child { border-bottom: none; }
+    #map-search-results li:hover,
+    #map-search-results li:focus { background: #eff6ff; color: #1d4ed8; outline: none; }
+    #map-search-results li.no-result { color: #9ca3af; cursor: default; }
+    #map-search-results li.no-result:hover { background: #fff; color: #9ca3af; }
 </style>
 @endpush
 
@@ -199,19 +216,24 @@
                             </p>
 
                             {{-- Geocode search --}}
-                            <div class="flex gap-2 mb-3">
-                                <input type="text"
-                                       id="map-search-input"
-                                       placeholder="Cari alamat atau nama tempat…"
-                                       class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
-                                <button type="button"
-                                        id="map-search-btn"
-                                        class="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:bg-blue-800 transition flex items-center gap-1.5 whitespace-nowrap">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                                    </svg>
-                                    Cari
-                                </button>
+                            <div class="relative mb-3">
+                                <div class="flex gap-2">
+                                    <input type="text"
+                                           id="map-search-input"
+                                           placeholder="Cari alamat atau nama tempat…"
+                                           autocomplete="off"
+                                           class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                                    <button type="button"
+                                            id="map-search-btn"
+                                            class="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:bg-blue-800 transition flex items-center gap-1.5 whitespace-nowrap">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                        </svg>
+                                        Cari
+                                    </button>
+                                </div>
+                                {{-- Results dropdown (populated by JS) --}}
+                                <ul id="map-search-results" class="hidden" role="listbox" aria-label="Hasil pencarian lokasi"></ul>
                             </div>
 
                             {{-- Map div --}}
@@ -515,43 +537,79 @@
         setPin(initLat, initLng);
     }
 
-    // ── Geocode search (Nominatim) ────────────────────────────────
-    document.getElementById('map-search-btn').addEventListener('click', function () {
-        var q = document.getElementById('map-search-input').value.trim();
+    // ── Geocode search (Nominatim jsonv2, limit 5) ────────────────
+    var searchResults = document.getElementById('map-search-results');
+    var searchInput   = document.getElementById('map-search-input');
+    var searchBtn     = document.getElementById('map-search-btn');
+    var SEARCH_ICON   = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>';
+
+    function closeSearchDropdown() {
+        searchResults.classList.add('hidden');
+        searchResults.innerHTML = '';
+    }
+
+    function renderSearchResults(data) {
+        searchResults.innerHTML = '';
+        if (!data || data.length === 0) {
+            var li = document.createElement('li');
+            li.className = 'no-result';
+            li.textContent = 'Lokasi tidak ditemukan. Coba kata kunci lain.';
+            searchResults.appendChild(li);
+        } else {
+            data.forEach(function (item) {
+                var li = document.createElement('li');
+                li.setAttribute('tabindex', '0');
+                li.setAttribute('role', 'option');
+                li.textContent = item.display_name;
+                li.addEventListener('click', function () {
+                    var lat = parseFloat(item.lat);
+                    var lng = parseFloat(item.lon);
+                    map.setView([lat, lng], pinZoom);
+                    setPin(lat, lng);
+                    searchInput.value = item.display_name;
+                    closeSearchDropdown();
+                });
+                li.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); li.click(); }
+                    if (e.key === 'Escape') { closeSearchDropdown(); searchInput.focus(); }
+                });
+                searchResults.appendChild(li);
+            });
+        }
+        searchResults.classList.remove('hidden');
+    }
+
+    function doSearch() {
+        var q = searchInput.value.trim();
         if (!q) return;
-
-        var btn = this;
-        btn.disabled = true;
-        btn.textContent = 'Mencari…';
-
-        fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q), {
+        searchBtn.disabled = true;
+        searchBtn.innerHTML = 'Mencari…';
+        fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q=' + encodeURIComponent(q), {
             headers: { 'Accept-Language': 'id,en' }
         })
         .then(function (r) { return r.json(); })
-        .then(function (data) {
-            if (data && data.length > 0) {
-                var lat = parseFloat(data[0].lat);
-                var lng = parseFloat(data[0].lon);
-                map.setView([lat, lng], pinZoom);
-                setPin(lat, lng);
-            } else {
-                alert('Lokasi tidak ditemukan. Coba kata kunci lain.');
-            }
-        })
+        .then(function (data) { renderSearchResults(data); })
         .catch(function () {
+            closeSearchDropdown();
             alert('Gagal menghubungi layanan pencarian. Periksa koneksi internet.');
         })
         .finally(function () {
-            btn.disabled = false;
-            btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg> Cari';
+            searchBtn.disabled = false;
+            searchBtn.innerHTML = SEARCH_ICON + ' Cari';
         });
+    }
+
+    searchBtn.addEventListener('click', doSearch);
+
+    searchInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter')  { e.preventDefault(); doSearch(); }
+        if (e.key === 'Escape') { closeSearchDropdown(); }
     });
 
-    // Allow pressing Enter in search box
-    document.getElementById('map-search-input').addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            document.getElementById('map-search-btn').click();
+    // Close dropdown when clicking outside the search widget
+    document.addEventListener('click', function (e) {
+        if (!searchInput.contains(e.target) && !searchResults.contains(e.target) && !searchBtn.contains(e.target)) {
+            closeSearchDropdown();
         }
     });
 })();
