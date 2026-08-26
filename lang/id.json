@@ -303,5 +303,7 @@
     "Category name is required.": "Nama kategori wajib diisi.",
     "Failed to create category.": "Gagal membuat kategori.",
     "Network error. Please try again.": "Terjadi kesalahan jaringan. Silakan coba lagi.",
-    "Add Category": "Tambah Kategori"
+    "Add Category": "Tambah Kategori",
+    "settings.remove_image": "Hapus Foto",
+    "settings.remove_image_confirm": "Apakah Anda yakin ingin menghapus foto ini?"
 }

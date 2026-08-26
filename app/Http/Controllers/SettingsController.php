@@ -324,8 +324,16 @@ class SettingsController extends Controller
                             'name_category' => $slugField,
                         ]);
                         $data[$field] = $result['path'];
+                    } elseif ($request->boolean('remove_' . $field)) {
+                        // User requested removal of the stored image.
+                        // Delete the physical file from the public disk (guarded), then null the value.
+                        $existing = $this->settingsService->get($field);
+                        if ($existing && Storage::disk('public')->exists($existing)) {
+                            Storage::disk('public')->delete($existing);
+                        }
+                        $data[$field] = '';
                     } else {
-                        // No new file uploaded: keep the stored value
+                        // No new file uploaded and no removal requested: keep the stored value
                         unset($data[$field]);
                     }
                 }

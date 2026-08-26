@@ -51,8 +51,13 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"
          x-data="fileUploader({
              logoPreview: '{{ $logoPreview }}',
-             faviconPreview: '{{ $faviconPreview }}'
+             faviconPreview: '{{ $faviconPreview }}',
+             removeConfirm: @js(__('settings.remove_image_confirm'))
          })">
+        {{-- Hidden flags telling the server to delete the stored image on save --}}
+        <input type="hidden" name="remove_site_logo" :value="logo.remove ? '1' : '0'">
+        <input type="hidden" name="remove_site_favicon" :value="favicon.remove ? '1' : '0'">
+
         {{-- Logo Upload --}}
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Site Logo</label>
@@ -83,19 +88,31 @@
                     </template>
 
                     <template x-if="logo.preview">
-                        <div class="relative">
+                        <div class="relative inline-block">
                             <img :src="logo.preview" alt="Logo preview" class="mx-auto max-h-24 rounded">
+                            {{-- Overlay delete icon (top-right inside preview) --}}
                             <button type="button"
-                                    @click.stop="clearFile('logo')"
-                                    class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
+                                    @click.stop="deleteImage('logo')"
+                                    aria-label="{{ __('settings.remove_image') }}"
+                                    title="{{ __('settings.remove_image') }}"
+                                    class="absolute top-2 right-2 bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center hover:bg-red-700 shadow focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1">
+                                <i class="fa-solid fa-trash text-xs"></i>
                             </button>
                         </div>
                     </template>
                 </div>
             </div>
+            {{-- Delete button below the image --}}
+            <template x-if="logo.preview">
+                <div class="mt-2 text-center">
+                    <button type="button"
+                            @click="deleteImage('logo')"
+                            class="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700 focus:outline-none">
+                        <i class="fa-solid fa-trash"></i>
+                        {{ __('settings.remove_image') }}
+                    </button>
+                </div>
+            </template>
             @error('site_logo')
                 <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
             @enderror
@@ -131,19 +148,31 @@
                     </template>
 
                     <template x-if="favicon.preview">
-                        <div class="relative">
+                        <div class="relative inline-block">
                             <img :src="favicon.preview" alt="Favicon preview" class="mx-auto max-h-24 rounded">
+                            {{-- Overlay delete icon (top-right inside preview) --}}
                             <button type="button"
-                                    @click.stop="clearFile('favicon')"
-                                    class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
+                                    @click.stop="deleteImage('favicon')"
+                                    aria-label="{{ __('settings.remove_image') }}"
+                                    title="{{ __('settings.remove_image') }}"
+                                    class="absolute top-2 right-2 bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center hover:bg-red-700 shadow focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1">
+                                <i class="fa-solid fa-trash text-xs"></i>
                             </button>
                         </div>
                     </template>
                 </div>
             </div>
+            {{-- Delete button below the image --}}
+            <template x-if="favicon.preview">
+                <div class="mt-2 text-center">
+                    <button type="button"
+                            @click="deleteImage('favicon')"
+                            class="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700 focus:outline-none">
+                        <i class="fa-solid fa-trash"></i>
+                        {{ __('settings.remove_image') }}
+                    </button>
+                </div>
+            </template>
             @error('site_favicon')
                 <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
             @enderror
@@ -282,13 +311,16 @@
 <script>
 function fileUploader(config) {
     return {
+        removeConfirm: config.removeConfirm || 'Hapus foto ini?',
         logo: {
             preview: config.logoPreview || null,
-            dragging: false
+            dragging: false,
+            remove: false
         },
         favicon: {
             preview: config.faviconPreview || null,
-            dragging: false
+            dragging: false,
+            remove: false
         },
 
         handleFileSelect(event, type) {
@@ -325,6 +357,18 @@ function fileUploader(config) {
         clearFile(type) {
             this[type].preview = null;
             this.$refs[type + 'Input'].value = '';
+        },
+
+        deleteImage(type) {
+            if (this.removeConfirm && !window.confirm(this.removeConfirm)) {
+                return;
+            }
+            // Clear preview immediately in the UI
+            this[type].preview = null;
+            // Clear any freshly selected (but unsaved) file
+            this.$refs[type + 'Input'].value = '';
+            // Mark the field for deletion on form save
+            this[type].remove = true;
         }
     };
 }

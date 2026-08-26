@@ -303,5 +303,7 @@
     "Category name is required.": "Category name is required.",
     "Failed to create category.": "Failed to create category.",
     "Network error. Please try again.": "Network error. Please try again.",
-    "Add Category": "Add Category"
+    "Add Category": "Add Category",
+    "settings.remove_image": "Remove Photo",
+    "settings.remove_image_confirm": "Are you sure you want to remove this photo?"
 }
