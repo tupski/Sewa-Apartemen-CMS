@@ -274,14 +274,35 @@ class Property extends Model
 
     /**
      * Nearby places grouped by category, filtered to non-empty groups.
+     * Supports both legacy categories and the new expanded category set.
+     *
+     * Category display order and emoji mapping is defined here.
+     */
+    public const NEARBY_CATEGORIES = [
+        'Mall/Shopping'            => '🛍️',
+        'Restaurant/Food'          => '🍽️',
+        'Transport'                => '🚆',
+        'Education'                => '🎓',
+        'Hospital/Health'          => '🏥',
+        'Recreation'               => '🎡',
+        'Hotel'                    => '🏨',
+        'Nearby Places'            => '📍',
+        'Transportation'           => '🚌',
+        'Entertainment/Attraction' => '🎭',
+        'Others'                   => '📌',
+    ];
+
+    /**
+     * Nearby places grouped by category, filtered to non-empty groups.
      */
     public function nearbyByCategory(): array
     {
-        $groups = ['Nearby Places' => [], 'Transportation' => [], 'Entertainment/Attraction' => [], 'Others' => []];
+        // Initialize groups in the canonical display order
+        $groups = array_fill_keys(array_keys(self::NEARBY_CATEGORIES), []);
 
         foreach ((array) ($this->nearby_places ?? []) as $place) {
             $cat = $place['category'] ?? 'Others';
-            if (!isset($groups[$cat])) {
+            if (!array_key_exists($cat, $groups)) {
                 $cat = 'Others';
             }
             $groups[$cat][] = $place;

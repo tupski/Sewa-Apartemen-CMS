@@ -156,11 +156,41 @@ class PropertyController extends Controller
 
         $nearbyProperties = $this->nearbyProperties($property);
 
+        // Compute Haversine distances for nearby places that carry lat/lng.
+        // We enrich each place with a `distance_formatted` string ("850 m" or "2.2 km")
+        // and a numeric `distance_m` value, then re-group for the view.
+        $nearbyPlacesWithDistance = [];
+        $propertyLat = $property->latitude !== null ? (float) $property->latitude : null;
+        $propertyLng = $property->longitude !== null ? (float) $property->longitude : null;
+
+        foreach ((array) ($property->nearby_places ?? []) as $place) {
+            $placeLat = isset($place['lat']) && $place['lat'] !== null && $place['lat'] !== ''
+                ? (float) $place['lat'] : null;
+            $placeLng = isset($place['lng']) && $place['lng'] !== null && $place['lng'] !== ''
+                ? (float) $place['lng'] : null;
+
+            if ($propertyLat !== null && $propertyLng !== null && $placeLat !== null && $placeLng !== null) {
+                $meters = $this->haversineMeters($propertyLat, $propertyLng, $placeLat, $placeLng);
+                $place['distance_m']         = round($meters);
+                $place['distance_formatted'] = $this->formatDistance($meters);
+            } elseif (!empty($place['distance_km'])) {
+                // Fallback: legacy distance_km field stored in admin
+                $meters = (float) $place['distance_km'] * 1000;
+                $place['distance_m']         = round($meters);
+                $place['distance_formatted'] = $this->formatDistance($meters);
+            } else {
+                $place['distance_m']         = null;
+                $place['distance_formatted'] = null;
+            }
+
+            $nearbyPlacesWithDistance[] = $place;
+        }
+
         // Build SEO from the property's own metadata (falls back to name/description).
         // Title suffixing (" - {Site Name}") is applied centrally by SeoService.
         $seo = \App\Services\SeoService::metaTagsArray($property);
 
-        return view('properties.show', compact('property', 'nearbyProperties', 'seo'));
+        return view('properties.show', compact('property', 'nearbyProperties', 'seo', 'nearbyPlacesWithDistance'));
     }
 
     /**
@@ -596,19 +626,60 @@ class PropertyController extends Controller
             if ($name === '') {
                 continue;
             }
+
+            $lat = ($place['lat'] ?? null) !== '' && ($place['lat'] ?? null) !== null
+                ? (float) $place['lat'] : null;
+            $lng = ($place['lng'] ?? null) !== '' && ($place['lng'] ?? null) !== null
+                ? (float) $place['lng'] : null;
+
+            // Preserve legacy distance_km if present; otherwise will be computed server-side on display
+            $distanceKm = ($place['distance_km'] ?? null) !== '' && ($place['distance_km'] ?? null) !== null
+                ? (float) $place['distance_km']
+                : null;
+
             $places[] = [
-                'name' => $name,
-                'category' => $place['category'] ?? 'Others',
-                'distance_km' => ($place['distance_km'] ?? null) !== '' && ($place['distance_km'] ?? null) !== null
-                    ? (float) $place['distance_km']
-                    : null,
+                'name'        => $name,
+                'category'    => $place['category'] ?? 'Others',
+                'lat'         => $lat,
+                'lng'         => $lng,
+                'distance_km' => $distanceKm,
             ];
         }
 
         return [
             'required_documents' => $docs ?: null,
-            'nearby_places' => $places ?: null,
+            'nearby_places'      => $places ?: null,
         ];
+    }
+
+    /**
+     * Calculate great-circle distance in meters using the Haversine formula.
+     */
+    protected function haversineMeters(float $lat1, float $lon1, float $lat2, float $lon2): float
+    {
+        $earthRadius = 6371000; // meters
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat / 2) * sin($dLat / 2)
+            + cos(deg2rad($lat1)) * cos(deg2rad($lat2))
+            * sin($dLon / 2) * sin($dLon / 2);
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return $earthRadius * $c;
+    }
+
+    /**
+     * Format a distance in meters to a human-readable string.
+     *  < 1000 m → "850 m"
+     * >= 1000 m → "2.2 km"
+     */
+    protected function formatDistance(float $meters): string
+    {
+        if ($meters < 1000) {
+            return round($meters) . ' m';
+        }
+
+        return number_format($meters / 1000, 1) . ' km';
     }
 
     /**

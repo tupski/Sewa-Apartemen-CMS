@@ -24,8 +24,21 @@
     $showBookingForm = $hasBooking && $displayMode !== 'pricing_only';
     $showPricingTable = $hasBooking && $displayMode !== 'form_only';
     $faqs = $property->faqs();
-    $nearbyGroups = $property->nearbyByCategory();
+    // $nearbyPlacesWithDistance is injected by the controller with distance_formatted computed via Haversine.
+    // Fall back to grouping raw nearby_places if the variable is missing (e.g. draft preview).
+    $nearbyPlacesWithDistance = $nearbyPlacesWithDistance ?? collect($property->nearby_places ?? [])->map(fn($p) => array_merge($p, ['distance_formatted' => null, 'distance_m' => null]))->all();
+    // Re-group the enriched places by category for display.
+    $nearbyGroups = [];
+    foreach ($nearbyPlacesWithDistance as $place) {
+        $cat = $place['category'] ?? 'Others';
+        if (!array_key_exists($cat, \App\Models\Property::NEARBY_CATEGORIES)) {
+            $cat = 'Others';
+        }
+        $nearbyGroups[$cat][] = $place;
+    }
+    $nearbyGroups = array_filter($nearbyGroups, fn($items) => count($items) > 0);
     $hasMap = $property->latitude && $property->longitude;
+    $nearbyWithCoords = array_values(array_filter($nearbyPlacesWithDistance, fn($p) => !empty($p['lat']) && !empty($p['lng'])));
 @endphp
 
 @if($hasMap ?? false)
@@ -298,26 +311,31 @@
                                 </div>
                             @endif
 
-                            @if ($hasMap)
-                                <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-6">
-                                    <div id="property-detail-map" style="height:300px;width:100%;"></div>
+                            @if ($hasMap || !empty($nearbyWithCoords))
+                                <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-6 h-64 md:h-80">
+                                    <div id="property-detail-map" style="height:100%;width:100%;"></div>
                                 </div>
                             @endif
 
                             @if ($nearbyGroups)
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     @foreach ($nearbyGroups as $category => $places)
+                                        @php
+                                            $catEmoji = \App\Models\Property::NEARBY_CATEGORIES[$category] ?? '📌';
+                                        @endphp
                                         <div>
                                             <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide mb-3 flex items-center gap-2">
-                                                <span class="w-2 h-2 rounded-full" style="background-color: {{ $primaryColor }}"></span>
+                                                <span class="text-base leading-none" aria-hidden="true">{{ $catEmoji }}</span>
                                                 {{ $category }}
                                             </h3>
                                             <ul class="space-y-2.5">
                                                 @foreach ($places as $place)
-                                                    <li class="flex items-start justify-between text-sm">
+                                                    <li class="flex items-start justify-between text-sm gap-3">
                                                         <span class="text-gray-700 dark:text-gray-300">{{ $place['name'] ?? '' }}</span>
-                                                        @if (!empty($place['distance_km']))
-                                                            <span class="text-gray-400 dark:text-gray-500 text-xs ml-4 shrink-0">{{ number_format((float) $place['distance_km'], 1, ',', '.') }} km</span>
+                                                        @if (!empty($place['distance_formatted']))
+                                                            <span class="text-gray-400 dark:text-gray-500 text-xs shrink-0 tabular-nums">{{ $place['distance_formatted'] }}</span>
+                                                        @elseif (!empty($place['distance_km']))
+                                                            <span class="text-gray-400 dark:text-gray-500 text-xs shrink-0 tabular-nums">{{ number_format((float) $place['distance_km'], 1, ',', '.') }} km</span>
                                                         @endif
                                                     </li>
                                                 @endforeach
@@ -815,16 +833,74 @@
     var LEAFLET_SRC = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 
     function initDetailMap() {
-        var mapLat = {{ $property->latitude }};
-        var mapLng = {{ $property->longitude }};
-        var map = L.map('property-detail-map', { scrollWheelZoom: false }).setView([mapLat, mapLng], 15);
+        var mapLat   = {{ $property->latitude ?? 0 }};
+        var mapLng   = {{ $property->longitude ?? 0 }};
+        var hasPropertyPin = {{ $hasMap ? 'true' : 'false' }};
+
+        // Nearby places that have coordinates — passed from the controller
+        var nearbyPins = @json($nearbyWithCoords);
+
+        // Determine initial centre: property coords if available, else first nearby pin
+        var centreLat = mapLat, centreLng = mapLng;
+        if (!hasPropertyPin && nearbyPins.length > 0) {
+            centreLat = parseFloat(nearbyPins[0].lat);
+            centreLng = parseFloat(nearbyPins[0].lng);
+        }
+
+        var map = L.map('property-detail-map', { scrollWheelZoom: false }).setView([centreLat, centreLng], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             maxZoom: 19
         }).addTo(map);
-        L.marker([mapLat, mapLng]).addTo(map)
-            .bindPopup({!! json_encode($popupHtml) !!})
-            .openPopup();
+
+        // Property marker — blue, opened by default
+        if (hasPropertyPin) {
+            var propertyIcon = L.divIcon({
+                className: '',
+                html: '<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:#3b82f6;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);transform:rotate(-45deg)"></div>',
+                iconSize: [28, 28],
+                iconAnchor: [14, 28],
+                popupAnchor: [0, -30]
+            });
+            L.marker([mapLat, mapLng], { icon: propertyIcon })
+                .addTo(map)
+                .bindPopup({!! json_encode($popupHtml) !!})
+                .openPopup();
+        }
+
+        // Nearby place markers — orange
+        var placeIcon = L.divIcon({
+            className: '',
+            html: '<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;background:#f97316;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.3);transform:rotate(-45deg)"></div>',
+            iconSize: [22, 22],
+            iconAnchor: [11, 22],
+            popupAnchor: [0, -24]
+        });
+
+        var bounds = hasPropertyPin ? [[mapLat, mapLng]] : [];
+
+        nearbyPins.forEach(function (place) {
+            var lat = parseFloat(place.lat);
+            var lng = parseFloat(place.lng);
+            if (isNaN(lat) || isNaN(lng)) return;
+
+            var cat  = place.category || '';
+            var dist = place.distance_formatted ? '<br><span style="color:#6b7280;font-size:0.75rem">' + place.distance_formatted + '</span>' : '';
+            var popup = '<strong>' + (place.name || '') + '</strong>'
+                + (cat ? '<br><span style="color:#6b7280;font-size:0.75rem">' + cat + '</span>' : '')
+                + dist;
+
+            L.marker([lat, lng], { icon: placeIcon })
+                .addTo(map)
+                .bindPopup(popup);
+
+            bounds.push([lat, lng]);
+        });
+
+        // Fit map to include all pins (with padding), but not zoom in too tightly
+        if (bounds.length > 1) {
+            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+        }
     }
 
     // Load Leaflet on demand so `L` is defined before use (loadScript from app.js).

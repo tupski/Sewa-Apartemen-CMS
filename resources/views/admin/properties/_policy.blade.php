@@ -5,7 +5,19 @@
     $maxDays = old('max_days', $property->max_days ?? '');
     $documents = old('required_documents', $property->required_documents ?? []);
     $places = old('nearby_places', $property->nearby_places ?? []);
-    $categories = ['Nearby Places', 'Transportation', 'Entertainment/Attraction', 'Others'];
+    $categories = [
+        'Mall/Shopping'       => 'Mall/Shopping',
+        'Restaurant/Food'     => 'Restaurant/Food',
+        'Transport'           => 'Transport',
+        'Education'           => 'Education',
+        'Hospital/Health'     => 'Hospital/Health',
+        'Recreation'          => 'Recreation',
+        'Hotel'               => 'Hotel',
+        'Nearby Places'       => 'Nearby Places',
+        'Transportation'      => 'Transportation',
+        'Entertainment/Attraction' => 'Entertainment/Attraction',
+        'Others'              => 'Others',
+    ];
 @endphp
 
 <div class="border-b border-gray-200 pb-6">
@@ -34,7 +46,7 @@
             <input type="number" name="max_guests" id="max_guests"
                    value="{{ old('max_guests', $property->max_guests ?? 2) }}" min="1" max="20"
                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-            <p class="text-xs text-gray-500 mt-1">Default: 2 tamu. Berlaku semua tipe kamar.</p>
+            <p class="text-xs text-gray-500 mt-1">Kosongkan = tanpa batas.</p>
         </div>
     </div>
 
@@ -67,113 +79,152 @@
         <button type="button" id="doc-add" class="text-sm text-blue-600 hover:text-blue-800 font-medium">+ Tambah dokumen</button>
     </div>
 
-    <!-- Nearby Places -->
+    <!-- Nearby Places / What's Around -->
     <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Tempat di Sekitar Properti</label>
-        <p class="text-xs text-gray-500 mb-3">Tampil di section "What's Around". Jarak dalam km (opsional).</p>
-        <div id="place-list" class="space-y-2 mb-2">
-            @forelse((array) $places as $place)
-                <div class="flex gap-2 items-center">
-                    <input type="text" name="nearby_places[][name]" value="{{ $place['name'] ?? '' }}"
+        <label class="block text-sm font-medium text-gray-700 mb-1">Tempat di Sekitar Properti <span class="text-gray-400 font-normal">(What's Around)</span></label>
+        <p class="text-xs text-gray-500 mb-3">
+            Tambahkan tempat-tempat di sekitar apartemen. Koordinat (lat/lng) digunakan untuk menampilkan pin di peta dan menghitung jarak otomatis — opsional, tapi direkomendasikan.
+        </p>
+
+        {{-- Column headers --}}
+        <div class="hidden md:grid md:grid-cols-[1fr_160px_90px_90px_36px] gap-2 mb-1 px-1">
+            <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Nama Tempat</span>
+            <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Kategori</span>
+            <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Latitude</span>
+            <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Longitude</span>
+            <span></span>
+        </div>
+
+        <div id="place-list" class="space-y-2 mb-3">
+            @forelse((array) $places as $i => $place)
+                <div class="place-row grid grid-cols-1 md:grid-cols-[1fr_160px_90px_90px_36px] gap-2 items-start">
+                    <input type="text"
+                           name="nearby_places[{{ $i }}][name]"
+                           value="{{ $place['name'] ?? '' }}"
                            placeholder="Nama tempat"
-                           class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                    <select name="nearby_places[][category]"
-                            class="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                        @foreach($categories as $cat)
-                            <option value="{{ $cat }}" {{ ($place['category'] ?? 'Others') === $cat ? 'selected' : '' }}>{{ $cat }}</option>
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
+                    <select name="nearby_places[{{ $i }}][category]"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
+                        @foreach($categories as $catKey => $catLabel)
+                            <option value="{{ $catKey }}" {{ ($place['category'] ?? 'Others') === $catKey ? 'selected' : '' }}>{{ $catLabel }}</option>
                         @endforeach
                     </select>
-                    <input type="number" name="nearby_places[][distance_km]" step="0.01" min="0"
-                           value="{{ $place['distance_km'] ?? '' }}" placeholder="km"
-                           class="w-20 px-2 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                    <button type="button" class="place-remove px-3 py-2 text-red-500 border border-gray-300 rounded-md hover:bg-red-50">&times;</button>
+                    <input type="number"
+                           name="nearby_places[{{ $i }}][lat]"
+                           value="{{ $place['lat'] ?? '' }}"
+                           placeholder="Lat"
+                           step="any"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                           title="Latitude (contoh: -6.2088)">
+                    <input type="number"
+                           name="nearby_places[{{ $i }}][lng]"
+                           value="{{ $place['lng'] ?? '' }}"
+                           placeholder="Lng"
+                           step="any"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                           title="Longitude (contoh: 106.8456)">
+                    <button type="button" class="place-remove flex items-center justify-center w-9 h-9 text-red-500 border border-gray-300 rounded-md hover:bg-red-50 shrink-0" aria-label="Hapus">&times;</button>
                 </div>
             @empty
-                <div class="flex gap-2 items-center">
-                    <input type="text" name="nearby_places[][name]" placeholder="Nama tempat"
-                           class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                    <select name="nearby_places[][category]"
-                            class="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                        @foreach($categories as $cat)
-                            <option value="{{ $cat }}">{{ $cat }}</option>
+                <div class="place-row grid grid-cols-1 md:grid-cols-[1fr_160px_90px_90px_36px] gap-2 items-start">
+                    <input type="text"
+                           name="nearby_places[0][name]"
+                           placeholder="Nama tempat"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
+                    <select name="nearby_places[0][category]"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
+                        @foreach($categories as $catKey => $catLabel)
+                            <option value="{{ $catKey }}">{{ $catLabel }}</option>
                         @endforeach
                     </select>
-                    <input type="number" name="nearby_places[][distance_km]" step="0.01" min="0" placeholder="km"
-                           class="w-20 px-2 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                    <button type="button" class="place-remove px-3 py-2 text-red-500 border border-gray-300 rounded-md hover:bg-red-50">&times;</button>
+                    <input type="number"
+                           name="nearby_places[0][lat]"
+                           placeholder="Lat"
+                           step="any"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                           title="Latitude">
+                    <input type="number"
+                           name="nearby_places[0][lng]"
+                           placeholder="Lng"
+                           step="any"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                           title="Longitude">
+                    <button type="button" class="place-remove flex items-center justify-center w-9 h-9 text-red-500 border border-gray-300 rounded-md hover:bg-red-50 shrink-0" aria-label="Hapus">&times;</button>
                 </div>
             @endforelse
         </div>
-        <button type="button" id="place-add" class="text-sm text-blue-600 hover:text-blue-800 font-medium">+ Tambah tempat</button>
+        <button type="button" id="place-add" class="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 font-medium">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Tambah Tempat
+        </button>
     </div>
 </div>
 
+@once
 @push('scripts')
 <script>
-    // Turbo-safe: this block runs on every full load AND every Turbo body-swap
-    // (Turbo re-executes <script> tags inside the swapped <body>). It must NOT
-    // be wrapped in a DOMContentLoaded listener — that event does not fire again
-    // after a Turbo navigation, which previously left the "+ Tambah dokumen" /
-    // "×" (remove) buttons completely inert (the reported bug: Required Documents
-    // could not be deleted on the Edit page).
     (function () {
-        'use strict';
+        // ── Nearby Places ─────────────────────────────────────────────────────
+        var categoryOptions = @json(array_keys($categories));
+        var categoryLabels  = @json(array_values($categories));
 
-        var categories = @json($categories);
-
-        function makeOptions(selected) {
-            return categories.map(function (c) {
-                return '<option value="' + c + '"' + (c === selected ? ' selected' : '') + '>' + c + '</option>';
-            }).join('');
+        function buildCategoryOptions(selectedValue) {
+            var html = '';
+            for (var i = 0; i < categoryOptions.length; i++) {
+                var val = categoryOptions[i];
+                var lbl = categoryLabels[i];
+                html += '<option value="' + val + '"' + (val === selectedValue ? ' selected' : '') + '>' + lbl + '</option>';
+            }
+            return html;
         }
 
-        function addDocRow(container) {
-            if (!container) return;
+        function reindexPlaces() {
+            var rows = document.querySelectorAll('#place-list .place-row');
+            rows.forEach(function (row, idx) {
+                row.querySelectorAll('input, select').forEach(function (el) {
+                    if (el.name) {
+                        el.name = el.name.replace(/nearby_places\[\d+\]/, 'nearby_places[' + idx + ']');
+                    }
+                });
+            });
+        }
+
+        function addPlaceRow(list) {
+            var idx = list.querySelectorAll('.place-row').length;
+            var row = document.createElement('div');
+            row.className = 'place-row grid grid-cols-1 md:grid-cols-[1fr_160px_90px_90px_36px] gap-2 items-start';
+            row.innerHTML =
+                '<input type="text" name="nearby_places[' + idx + '][name]" placeholder="Nama tempat"' +
+                ' class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">' +
+                '<select name="nearby_places[' + idx + '][category]"' +
+                ' class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 bg-white">' +
+                buildCategoryOptions('Mall/Shopping') +
+                '</select>' +
+                '<input type="number" name="nearby_places[' + idx + '][lat]" placeholder="Lat" step="any"' +
+                ' title="Latitude" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">' +
+                '<input type="number" name="nearby_places[' + idx + '][lng]" placeholder="Lng" step="any"' +
+                ' title="Longitude" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">' +
+                '<button type="button" class="place-remove flex items-center justify-center w-9 h-9 text-red-500 border border-gray-300 rounded-md hover:bg-red-50 shrink-0" aria-label="Hapus">&times;</button>';
+            list.appendChild(row);
+            row.querySelector('input').focus();
+        }
+
+        // ── Required Documents ────────────────────────────────────────────────
+        function addDocRow(list) {
             var row = document.createElement('div');
             row.className = 'flex gap-2';
-            row.innerHTML = '<input type="text" name="required_documents[]" placeholder="Contoh: KTP, SIM" class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">' +
+            row.innerHTML =
+                '<input type="text" name="required_documents[]" placeholder="Contoh: KTP, SIM"' +
+                ' class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">' +
                 '<button type="button" class="doc-remove px-3 py-2 text-red-500 border border-gray-300 rounded-md hover:bg-red-50">&times;</button>';
-            container.appendChild(row);
+            list.appendChild(row);
+            row.querySelector('input').focus();
         }
 
-        function addPlaceRow(container) {
-            if (!container) return;
-            var row = document.createElement('div');
-            row.className = 'flex gap-2 items-center';
-            row.innerHTML = '<input type="text" name="nearby_places[][name]" placeholder="Nama tempat" class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">' +
-                '<select name="nearby_places[][category]" class="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">' + makeOptions(null) + '</select>' +
-                '<input type="number" name="nearby_places[][distance_km]" step="0.01" min="0" placeholder="km" class="w-20 px-2 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">' +
-                '<button type="button" class="place-remove px-3 py-2 text-red-500 border border-gray-300 rounded-md hover:bg-red-50">&times;</button>';
-            container.appendChild(row);
-            reindexPlaces();
-        }
-
-        // Give every nearby-place row a SHARED explicit index across its 3 fields.
-        // Blade renders the rows with name="nearby_places[][name]" etc.; the bare
-        // "[]" makes PHP start a NEW array element for every field, so name,
-        // category and distance land in DIFFERENT array entries and never group
-        // into a single place. Reindexing to nearby_places[i][key] fixes that.
-        function reindexPlaces() {
-            var list = document.getElementById('place-list');
-            if (!list) return;
-            var rows = list.children;
-            for (var i = 0; i < rows.length; i++) {
-                var nameEl = rows[i].querySelector('input[name^="nearby_places"]:not([type="number"])');
-                var catEl  = rows[i].querySelector('select[name^="nearby_places"]');
-                var kmEl   = rows[i].querySelector('input[type="number"][name^="nearby_places"]');
-                if (nameEl) nameEl.name = 'nearby_places[' + i + '][name]';
-                if (catEl)  catEl.name  = 'nearby_places[' + i + '][category]';
-                if (kmEl)   kmEl.name   = 'nearby_places[' + i + '][distance_km]';
-            }
-        }
-
-        // Delegated listeners are attached to `document`, which PERSISTS across
-        // Turbo body-swaps, so we bind them exactly once (guarded by a global
-        // flag) to avoid stacking duplicate handlers on every navigation.
-        if (!window.__propertyPolicyBound) {
-            window.__propertyPolicyBound = true;
-
-            document.addEventListener('click', function (e) {
+        // ── Event Delegation ──────────────────────────────────────────────────
+        var policySection = document.querySelector('#place-list') && document.querySelector('#place-list').closest('.border-b');
+        if (policySection) {
+            policySection.addEventListener('click', function (e) {
                 if (e.target.closest('#doc-add')) {
                     addDocRow(document.getElementById('doc-list'));
                     return;
@@ -188,7 +239,7 @@
                     return;
                 }
                 if (e.target.closest('.place-remove')) {
-                    var placeRow = e.target.closest('.flex');
+                    var placeRow = e.target.closest('.place-row');
                     if (placeRow) placeRow.remove();
                     reindexPlaces();
                     return;
@@ -208,3 +259,4 @@
     })();
 </script>
 @endpush
+@endonce
