@@ -310,19 +310,39 @@
                         </div>
                     @endif
 
-                    <!-- ===== FAQ ===== -->
+                    <!-- ===== FAQ (single-open accordion) ===== -->
                     @if ($faqs)
-                        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 md:p-8">
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5">Pertanyaan Umum (FAQ)</h2>
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 md:p-8" x-data="{ open: null }">
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5">{{ __('prop.faq') }}</h2>
                             <div class="space-y-3">
-                                @foreach ($faqs as $faq)
-                                    <details class="group border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-                                        <summary class="flex items-center justify-between gap-4 px-5 py-4 cursor-pointer text-sm font-semibold text-gray-900 dark:text-white list-none">
-                                            {{ $faq['q'] }}
-                                            <svg class="w-4 h-4 shrink-0 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                        </summary>
-                                        <p class="px-5 pb-4 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{{ $faq['a'] }}</p>
-                                    </details>
+                                @foreach ($faqs as $index => $faq)
+                                    <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                                        <h3>
+                                            <button type="button"
+                                                    @click="open = (open === {{ $index }} ? null : {{ $index }})"
+                                                    :aria-expanded="(open === {{ $index }}).toString()"
+                                                    aria-controls="faq-panel-{{ $index }}"
+                                                    id="faq-header-{{ $index }}"
+                                                    class="w-full flex items-center justify-between gap-4 px-5 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">
+                                                <span>{{ $faq['q'] }}</span>
+                                                <i class="fa-solid fa-chevron-down w-4 h-4 shrink-0 text-gray-400 transition-transform duration-200"
+                                                   :class="{ 'rotate-180': open === {{ $index }} }" aria-hidden="true"></i>
+                                            </button>
+                                        </h3>
+                                        <div id="faq-panel-{{ $index }}"
+                                             role="region"
+                                             aria-labelledby="faq-header-{{ $index }}"
+                                             x-show="open === {{ $index }}"
+                                             x-transition:enter="transition ease-out duration-200"
+                                             x-transition:enter-start="opacity-0"
+                                             x-transition:enter-end="opacity-100"
+                                             x-transition:leave="transition ease-in duration-150"
+                                             x-transition:leave-start="opacity-100"
+                                             x-transition:leave-end="opacity-0"
+                                             x-cloak>
+                                            <p class="px-5 pb-4 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{{ $faq['a'] }}</p>
+                                        </div>
+                                    </div>
                                 @endforeach
                             </div>
                         </div>
