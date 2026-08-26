@@ -27,15 +27,15 @@ use Illuminate\Support\Facades\Route;
 // Homepage
 Route::get('/', [\App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
-// Public Property Routes
-Route::get('/apartments', [\App\Http\Controllers\PropertyController::class, 'publicIndex'])->name('properties.public.index');
-Route::get('/apartments/{property:slug}', [\App\Http\Controllers\PropertyController::class, 'publicShow'])->name('properties.public.show');
+// Public Property Routes (slugs configurable via admin "Slug & Path")
+Route::get('/' . slug('slug_apartments', 'apartments'), [\App\Http\Controllers\PropertyController::class, 'publicIndex'])->name('properties.public.index');
+Route::get('/' . slug('slug_apartments', 'apartments') . '/{property:slug}', [\App\Http\Controllers\PropertyController::class, 'publicShow'])->name('properties.public.show');
 
-// Public Blog Routes
-Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
-Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
-Route::get('/blog/category/{slug}', [BlogController::class, 'category'])->name('blog.category');
-Route::get('/blog/tag/{slug}', [BlogController::class, 'tag'])->name('blog.tag');
+// Public Blog Routes (slugs configurable via admin "Slug & Path")
+Route::get('/' . slug('slug_blog', 'blog'), [BlogController::class, 'index'])->name('blog.index');
+Route::get('/' . slug('slug_blog', 'blog') . '/{slug}', [BlogController::class, 'show'])->name('blog.show');
+Route::get('/' . slug('slug_blog', 'blog') . '/category/{slug}', [BlogController::class, 'category'])->name('blog.category');
+Route::get('/' . slug('slug_blog', 'blog') . '/tag/{slug}', [BlogController::class, 'tag'])->name('blog.tag');
 
 // Public search suggestions (JSON, consumed by Alpine autocomplete)
 Route::get('/search/suggest', [SearchController::class, 'suggest'])
@@ -46,7 +46,8 @@ Route::get('/search/suggest', [SearchController::class, 'suggest'])
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('sitemap');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('robots');
 
-// Public CMS Pages
+// Public CMS Pages (legacy /pages/{slug} path kept for backward compatibility;
+// the catch-all /{slug} route is registered at the bottom of this file)
 Route::get('/pages/{page:slug}', [PageController::class, 'publicShow'])->name('pages.show');
 
 Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])
@@ -59,15 +60,16 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// Public Booking Routes
-Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store')->middleware('throttle:10,1');
+// Public Booking Routes (slugs configurable via admin "Slug & Path")
+Route::post('/' . slug('slug_booking', 'bookings'), [BookingController::class, 'store'])->name('bookings.store')->middleware('throttle:10,1');
 // FIND-001: public booking pages are keyed by the random access token, never the numeric id / sequential code
-Route::get('/bookings/{token}/success', [BookingController::class, 'success'])->name('bookings.success');
-Route::get('/booking/status/{token}', [BookingController::class, 'publicStatus'])->name('bookings.status')->middleware('throttle:30,1');
-Route::post('/booking/validate-voucher', [BookingController::class, 'validateVoucher'])->name('bookings.validate-voucher')->middleware('throttle:20,1');
+Route::get('/' . slug('slug_booking_success', 'bookings') . '/{token}/success', [BookingController::class, 'success'])->name('bookings.success');
+Route::get('/' . slug('slug_booking_status', 'booking/status') . '/{token}', [BookingController::class, 'publicStatus'])->name('bookings.status')->middleware('throttle:30,1');
+Route::post('/' . slug('slug_booking_status', 'booking/status') . '/validate-voucher', [BookingController::class, 'validateVoucher'])->name('bookings.validate-voucher')->middleware('throttle:20,1');
 
 // Admin CMS Routes (require authentication + admin role)
-Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+// The admin path prefix is configurable via admin "Slug & Path" (admin_prefix setting)
+Route::middleware(['auth', 'verified', 'admin'])->prefix(slug('admin_prefix', 'admin'))->name('admin.')->group(function () {
 
     // Media Management
     Route::resource('media', MediaController::class);
@@ -144,6 +146,7 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     Route::get('backup', [BackupController::class, 'index'])->name('backup.index');
     Route::post('backup/download', [BackupController::class, 'download'])->name('backup.download');
     Route::post('backup/restore', [BackupController::class, 'restore'])->name('backup.restore');
+    Route::post('backup/restore/confirm', [BackupController::class, 'confirmRestore'])->name('backup.restore.confirm');
 
     // Slug Settings
     Route::get('slug-settings', [SlugSettingsController::class, 'index'])->name('slug-settings.index');
@@ -168,3 +171,8 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
 });
 
 require __DIR__.'/auth.php';
+
+// Catch-all CMS Page route: renders any published page at its slug.
+// MUST be registered LAST so it does not shadow other routes (login, register, etc.).
+// This route matches any single-segment URL that is not caught by a previous route.
+Route::get('/{page:slug}', [PageController::class, 'publicShow'])->name('pages.show');

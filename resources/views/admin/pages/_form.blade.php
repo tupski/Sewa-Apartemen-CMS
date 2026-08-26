@@ -15,32 +15,36 @@
         @enderror
     </div>
 
-    <!-- Slug -->
+    <!-- Slug (auto-generated from title, still editable) -->
     <div>
         <label for="slug" class="block text-sm font-medium text-gray-700 mb-2">
             Slug <span class="text-red-500">*</span>
         </label>
-        <input type="text"
-               name="slug"
-               id="slug"
-               value="{{ old('slug', $page->slug ?? '') }}"
-               class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-               required>
-        <p class="text-xs text-gray-500 mt-1">URL-friendly version of the title</p>
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-400 shrink-0">{{ url('/') }}/</span>
+            <input type="text"
+                   name="slug"
+                   id="slug"
+                   value="{{ old('slug', $page->slug ?? '') }}"
+                   class="flex-1 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                   required>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">Auto-generated from the title. You can edit it if needed. The page will be publicly available at this URL when published.</p>
         @error('slug')
             <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
         @enderror
     </div>
 
-    <!-- Content -->
+    <!-- Content (WYSIWYG) -->
     <div>
         <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
             Content
         </label>
         <textarea name="content"
                   id="content"
-                  rows="12"
-                  class="wysiwyg w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">{{ old('content', $page->content ?? '') }}</textarea>
+                  rows="16"
+                  class="wysiwyg w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">{{ old('content', $page->content ?? '') }}</textarea>
+        <p class="text-xs text-gray-500 mt-1">Use the rich text editor to format content, add images, links, and more.</p>
         @error('content')
             <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
         @enderror
@@ -180,15 +184,48 @@
 </div>
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/tinymce@7/tinymce.min.js"></script>
 <script>
-    // Auto-generate slug from title
-    document.getElementById('title').addEventListener('input', function() {
-        const title = this.value;
-        const slug = title
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, '');
-        document.getElementById('slug').value = slug;
+    document.addEventListener('DOMContentLoaded', function () {
+        const titleInput = document.getElementById('title');
+        const slugInput = document.getElementById('slug');
+        let slugDirty = false;
+
+        // Mark slug as manually edited once the user types in it
+        if (slugInput) {
+            slugInput.addEventListener('input', function () { slugDirty = true; });
+        }
+
+        // Auto-generate slug from title only if the user hasn't manually edited it
+        if (titleInput && slugInput) {
+            titleInput.addEventListener('input', function () {
+                if (slugDirty) return;
+                const slug = this.value
+                    .toLowerCase()
+                    .trim()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-+|-+$/g, '')
+                    .slice(0, 80);
+                slugInput.value = slug;
+            });
+        }
+
+        // Initialise TinyMCE rich text editor
+        if (typeof tinymce !== 'undefined') {
+            tinymce.init({
+                selector: '#content',
+                height: 450,
+                menubar: false,
+                plugins: 'lists link image table code autolink fullscreen preview',
+                toolbar: 'undo redo | blocks | bold italic underline strikethrough | bullist numlist | link image | alignleft aligncenter alignright | table | code fullscreen',
+                branding: false,
+                convert_urls: false,
+                relative_urls: false,
+                setup: function (editor) {
+                    editor.on('change', function () { editor.save(); });
+                }
+            });
+        }
     });
 </script>
 @endpush

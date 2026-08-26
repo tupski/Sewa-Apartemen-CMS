@@ -44,7 +44,7 @@
         <!-- Main Menu Content -->
         <div x-show="activeLocation === 'main'" class="p-6">
             @php
-                $mainMenuItems = $navigations->where('location', 'main')->sortBy('order');
+                $mainMenuItems = $navigations->where('menu_location', 'main')->sortBy('order');
             @endphp
 
             @if($mainMenuItems->count() > 0)
@@ -63,7 +63,7 @@
         <!-- Footer Menu Content -->
         <div x-show="activeLocation === 'footer'" class="p-6" style="display: none;">
             @php
-                $footerMenuItems = $navigations->where('location', 'footer')->sortBy('order');
+                $footerMenuItems = $navigations->where('menu_location', 'footer')->sortBy('order');
             @endphp
 
             @if($footerMenuItems->count() > 0)
@@ -82,7 +82,7 @@
         <!-- Sidebar Menu Content -->
         <div x-show="activeLocation === 'sidebar'" class="p-6" style="display: none;">
             @php
-                $sidebarMenuItems = $navigations->where('location', 'sidebar')->sortBy('order');
+                $sidebarMenuItems = $navigations->where('menu_location', 'sidebar')->sortBy('order');
             @endphp
 
             @if($sidebarMenuItems->count() > 0)

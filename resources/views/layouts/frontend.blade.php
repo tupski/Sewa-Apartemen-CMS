@@ -26,19 +26,19 @@
         $socialLinkedin = \App\Services\SettingsService::get('social_linkedin', '');
         $socialYoutube = \App\Services\SettingsService::get('social_youtube', '');
 
-        $mainMenu = \App\Models\Navigation::active()->inLocation('main')->rootItems()->ordered()->get();
+        $mainMenu = \App\Models\Navigation::with('page')->active()->inLocation('main')->rootItems()->ordered()->get();
         if ($mainMenu->isEmpty()) {
             $mainMenu = collect([
                 (object) ['title' => __('nav.home'), 'url' => url('/')],
-                (object) ['title' => __('nav.find_apartments'), 'url' => url('/apartments')],
-                (object) ['title' => 'Blog', 'url' => url('/blog')],
+                (object) ['title' => __('nav.find_apartments'), 'url' => slug_url('slug_apartments', 'apartments')],
+                (object) ['title' => 'Blog', 'url' => slug_url('slug_blog', 'blog')],
             ]);
         }
-        $footerMenu = \App\Models\Navigation::active()->inLocation('footer')->rootItems()->ordered()->get();
+        $footerMenu = \App\Models\Navigation::with('page')->active()->inLocation('footer')->rootItems()->ordered()->get();
         if ($footerMenu->isEmpty()) {
             $footerMenu = collect([
-                (object) ['title' => __('nav.find_apartments'), 'url' => url('/apartments')],
-                (object) ['title' => 'Blog', 'url' => url('/blog')],
+                (object) ['title' => __('nav.find_apartments'), 'url' => slug_url('slug_apartments', 'apartments')],
+                (object) ['title' => 'Blog', 'url' => slug_url('slug_blog', 'blog')],
             ]);
         }
     @endphp
@@ -137,9 +137,9 @@
                             {{ __('nav.whatsapp') }}
                         </a>
                     @endif
-                    <a href="{{ url('/apartments') }}" class="inline-flex items-center px-5 py-2.5 rounded-full text-sm font-semibold text-white transition hover:opacity-90"
+                    <a href="{{ slug_url('slug_apartments', 'apartments') }}" class="inline-flex items-center px-5 py-2.5 rounded-full text-sm font-semibold text-white transition hover:opacity-90"
                        style="background-color: {{ $primaryColor }}">
-                        {{ __('nav.find_apartments') }}
+                       {{ __('nav.find_apartments') }}
                     </a>
                 </div>
 
@@ -178,9 +178,9 @@
                             {{ __('nav.whatsapp') }}
                         </a>
                     @endif
-                    <a href="{{ url('/apartments') }}" class="flex-1 text-center px-4 py-2.5 rounded-full text-sm font-semibold text-white"
+                    <a href="{{ slug_url('slug_apartments', 'apartments') }}" class="flex-1 text-center px-4 py-2.5 rounded-full text-sm font-semibold text-white"
                        style="background-color: {{ $primaryColor }}">
-                        {{ __('nav.find_apartments') }}
+                       {{ __('nav.find_apartments') }}
                     </a>
                 </div>
             </div>
@@ -220,9 +220,9 @@
                                 {{ __('footer.whatsapp_us') }}
                             </a>
                         @endif
-                        <a href="{{ url('/apartments') }}" class="inline-flex items-center px-4 py-2 rounded-full text-xs font-semibold text-white hover:opacity-90 transition"
+                        <a href="{{ slug_url('slug_apartments', 'apartments') }}" class="inline-flex items-center px-4 py-2 rounded-full text-xs font-semibold text-white hover:opacity-90 transition"
                            style="background-color: {{ $primaryColor }}">
-                            {{ __('footer.view_apartments') }}
+                           {{ __('footer.view_apartments') }}
                         </a>
                     </div>
                 </div>

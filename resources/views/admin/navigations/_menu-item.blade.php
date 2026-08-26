@@ -21,12 +21,14 @@
                 @endif
             </div>
             <p class="text-xs text-gray-500 mt-1">
-                @if($item->type === 'internal')
-                    Internal: {{ $item->url }}
-                @elseif($item->type === 'external')
-                    External: {{ $item->url }}
+                @if($item->type === 'url')
+                    URL: {{ $item->url }}
+                @elseif($item->type === 'custom')
+                    Custom: {{ $item->url }}
                 @elseif($item->type === 'page')
                     Page: {{ $item->page->title ?? 'N/A' }}
+                @else
+                    URL: {{ $item->url }}
                 @endif
                 | Order: {{ $item->order }}
             </p>

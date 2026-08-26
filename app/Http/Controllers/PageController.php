@@ -44,7 +44,9 @@ class PageController extends Controller
      */
     public function create()
     {
-        return view('admin.pages.create');
+        $pages = Page::orderBy('title')->get();
+
+        return view('admin.pages.create', compact('pages'));
     }
 
     /**
@@ -114,7 +116,9 @@ class PageController extends Controller
      */
     public function edit(Page $page)
     {
-        return view('admin.pages.edit', compact('page'));
+        $pages = Page::where('id', '!=', $page->id)->orderBy('title')->get();
+
+        return view('admin.pages.edit', compact('page', 'pages'));
     }
 
     /**

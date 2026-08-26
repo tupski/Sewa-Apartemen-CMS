@@ -52,11 +52,9 @@
                                    name="groups[]"
                                    value="{{ $key }}"
                                    x-model="selected"
-                                   :value="'{{ $key }}'"
                                    @change="syncFull"
-                                   class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                   :disabled="full">
-                            <span class="text-sm text-gray-700 group-has-[:disabled]:text-gray-400">{{ $label }}</span>
+                                   class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <span class="text-sm text-gray-700">{{ $label }}</span>
                         </label>
                     @endforeach
                 </div>
@@ -122,6 +120,49 @@
     </div>
 
 </div>
+
+{{-- ─── Overwrite Confirmation Modal ─────────────────────────────────────── --}}
+@if(! empty($pendingRestore))
+    <x-modal name="restore-confirm" :show="true" maxWidth="md">
+        <div class="p-6">
+            {{-- Icon --}}
+            <div class="mx-auto flex items-center justify-center w-14 h-14 rounded-full bg-amber-100 mb-4">
+                <i class="fa-solid fa-triangle-exclamation text-amber-500 text-2xl"></i>
+            </div>
+
+            {{-- Heading --}}
+            <h3 class="text-lg font-semibold text-gray-900 text-center mb-2">
+                {{ __('restore.confirm_title') }}
+            </h3>
+
+            {{-- Body --}}
+            <p class="text-sm text-gray-600 text-center mb-6">
+                {{ __('restore.confirm_body') }}
+            </p>
+
+            {{-- Actions --}}
+            <form method="POST" action="{{ route('admin.backup.restore.confirm') }}">
+                @csrf
+                <input type="hidden" name="pending_file" value="{{ $pendingRestore }}">
+
+                <div class="flex items-center justify-center gap-3">
+                    {{-- Cancel — closes modal and redirects to clear state --}}
+                    <a href="{{ route('admin.backup.index') }}"
+                       class="inline-flex items-center gap-2 px-5 py-2.5 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2">
+                        {{ __('restore.cancel') }}
+                    </a>
+
+                    {{-- Confirm — overwrite / timpa --}}
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        {{ __('restore.overwrite') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </x-modal>
+@endif
 
 <script>
 function backupForm() {

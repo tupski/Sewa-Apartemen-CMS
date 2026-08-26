@@ -44,7 +44,9 @@ class NavigationController extends Controller
             ->ordered()
             ->get();
 
-        return view('admin.navigations.create', compact('navigations'));
+        $pages = \App\Models\Page::published()->orderBy('title')->get();
+
+        return view('admin.navigations.create', compact('navigations', 'pages'));
     }
 
     /**
@@ -71,7 +73,9 @@ class NavigationController extends Controller
             ->ordered()
             ->get();
 
-        return view('admin.navigations.edit', compact('navigation', 'navigations'));
+        $pages = \App\Models\Page::published()->orderBy('title')->get();
+
+        return view('admin.navigations.edit', compact('navigation', 'navigations', 'pages'));
     }
 
     /**

@@ -66,6 +66,37 @@ class BackupService
     }
 
     /**
+     * Check whether any of the tables referenced in the backup data
+     * currently contain rows.  Used to decide whether a confirmation
+     * dialog is needed before overwriting.
+     *
+     * @param  array{groups: array<string, array<string, list<array<string, mixed>>>>}  $data
+     * @return bool  true if at least one target table has at least one row
+     */
+    public function hasExistingData(array $data): bool
+    {
+        $groups = $data['groups'] ?? [];
+
+        foreach ($groups as $groupKey => $tables) {
+            if (! array_key_exists($groupKey, self::TABLE_MAP)) {
+                continue;
+            }
+
+            foreach ($tables as $table => $rows) {
+                if (! Schema::hasTable($table)) {
+                    continue;
+                }
+
+                if (DB::table($table)->count() > 0) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Restore data from a previously exported backup array.
      *
      * Each group's tables are truncated and re-populated inside a single
