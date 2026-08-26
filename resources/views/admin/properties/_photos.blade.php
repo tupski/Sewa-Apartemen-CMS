@@ -52,10 +52,14 @@
 <div
     id="photo-section"
     class="border-b border-gray-200 pb-8"
+    {{-- NOTE: use @js() (not @json()) inside this double-quoted attribute.
+         @json() emits raw " characters, which terminate the attribute early
+         and hand Alpine a truncated, invalid expression. @js() emits
+         JSON.parse('...') with " escaped as \u0022, so it is attribute-safe. --}}
     x-data="photoGallery({
-        existing:       @json($savedPhotos),
-        initialFeatured: @json($featuredMediaId),
-        categories:     @json($categoryOptions),
+        existing:       @js($savedPhotos),
+        initialFeatured: @js($featuredMediaId),
+        categories:     @js($categoryOptions),
         mediaIndexUrl:  '{{ route('admin.media.index') }}',
         mediaUploadUrl: '{{ route('admin.media.upload') }}',
         csrf:           '{{ csrf_token() }}',
