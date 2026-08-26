@@ -154,7 +154,96 @@ class PropertyController extends Controller
             'promoRates' => fn ($q) => $q->where('is_active', true)->orderBy('name'),
         ]);
 
-        return view('properties.show', compact('property'));
+        $nearbyProperties = $this->nearbyProperties($property);
+
+        return view('properties.show', compact('property', 'nearbyProperties'));
+    }
+
+    /**
+     * Find up to 3 other published properties to show in the
+     * "nearby accommodations" section of the detail page.
+     *
+     * Selection strategy:
+     *  - If the current property has coordinates, compute the great-circle
+     *    (Haversine) distance to every other published property that also has
+     *    coordinates, order by nearest, and take the 3 closest. Each returned
+     *    property carries a `distance_km` attribute (float, KM).
+     *  - Otherwise (or to backfill fewer than 3 results), fall back to
+     *    same-city properties, then latest properties, excluding the current
+     *    one and any already selected. Fallback entries have no `distance_km`.
+     *
+     * @return \Illuminate\Support\Collection<int, \App\Models\Property>
+     */
+    protected function nearbyProperties(Property $property, int $limit = 3): \Illuminate\Support\Collection
+    {
+        $candidates = Property::published()
+            ->where('id', '!=', $property->id)
+            ->with(['featuredImage', 'photos.media', 'amenities'])
+            ->get();
+
+        $selected = collect();
+
+        $hasCoords = $property->latitude !== null && $property->longitude !== null;
+
+        if ($hasCoords) {
+            $withDistance = $candidates
+                ->filter(fn ($c) => $c->latitude !== null && $c->longitude !== null)
+                ->map(function ($c) use ($property) {
+                    $c->distance_km = $this->haversineKm(
+                        (float) $property->latitude,
+                        (float) $property->longitude,
+                        (float) $c->latitude,
+                        (float) $c->longitude
+                    );
+                    return $c;
+                })
+                ->sortBy('distance_km')
+                ->take($limit);
+
+            $selected = $withDistance->values();
+        }
+
+        // Backfill if we don't yet have enough (no coords, or too few geocoded).
+        if ($selected->count() < $limit) {
+            $excludeIds = $selected->pluck('id')->all();
+
+            // Same-city first, then latest; distance_km stays unset for these.
+            $fallback = $candidates
+                ->whereNotIn('id', $excludeIds)
+                ->sort(function ($a, $b) use ($property) {
+                    $aCity = $a->city === $property->city ? 0 : 1;
+                    $bCity = $b->city === $property->city ? 0 : 1;
+                    if ($aCity !== $bCity) {
+                        return $aCity <=> $bCity;
+                    }
+                    return $b->created_at <=> $a->created_at;
+                })
+                ->take($limit - $selected->count())
+                ->values();
+
+            $selected = $selected->concat($fallback)->values();
+        }
+
+        return $selected;
+    }
+
+    /**
+     * Great-circle distance between two lat/lng points in kilometers
+     * using the Haversine formula.
+     */
+    protected function haversineKm(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $earthRadius = 6371; // km
+
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+
+        $a = sin($dLat / 2) ** 2
+            + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return $earthRadius * $c;
     }
 
     /**

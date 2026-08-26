@@ -415,6 +415,26 @@
         </div>
     </section>
 
+    <!-- ============ NEARBY ACCOMMODATIONS ============ -->
+    @if (!empty($nearbyProperties) && $nearbyProperties->isNotEmpty())
+        <section class="py-8 bg-gray-50 dark:bg-gray-800/50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-5">
+                    {{ __('prop.nearby_heading', ['name' => $property->name]) }}
+                </h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 xl:gap-6">
+                    @foreach ($nearbyProperties as $nearby)
+                        @include('properties._card', [
+                            'property'     => $nearby,
+                            'primaryColor' => $primaryColor,
+                            'distance'     => $nearby->distance_km ?? null,
+                        ])
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
+
     <!-- ============ MOBILE FLOATING BOOKING BAR ============ -->
     @if ($showBookingForm)
         <div id="mob-bk-bar" class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] px-4 py-3">
