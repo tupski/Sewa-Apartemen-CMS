@@ -6,11 +6,11 @@
             <div class="mb-8">
                 <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
                     @if(isset($category))
-                        Category: {{ $category->name }}
+                        {{ __('blog.category_label', ['name' => $category->name]) }}
                     @elseif(isset($tag))
-                        Tag: {{ $tag->name }}
+                        {{ __('blog.tag_label', ['name' => $tag->name]) }}
                     @else
-                        Blog
+                        {{ __('blog.title') }}
                     @endif
                 </h1>
             </div>
@@ -49,7 +49,7 @@
                                         @endif
                                         <a href="{{ route('blog.show', $post->slug) }}"
                                            class="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                                            Read More &rarr;
+                                            {{ __('blog.read_more') }} &rarr;
                                         </a>
                                     </div>
                                 </div>
@@ -61,8 +61,8 @@
                         </div>
                     @else
                         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
-                            <p class="text-gray-500 dark:text-gray-400">No posts found.</p>
-                            <a href="{{ route('blog.index') }}" class="text-blue-600 hover:text-blue-800 mt-2 inline-block">View all posts</a>
+                            <p class="text-gray-500 dark:text-gray-400">{{ __('blog.no_posts') }}</p>
+                            <a href="{{ route('blog.index') }}" class="text-blue-600 hover:text-blue-800 mt-2 inline-block">{{ __('blog.view_all') }}</a>
                         </div>
                     @endif
                 </div>

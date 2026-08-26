@@ -22,7 +22,7 @@
                                     </a>
                                 @endif
                                 <span>{{ $post->published_at?->format('M d, Y') }}</span>
-                                <span>by {{ $post->author->name ?? 'Unknown' }}</span>
+                                <span>{{ __('blog.by') }} {{ $post->author->name ?? __('blog.unknown_author') }}</span>
                             </div>
 
                             <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">{{ $post->title }}</h1>
@@ -34,7 +34,7 @@
                             @if($post->tags->count() > 0)
                                 <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                                     <div class="flex flex-wrap items-center gap-2">
-                                        <span class="text-sm text-gray-500 dark:text-gray-400 font-medium">Tags:</span>
+                                        <span class="text-sm text-gray-500 dark:text-gray-400 font-medium">{{ __('blog.tags') }}:</span>
                                         @foreach($post->tags as $t)
                                             <a href="{{ route('blog.tag', $t->slug) }}"
                                                class="bg-gray-100 hover:bg-blue-100 hover:text-blue-700 text-gray-600 dark:text-gray-400 text-sm px-3 py-1 rounded-full transition">
@@ -48,7 +48,7 @@
                             <!-- Share Buttons -->
                             <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
                                 <div class="flex items-center gap-4">
-                                    <span class="text-sm text-gray-500 dark:text-gray-400 font-medium">Share:</span>
+                                    <span class="text-sm text-gray-500 dark:text-gray-400 font-medium">{{ __('blog.share') }}:</span>
                                     @php
                                         $shareUrl = urlencode(route('blog.show', $post->slug));
                                         $shareTitle = urlencode($post->title);
@@ -76,7 +76,7 @@
                     <!-- Related Posts -->
                     @if($relatedPosts->count() > 0)
                         <div class="mt-8">
-                            <h3 class="text-xl font-bold text-gray-800 mb-4">Related Posts</h3>
+                            <h3 class="text-xl font-bold text-gray-800 mb-4">{{ __('blog.related') }}</h3>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 @foreach($relatedPosts as $relatedPost)
                                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden hover:shadow-md transition">
@@ -104,7 +104,7 @@
                     <!-- Back Link -->
                     <div class="mt-6">
                         <a href="{{ route('blog.index') }}" class="text-blue-600 hover:text-blue-800 text-sm">
-                            &larr; Back to Blog
+                            &larr; {{ __('blog.back') }}
                         </a>
                     </div>
                 </div>

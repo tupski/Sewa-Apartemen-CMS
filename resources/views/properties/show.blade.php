@@ -51,7 +51,7 @@
                     <!-- Overlay: view all photos -->
                     <button type="button" id="gal-open" class="absolute bottom-4 right-4 z-10 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/95 text-sm font-semibold text-gray-900 shadow hover:bg-white transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        Lihat Semua Foto ({{ $allPhotoUrls->count() }})
+                        {{ __('prop.view_all_photos') }} ({{ $allPhotoUrls->count() }})
                     </button>
                     @foreach ($restPhotos as $i => $url)
                         <button type="button" data-photo="{{ $i + 1 }}" class="relative hidden md:block h-36 lg:h-44 group overflow-hidden">
@@ -82,7 +82,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
             <a href="{{ route('properties.public.index') }}" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white inline-flex items-center mb-2">
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                Kembali ke Daftar
+                {{ __('prop.back_to_list') }}
             </a>
             <div class="flex items-start justify-between gap-4">
                 <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white">{{ $property->name }}</h1>
@@ -104,7 +104,7 @@
             @endif
             @if ($property->lowestPrice())
                 <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">
-                    Mulai dari <span class="text-lg font-bold" style="color: {{ $primaryColor }}">Rp {{ number_format($property->lowestPrice(), 0, ',', '.') }}</span>
+                    {{ __('prop.from') }} <span class="text-lg font-bold" style="color: {{ $primaryColor }}">Rp {{ number_format($property->lowestPrice(), 0, ',', '.') }}</span>
                 </p>
             @endif
         </div>
@@ -215,7 +215,7 @@
                     <!-- ===== Available Room Type ===== -->
                     @if (!empty($property->unit_types))
                         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 md:p-8" id="rooms">
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Available Room Type</h2>
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ __('prop.rooms_heading') }}</h2>
                             <div class="space-y-4">
                                 @foreach ($property->unit_types as $type)
                                     @php
@@ -228,16 +228,16 @@
                                         <div class="flex-1">
                                             <h3 class="text-base font-bold text-gray-900 dark:text-white">{{ $property->typeLabel($type) }}</h3>
                                             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                                @if ($night) <span>Rp {{ number_format($night, 0, ',', '.') }}/malam</span> @endif
-                                                @if ($weekly) <span class="mx-2">•</span> <span>Rp {{ number_format($weekly, 0, ',', '.') }}/minggu</span> @endif
-                                                @if ($monthly) <span class="mx-2">•</span> <span>Rp {{ number_format($monthly, 0, ',', '.') }}/bulan</span> @endif
+                                                @if ($night) <span>Rp {{ number_format($night, 0, ',', '.') }}{{ __('prop.per_night') }}</span> @endif
+                                                @if ($weekly) <span class="mx-2">•</span> <span>Rp {{ number_format($weekly, 0, ',', '.') }}{{ __('prop.per_week') }}</span> @endif
+                                                @if ($monthly) <span class="mx-2">•</span> <span>Rp {{ number_format($monthly, 0, ',', '.') }}{{ __('prop.per_month') }}</span> @endif
                                             </p>
                                         </div>
                                         <div class="flex items-center gap-3">
                                             @if ($hasTransit)
-                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium" style="background-color: {{ $secondaryColor }}15; color: {{ $secondaryColor }}">Sewa per Jam</span>
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium" style="background-color: {{ $secondaryColor }}15; color: {{ $secondaryColor }}">{{ __('prop.rent_hourly') }}</span>
                                             @endif
-                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium" style="background-color: {{ $primaryColor }}12; color: {{ $primaryColor }}">Sewa per Malam</span>
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium" style="background-color: {{ $primaryColor }}12; color: {{ $primaryColor }}">{{ __('prop.rent_nightly') }}</span>
                                         </div>
                                     </div>
                                 @endforeach
@@ -267,7 +267,7 @@
                                 . 'Lihat detail & petunjuk arah di sini: ' . $directionsUrl;
                         @endphp
                         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 md:p-8">
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">What's Around {{ $property->name }}</h2>
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ __('prop.whats_around', ['name' => $property->name]) }}</h2>
 
                             @if ($dirDestination)
                                 {{-- Directions actions: open Google Maps (app on mobile / web on desktop)
@@ -324,7 +324,7 @@
                                     @endforeach
                                 </div>
                             @else
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Belum ada data tempat sekitar properti ini.</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('prop.no_nearby') }}</p>
                             @endif
                         </div>
                     @endif
@@ -332,12 +332,12 @@
                     <!-- ===== Accommodation Policy ===== -->
                     @if ($property->checkin_time || $property->checkout_time || $property->required_documents || $property->checkin_method)
                         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 md:p-8">
-                            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5">Kebijakan Akomodasi & Informasi Umum di {{ $property->name }}</h2>
+                            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5">{{ __('prop.policy_heading', ['name' => $property->name]) }}</h2>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div>
                                     <div class="flex items-center gap-2 mb-3">
                                         <svg class="w-5 h-5" style="color: {{ $primaryColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                        <h3 class="text-sm font-bold text-gray-900 dark:text-white">Check-in & Check-out</h3>
+                                        <h3 class="text-sm font-bold text-gray-900 dark:text-white">{{ __('prop.checkin_checkout') }}</h3>
                                     </div>
                                     <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                                         <li>Check-in: {{ $property->checkin_time ?: '—' }}</li>
@@ -347,7 +347,7 @@
                                 <div>
                                     <div class="flex items-center gap-2 mb-3">
                                         <svg class="w-5 h-5" style="color: {{ $primaryColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                        <h3 class="text-sm font-bold text-gray-900 dark:text-white">Dokumen yang Diperlukan</h3>
+                                        <h3 class="text-sm font-bold text-gray-900 dark:text-white">{{ __('prop.required_docs') }}</h3>
                                     </div>
                                     <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                                         @forelse ($property->required_documents ?? [] as $doc)
@@ -363,7 +363,7 @@
                                 <div>
                                     <div class="flex items-center gap-2 mb-3">
                                         <svg class="w-5 h-5" style="color: {{ $primaryColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
-                                        <h3 class="text-sm font-bold text-gray-900 dark:text-white">Metode Check-in</h3>
+                                        <h3 class="text-sm font-bold text-gray-900 dark:text-white">{{ __('prop.checkin_method_label') }}</h3>
                                     </div>
                                     <p class="text-sm text-gray-600 dark:text-gray-400">{{ $property->checkin_method ?: '—' }}</p>
                                 </div>
@@ -421,12 +421,12 @@
                     <!-- Contact card (mobile only, shown when booking form is NOT the primary CTA) -->
                     @if ($showBookingForm)
                         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 lg:hidden">
-                            <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-3">Tanya Dulu</h2>
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-3">{{ __('prop.ask_first') }}</h2>
                             @if ($whatsapp)
-                                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}?text={{ urlencode('Halo, saya ingin bertanya tentang ' . $property->name) }}"
+                                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}?text={{ urlencode(__('prop.wa_ask_message', ['property' => $property->name])) }}"
                                    target="_blank" rel="noopener"
                                    class="w-full inline-flex items-center justify-center px-5 py-3 rounded-full text-sm font-semibold text-white hover:opacity-90 transition" style="background-color: #25d366">
-                                    Chat WhatsApp
+                                    {{ __('home.chat_whatsapp') }}
                                 </a>
                             @endif
                         </div>
@@ -437,11 +437,11 @@
                 @if ($showBookingForm)
                     <div class="hidden lg:block lg:sticky lg:top-24 lg:self-start space-y-6">
                             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
-                                <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Pesan Apartemen</h2>
+                                <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4">{{ __('prop.book_apartment') }}</h2>
                                 @include('properties._booking-form', ['prefix' => 'bkf-desktop'])
                             </div>
                             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
-                                <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-3">Tanya Dulu</h2>
+                                <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-3">{{ __('prop.ask_first') }}</h2>
                                 <ul class="space-y-3 text-sm text-gray-600 dark:text-gray-400">
                                     @if ($contactPhone)
                                         <li class="flex items-center gap-2">
@@ -451,10 +451,10 @@
                                     @endif
                                     @if ($whatsapp)
                                         <li>
-                                            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}?text={{ urlencode('Halo, saya ingin bertanya tentang ' . $property->name) }}"
+                                            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}?text={{ urlencode(__('prop.wa_ask_message', ['property' => $property->name])) }}"
                                                target="_blank" rel="noopener" class="inline-flex items-center gap-2 text-green-600 font-medium hover:underline">
                                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                                                Chat WhatsApp
+                                                {{ __('home.chat_whatsapp') }}
                                             </a>
                                         </li>
                                     @endif
@@ -513,7 +513,7 @@
         <div id="mob-bk-bar" class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] px-4 py-3">
             <div class="flex items-center justify-between gap-3 max-w-lg mx-auto">
                 <div>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Mulai dari</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('prop.from') }}</p>
                     <p class="text-lg font-bold" style="color: {{ $primaryColor }}">
                         @if ($property->lowestPrice())
                             Rp {{ number_format($property->lowestPrice(), 0, ',', '.') }}
@@ -523,7 +523,7 @@
                     </p>
                 </div>
                 <button type="button" id="mob-bk-open" class="px-6 py-3 rounded-full text-white font-semibold text-sm hover:opacity-90 transition" style="background-color: {{ $primaryColor }}">
-                    Booking
+                    {{ __('prop.booking') }}
                 </button>
             </div>
         </div>

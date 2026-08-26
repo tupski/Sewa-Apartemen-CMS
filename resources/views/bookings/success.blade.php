@@ -9,20 +9,20 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
         </div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Booking Request Submitted!</h1>
-        <p class="text-gray-600 dark:text-gray-400">Your booking request has been received. We will contact you shortly.</p>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{{ __('booking.success_heading') }}</h1>
+        <p class="text-gray-600 dark:text-gray-400">{{ __('booking.success_desc') }}</p>
     </div>
 
     <!-- Booking Details Card -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden mb-6">
         <div class="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Booking Details</h2>
+            <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ __('booking.details') }}</h2>
         </div>
 
         <div class="p-6">
             <!-- Booking Code -->
             <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Booking Code</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('booking.code') }}</label>
                 <div class="flex items-center gap-3">
                     <code class="px-3 py-2 bg-gray-100 dark:bg-gray-900 rounded font-mono text-lg text-gray-800 dark:text-gray-100">
                         {{ $booking->code }}
@@ -38,7 +38,7 @@
 
             <!-- Property & Room Information -->
             <div class="border-t border-gray-200 dark:border-gray-700 pt-6 mb-6">
-                <h3 class="font-semibold text-gray-800 dark:text-gray-100 mb-3">Property & Room</h3>
+                <h3 class="font-semibold text-gray-800 dark:text-gray-100 mb-3">{{ __('booking.property_room') }}</h3>
                 <div class="flex gap-4">
                     @if($booking->property?->featuredImage)
                         <img src="{{ $booking->property->featuredImage->url }}"
@@ -57,9 +57,9 @@
                             <span class="mr-2">{{ $booking->property?->typeLabel($booking->unit_type) ?? $booking->unit_type }}</span>
                             <span class="mr-2">{{ ucfirst($booking->booking_type) }}</span>
                             @if($booking->booking_type === 'transit')
-                                <span>{{ $booking->duration_hours }} jam</span>
+                                <span>{{ __('booking.hours_count', ['count' => $booking->duration_hours]) }}</span>
                             @else
-                                <span>{{ $booking->metadata['nights'] ?? '' }} malam</span>
+                                <span>{{ __('booking.nights_count', ['count' => $booking->metadata['nights'] ?? '']) }}</span>
                             @endif
                         </div>
                     </div>
@@ -68,14 +68,14 @@
 
             <!-- Booking Dates -->
             <div class="border-t border-gray-200 dark:border-gray-700 pt-6 mb-6">
-                <h3 class="font-semibold text-gray-800 dark:text-gray-100 mb-3">Booking Dates</h3>
+                <h3 class="font-semibold text-gray-800 dark:text-gray-100 mb-3">{{ __('booking.dates') }}</h3>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <span class="block text-sm text-gray-500 dark:text-gray-400">Check-in</span>
+                        <span class="block text-sm text-gray-500 dark:text-gray-400">{{ __('booking.checkin') }}</span>
                         <span class="font-medium text-gray-900 dark:text-white">{{ \Carbon\Carbon::parse($booking->check_in)->format('F d, Y H:i') }}</span>
                     </div>
                     <div>
-                        <span class="block text-sm text-gray-500 dark:text-gray-400">Check-out</span>
+                        <span class="block text-sm text-gray-500 dark:text-gray-400">{{ __('booking.checkout') }}</span>
                         <span class="font-medium text-gray-900 dark:text-white">{{ \Carbon\Carbon::parse($booking->check_out)->format('F d, Y H:i') }}</span>
                     </div>
                 </div>
@@ -83,25 +83,25 @@
 
             <!-- Guest Information -->
             <div class="border-t border-gray-200 dark:border-gray-700 pt-6 mb-6">
-                <h3 class="font-semibold text-gray-800 dark:text-gray-100 mb-3">Guest Information</h3>
+                <h3 class="font-semibold text-gray-800 dark:text-gray-100 mb-3">{{ __('booking.guest_info') }}</h3>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <span class="block text-sm text-gray-500 dark:text-gray-400">Name</span>
+                        <span class="block text-sm text-gray-500 dark:text-gray-400">{{ __('booking.name') }}</span>
                         <span class="font-medium text-gray-900 dark:text-white">{{ $booking->customer_name }}</span>
                     </div>
                     <div>
-                        <span class="block text-sm text-gray-500 dark:text-gray-400">Guests</span>
-                        <span class="font-medium text-gray-900 dark:text-white">{{ $booking->guests }} guests</span>
+                        <span class="block text-sm text-gray-500 dark:text-gray-400">{{ __('booking.guests_label') }}</span>
+                        <span class="font-medium text-gray-900 dark:text-white">{{ __('booking.guests_count', ['count' => $booking->guests]) }}</span>
                     </div>
                     @if($booking->customer_email)
                         <div class="col-span-2">
-                            <span class="block text-sm text-gray-500 dark:text-gray-400">Email</span>
+                            <span class="block text-sm text-gray-500 dark:text-gray-400">{{ __('booking.email') }}</span>
                             <span class="font-medium text-gray-900 dark:text-white">{{ $booking->customer_email }}</span>
                         </div>
                     @endif
                     @if($booking->customer_phone)
                         <div class="col-span-2">
-                            <span class="block text-sm text-gray-500 dark:text-gray-400">Phone</span>
+                            <span class="block text-sm text-gray-500 dark:text-gray-400">{{ __('booking.phone') }}</span>
                             <span class="font-medium text-gray-900 dark:text-white">{{ $booking->customer_phone }}</span>
                         </div>
                     @endif
@@ -110,32 +110,32 @@
 
             <!-- Pricing -->
             <div class="border-t border-gray-200 dark:border-gray-700 pt-6 mb-6">
-                <h3 class="font-semibold text-gray-800 dark:text-gray-100 mb-3">Pricing</h3>
+                <h3 class="font-semibold text-gray-800 dark:text-gray-100 mb-3">{{ __('booking.pricing') }}</h3>
                 <div class="space-y-2">
                     @if($booking->booking_type === 'transit')
                         <div class="flex justify-between">
-                            <span class="text-gray-600 dark:text-gray-400">Transit Rate ({{ $booking->duration_hours }} jam)</span>
+                            <span class="text-gray-600 dark:text-gray-400">{{ __('booking.transit_rate', ['hours' => $booking->duration_hours]) }}</span>
                             <span class="font-medium">Rp{{ number_format((float) ($booking->price_breakdown['rate'] ?? 0)) }}</span>
                         </div>
                     @elseif(in_array($booking->booking_type, ['weekly', 'monthly']))
                         <div class="flex justify-between">
-                            <span class="text-gray-600 dark:text-gray-400">{{ ucfirst($booking->booking_type) }} Rate</span>
+                            <span class="text-gray-600 dark:text-gray-400">{{ __('booking.rate_label', ['type' => ucfirst($booking->booking_type)]) }}</span>
                             <span class="font-medium">Rp{{ number_format((float) ($booking->price_breakdown['rate'] ?? 0)) }}</span>
                         </div>
                     @else
                         <div class="flex justify-between">
-                            <span class="text-gray-600 dark:text-gray-400">Nightly Rate (avg)</span>
+                            <span class="text-gray-600 dark:text-gray-400">{{ __('booking.nightly_avg') }}</span>
                             <span class="font-medium">Rp{{ number_format((float) ($booking->total_price / max(1, (int) ($booking->metadata['nights'] ?? 1)))) }}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-gray-600 dark:text-gray-400">Number of Nights</span>
+                            <span class="text-gray-600 dark:text-gray-400">{{ __('booking.num_nights') }}</span>
                             <span class="font-medium">{{ $booking->metadata['nights'] ?? '-' }}</span>
                         </div>
                     @endif
                     @if($booking->voucher_discount > 0)
                     <div class="flex justify-between text-green-700 dark:text-green-400">
                         <span>
-                            Diskon Voucher
+                            {{ __('booking.voucher_discount') }}
                             @if($booking->voucher)
                                 <code class="ml-1 text-xs px-1.5 py-0.5 bg-green-100 dark:bg-green-900/40 rounded font-mono">{{ $booking->voucher->code }}</code>
                             @endif
@@ -144,11 +144,11 @@
                     </div>
                     @endif
                     <div class="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-2">
-                        <span class="font-medium text-gray-800 dark:text-gray-100">Total Price</span>
+                        <span class="font-medium text-gray-800 dark:text-gray-100">{{ __('booking.total_price') }}</span>
                         <span class="font-bold text-lg text-gray-900 dark:text-white">Rp{{ number_format($booking->total_price) }}</span>
                     </div>
                     <div class="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-2">
-                        <span class="text-gray-600 dark:text-gray-400">Deposit (30%)</span>
+                        <span class="text-gray-600 dark:text-gray-400">{{ __('booking.deposit') }}</span>
                         <span class="font-medium text-blue-600">Rp{{ number_format($booking->deposit_amount) }}</span>
                     </div>
                 </div>
@@ -156,15 +156,15 @@
 
             <!-- WhatsApp Action -->
             <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-                <h3 class="font-semibold text-gray-800 dark:text-gray-100 mb-3">Next Steps</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">We will contact you via WhatsApp to confirm your booking.</p>
+                <h3 class="font-semibold text-gray-800 dark:text-gray-100 mb-3">{{ __('booking.next_steps') }}</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{{ __('booking.next_steps_desc') }}</p>
                 <a href="https://wa.me/{{ $booking->customer_whatsapp ?? str_replace(['+', '-', ' ', '(', ')'], '', $booking->customer_phone) }}"
                    target="_blank"
                    class="inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition">
                     <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-1.746 6.392 6.392-1.745zm1.439-3.426l-1.438-.804-1.438.804c-2.305 1.287-3.359 3.87-2.802 6.173.556 2.303 2.552 3.936 4.834 3.942 2.283-.006 4.276-1.639 4.832-3.942.557-2.303-.497-4.886-2.802-6.173z"></path>
                     </svg>
-                    Contact via WhatsApp
+                    {{ __('booking.contact_whatsapp') }}
                 </a>
             </div>
         </div>
@@ -173,15 +173,15 @@
     <!-- Cek Status Booking -->
     <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 mb-4 flex items-center justify-between gap-4">
         <div>
-            <p class="text-sm font-medium text-blue-800 dark:text-blue-300">Simpan kode booking kamu</p>
-            <p class="text-xs text-blue-600 dark:text-blue-400 mt-0.5">Gunakan kode ini untuk cek status booking kapan saja.</p>
+            <p class="text-sm font-medium text-blue-800 dark:text-blue-300">{{ __('booking.save_code') }}</p>
+            <p class="text-xs text-blue-600 dark:text-blue-400 mt-0.5">{{ __('booking.save_code_desc') }}</p>
         </div>
         <a href="{{ route('bookings.status', $booking->access_token) }}"
            class="shrink-0 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
             </svg>
-            Cek Status Booking
+            {{ __('booking.check_status_btn') }}
         </a>
     </div>
 
@@ -189,11 +189,11 @@
     <div class="flex flex-col sm:flex-row gap-4">
         <a href="{{ url('/') }}"
            class="flex-1 py-3 px-6 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 text-center transition">
-            Kembali ke Beranda
+            {{ __('booking.back_home') }}
         </a>
         <a href="{{ route('properties.public.index') }}"
            class="flex-1 py-3 px-6 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 text-center transition">
-            Lihat Apartemen Lain
+            {{ __('booking.other_apartments') }}
         </a>
     </div>
 </div>
@@ -203,7 +203,7 @@
 function copyBookingCode() {
     const code = '{{ $booking->code }}';
     navigator.clipboard.writeText(code).then(() => {
-        alert('Booking code copied to clipboard!');
+        alert(@json(__('booking.code_copied')));
     });
 }
 

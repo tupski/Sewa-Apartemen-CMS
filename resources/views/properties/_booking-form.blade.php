@@ -17,11 +17,11 @@
     {{-- ====== ROOM TYPE SELECTOR ====== --}}
     @if ($activeTypes->count() > 1)
         <div>
-            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Tipe Kamar</label>
+            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{{ __('bkf.room_type') }}</label>
 
             @if ($usePills)
                 {{-- Pills for ≤4 types --}}
-                <div class="flex flex-wrap gap-2" role="group" aria-label="Pilih tipe kamar">
+                <div class="flex flex-wrap gap-2" role="group" aria-label="{{ __('bkf.select_room_type') }}">
                     @foreach ($activeTypes as $i => $type)
                         <button type="button"
                                 class="bkf-room-pill px-3 py-1.5 rounded-full text-sm font-medium border transition
@@ -36,7 +36,7 @@
                 {{-- Dropdown for >4 types --}}
                 <select id="{{ $prefix }}-room-type"
                         class="bkf-room-type w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2"
-                        aria-label="Tipe kamar">
+                        aria-label="{{ __('bkf.room_type') }}">
                     @foreach ($activeTypes as $type)
                         <option value="{{ $type }}">{{ $property->typeLabel($type) }}</option>
                     @endforeach
@@ -52,13 +52,13 @@
     <div class="grid grid-cols-2 gap-4">
         <div>
             <label for="{{ $prefix }}-checkin" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Tanggal Check-in
+                {{ __('bkf.checkin_date') }}
             </label>
             <div class="relative">
                 <input type="text"
                        id="{{ $prefix }}-checkin"
                        class="bkf-checkin w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2"
-                       placeholder="Pilih tanggal"
+                       placeholder="{{ __('bkf.pick_date') }}"
                        readonly
                        aria-required="true">
                 {{-- Overlay native date input: tap lands on real picker (works iOS/Android/desktop) --}}
@@ -66,13 +66,13 @@
                        lang="id-ID"
                        class="bkf-checkin-native absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                        tabindex="-1"
-                       aria-label="Tanggal Check-in">
+                       aria-label="{{ __('bkf.checkin_date') }}">
                 <input type="hidden" id="{{ $prefix }}-checkin-raw" class="bkf-checkin-raw">
             </div>
         </div>
         <div>
             <label for="{{ $prefix }}-checkin-time" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Waktu Check-in
+                {{ __('bkf.checkin_time') }}
             </label>
             {{-- lang="id-ID" forces 24-hour format on the native time picker/value (no AM/PM), incl. mobile --}}
             <input type="time"
@@ -87,7 +87,7 @@
     <div class="grid grid-cols-2 gap-4">
         <div>
             <label for="{{ $prefix }}-unit" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Tipe Sewa
+                {{ __('bkf.rental_type') }}
             </label>
             <select id="{{ $prefix }}-unit"
                     class="bkf-unit w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2">
@@ -96,7 +96,7 @@
         </div>
         <div>
             <label for="{{ $prefix }}-duration" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 bkf-duration-label">
-                Durasi
+                {{ __('bkf.duration') }}
             </label>
             {{-- JS will replace this with the correct input/select based on satuan --}}
             <div id="{{ $prefix }}-duration-wrap" class="relative">
@@ -112,15 +112,15 @@
     {{-- ====== GUESTS ====== --}}
     <div>
         <label for="{{ $prefix }}-guests" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-            Jumlah Tamu
+            {{ __('bkf.guests') }}
         </label>
         <div class="relative">
             <input type="number"
                    id="{{ $prefix }}-guests"
                    class="bkf-guests w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2"
                    value="2" min="1" max="20"
-                   aria-label="Jumlah tamu">
-            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400 pointer-events-none">Dewasa</span>
+                   aria-label="{{ __('bkf.guests') }}">
+            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400 pointer-events-none">{{ __('bkf.adults') }}</span>
         </div>
     </div>
 
@@ -136,16 +136,16 @@
 
     {{-- ====== VOUCHER FIELD ====== --}}
     <div class="space-y-2">
-        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">Kode Voucher (opsional)</label>
+        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">{{ __('bkf.voucher_optional') }}</label>
         <div class="flex gap-2">
             <input type="text"
                    class="bkf-voucher-input flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 uppercase"
-                   placeholder="Masukkan kode voucher"
+                   placeholder="{{ __('bkf.voucher_placeholder') }}"
                    style="text-transform: uppercase"
-                   aria-label="Kode voucher">
+                   aria-label="{{ __('bkf.voucher_aria') }}">
             <button type="button"
                     class="bkf-voucher-apply px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-                Terapkan
+                {{ __('bkf.apply') }}
             </button>
         </div>
         <p class="bkf-voucher-msg hidden text-xs mt-1"></p>
@@ -156,7 +156,7 @@
     <button type="button"
             class="bkf-open w-full py-3.5 rounded-full text-white font-semibold hover:opacity-90 transition"
             style="background-color: {{ $primaryColor }}">
-        Lanjut Pemesanan
+        {{ __('bkf.continue') }}
     </button>
     <p class="bkf-error hidden text-sm text-red-600 dark:text-red-400 text-center" role="alert"></p>
 
