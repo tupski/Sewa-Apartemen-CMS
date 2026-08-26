@@ -11,6 +11,7 @@
     @php
         $siteName = \App\Services\SettingsService::get('site_name', config('app.name', 'Kakarama Room'));
         $siteDescription = \App\Services\SettingsService::get('site_description', '');
+        $footerAbout = \App\Services\SettingsService::get('footer_about', '');
         $siteLogo = \App\Services\SettingsService::get('site_logo', '');
         $siteFavicon = \App\Services\SettingsService::get('site_favicon', '');
         $primaryColor = \App\Services\SettingsService::get('primary_color', '#3b82f6');
@@ -54,7 +55,13 @@
     @if (isset($seo))
         {!! \App\Services\SeoService::renderMetaTags($seo) !!}
     @else
-        <title>{{ isset($pageTitle) ? $pageTitle . ' — ' . $siteName : $siteName }}</title>
+        @php
+            $isHome = \App\Services\SeoService::isHomepage();
+            $fallbackTitle = isset($pageTitle)
+                ? \App\Services\SeoService::title($pageTitle, $isHome)
+                : \App\Services\SeoService::title($siteName, $isHome);
+        @endphp
+        <title>{{ $fallbackTitle }}</title>
         @if ($siteDescription)
             <meta name="description" content="{{ $siteDescription }}">
         @endif
@@ -333,8 +340,8 @@
                             <span class="text-lg font-bold text-white">{{ $siteName }}</span>
                         @endif
                     </div>
-                    @if ($siteDescription)
-                        <p class="text-sm text-gray-400 mb-4 leading-relaxed">{{ $siteDescription }}</p>
+                    @if ($footerAbout)
+                        <p class="text-sm text-gray-400 mb-4 leading-relaxed">{{ $footerAbout }}</p>
                     @endif
                     <div class="flex items-center space-x-3 text-sm">
                         @if ($whatsapp)

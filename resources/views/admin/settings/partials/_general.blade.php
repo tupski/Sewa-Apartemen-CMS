@@ -27,16 +27,20 @@
             @enderror
         </div>
 
-        {{-- Site Description --}}
+        {{-- Site Description (used as the site Tagline) --}}
         <div>
             <label for="site_description" class="block text-sm font-medium text-gray-700 mb-2">
-                Site Description
+                Site Description (Tagline)
             </label>
             <input type="text"
                    name="site_description"
                    id="site_description"
                    value="{{ old('site_description', $settings['site_description'] ?? '') }}"
+                   placeholder="e.g. Quality Living in Premium Location"
                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+            <p class="text-xs text-gray-500 mt-1">
+                Used as the site tagline in the homepage title: <span class="font-mono">Site Name - Tagline</span>.
+            </p>
             @error('site_description')
                 <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
             @enderror

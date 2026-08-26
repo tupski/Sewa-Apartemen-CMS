@@ -16,8 +16,9 @@ class ContactController extends Controller
      */
     public function index()
     {
+        // Base page title only; SeoService::title() appends " - {Site Name}".
         $seo = SeoService::metaTags(
-            __('contact.title') . ' - ' . SettingsService::get('site_name', config('app.name')),
+            __('contact.title'),
             __('contact.subtitle'),
             route('contact'),
         );

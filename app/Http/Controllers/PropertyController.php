@@ -156,7 +156,11 @@ class PropertyController extends Controller
 
         $nearbyProperties = $this->nearbyProperties($property);
 
-        return view('properties.show', compact('property', 'nearbyProperties'));
+        // Build SEO from the property's own metadata (falls back to name/description).
+        // Title suffixing (" - {Site Name}") is applied centrally by SeoService.
+        $seo = \App\Services\SeoService::metaTagsArray($property);
+
+        return view('properties.show', compact('property', 'nearbyProperties', 'seo'));
     }
 
     /**

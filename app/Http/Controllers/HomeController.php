@@ -16,8 +16,11 @@ class HomeController extends Controller
     public function index(Request $request)
     {
         $siteName = SettingsService::get('site_name', config('app.name', 'Kakarama Room'));
-        $tagline = SettingsService::get('site_tagline', '');
+        // Site Description is repurposed as the site tagline (used in the header
+        // <title> and as the hero fallback). Fall back to the legacy site_tagline
+        // key if a description has not been set yet.
         $description = SettingsService::get('site_description', '');
+        $tagline = $description ?: SettingsService::get('site_tagline', '');
 
         $primaryColor = SettingsService::get('primary_color', '#3b82f6');
         $secondaryColor = SettingsService::get('secondary_color', '#10b981');
@@ -63,8 +66,11 @@ class HomeController extends Controller
             'cities' => Property::published()->distinct()->count('city'),
         ];
 
+        // Homepage title format ({Site Name} - {Tagline}) is applied centrally
+        // by SeoService::title() via homepage detection, so we pass the base
+        // site name here and let the service append the tagline.
         $seo = SeoService::metaTags(
-            $tagline ? "{$siteName} — {$tagline}" : $siteName,
+            $siteName,
             $description,
             url('/'),
         );

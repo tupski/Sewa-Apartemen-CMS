@@ -36,8 +36,9 @@ class PromotionController extends Controller
             ->filter(fn (Voucher $v) => $v->isValid())
             ->values();
 
+        // Base page title only; SeoService::title() appends " - {Site Name}".
         $seo = SeoService::metaTags(
-            __('promo.title') . ' - ' . SettingsService::get('site_name', config('app.name')),
+            __('promo.title'),
             __('promo.subtitle'),
             route('promotions'),
         );

@@ -8,21 +8,58 @@ use Illuminate\Support\Str;
 class SeoService
 {
     /**
-     * Truncate title to max 60 chars, append site name.
+     * Build the standardized <title> string.
+     *
+     * Rules:
+     *  - Homepage:      "{Site Name} - {Tagline}"  (tagline = Site Description)
+     *                   Falls back to just "{Site Name}" when the tagline is empty.
+     *  - Other pages:   "{Page Title} - {Site Name}"
+     *
+     * The method normalizes titles so the site name is never duplicated: if the
+     * incoming title already ends with a " - {Site Name}" (or legacy " | {Site Name}")
+     * suffix — as older controllers/SEO metadata may provide — that suffix is
+     * stripped before the standardized one is re-applied.
+     *
+     * @param string $title      Base page title (without the site-name suffix).
+     * @param bool   $isHomepage When true, uses the homepage "{Site Name} - {Tagline}" format.
      */
-    public static function title(string $title): string
+    public static function title(string $title, bool $isHomepage = false): string
     {
-        $siteName = SettingsService::get('site_name', config('app.name', ''));
-        $maxLen = 60;
+        $siteName = trim((string) SettingsService::get('site_name', config('app.name', '')));
 
-        if ($siteName && !str_contains($title, $siteName)) {
-            $separator = ' | ';
-            $maxTitleLen = $maxLen - strlen($separator) - strlen($siteName);
-            $title = Str::limit($title, $maxTitleLen, '');
-            return $title . $separator . $siteName;
+        // Homepage: "{Site Name} - {Tagline}" (tagline = Site Description).
+        if ($isHomepage) {
+            $tagline = trim((string) SettingsService::get('site_description', ''));
+
+            return $tagline !== '' ? "{$siteName} - {$tagline}" : $siteName;
         }
 
-        return Str::limit($title, $maxLen, '');
+        $title = trim($title);
+
+        if ($title === '') {
+            return $siteName;
+        }
+
+        if ($siteName === '') {
+            return $title;
+        }
+
+        // Strip an existing site-name suffix to avoid double-appending
+        // (handles both the new " - " separator and the legacy " | " one).
+        foreach ([' - ', ' | '] as $separator) {
+            $suffix = $separator . $siteName;
+            if (Str::endsWith($title, $suffix)) {
+                $title = trim(Str::beforeLast($title, $suffix));
+                break;
+            }
+        }
+
+        // If the base title collapses to the site name itself, don't duplicate.
+        if ($title === '' || $title === $siteName) {
+            return $siteName;
+        }
+
+        return "{$title} - {$siteName}";
     }
 
     /**
@@ -39,6 +76,26 @@ class SeoService
     public static function canonical(string $url): string
     {
         return url($url);
+    }
+
+    /**
+     * Detect whether the current request is the homepage.
+     *
+     * Uses the named route `home` when available and falls back to comparing
+     * the current URL against the site root so it also works in contexts where
+     * the route name is unavailable (e.g. console-driven rendering).
+     */
+    public static function isHomepage(): bool
+    {
+        try {
+            if (request()->routeIs('home')) {
+                return true;
+            }
+        } catch (\Throwable $e) {
+            // Ignore — fall through to URL comparison.
+        }
+
+        return rtrim(url()->current(), '/') === rtrim(url('/'), '/');
     }
 
     /**
@@ -141,7 +198,7 @@ class SeoService
     public static function metaTags($title, $description = '', $url = '', $image = '', $type = 'website'): array
     {
         return [
-            'title' => static::title($title),
+            'title' => static::title($title, static::isHomepage()),
             'description' => static::description($description),
             'canonical' => $url ? static::canonical($url) : url()->current(),
             'image' => $image,
@@ -199,7 +256,7 @@ class SeoService
     protected static function defaults(): array
     {
         return [
-            'title' => static::title(SettingsService::get('site_name', config('app.name', ''))),
+            'title' => static::title(SettingsService::get('site_name', config('app.name', '')), static::isHomepage()),
             'description' => static::description(SettingsService::get('site_description', '')),
             'canonical' => url()->current(),
             'image' => '',

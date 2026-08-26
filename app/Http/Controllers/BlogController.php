@@ -20,8 +20,9 @@ class BlogController extends Controller
 
         $sidebarData = $this->getSidebarData();
 
+        // Base page title only; SeoService::title() appends " - {Site Name}".
         $seo = \App\Services\SeoService::metaTags(
-            'Blog - ' . SettingsService::get('site_name', config('app.name')),
+            'Blog',
             'Read our latest articles and updates',
             url('/blog'),
         );

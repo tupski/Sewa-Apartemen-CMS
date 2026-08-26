@@ -98,7 +98,11 @@ class PageController extends Controller
             ->filter(fn ($block) => $block->appearsOnPage($page->id))
             ->groupBy('area');
 
-        return view('pages.show', compact('page', 'blocks'));
+        // Build SEO from the page's own metadata (falls back to title/content).
+        // Title suffixing (" - {Site Name}") is applied centrally by SeoService.
+        $seo = \App\Services\SeoService::metaTagsArray($page);
+
+        return view('pages.show', compact('page', 'blocks', 'seo'));
     }
 
     /**
