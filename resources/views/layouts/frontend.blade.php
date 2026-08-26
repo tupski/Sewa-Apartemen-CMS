@@ -498,7 +498,7 @@
         <a href="https://wa.me/{{ $waNumber }}"
            target="_blank"
            rel="noopener noreferrer"
-           class="fixed bottom-20 right-6 z-50 w-14 h-14 rounded-full shadow-xl flex items-center justify-center hover:scale-110 transition-transform"
+           class="fixed bottom-20 right-6 z-30 w-14 h-14 rounded-full shadow-xl flex items-center justify-center hover:scale-110 transition-transform whatsapp-pulse"
            style="background-color: #25D366;"
            aria-label="Chat via WhatsApp">
             <svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">

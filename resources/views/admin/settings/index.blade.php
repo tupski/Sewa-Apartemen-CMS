@@ -31,6 +31,7 @@
                                 'integrations' => ['icon' => 'plug', 'label' => 'Integrations'],
                                 'pricing'      => ['icon' => 'tags', 'label' => 'Pricing & Booking'],
                                 'mail'         => ['icon' => 'envelope', 'label' => 'Mail / Email'],
+                                'version_control' => ['icon' => 'code-branch', 'label' => 'Version Control'],
                                 'email_templates' => ['icon' => 'file-lines', 'label' => 'Email Templates'],
                                 'captcha'      => ['icon' => 'shield-halved', 'label' => 'Security (CAPTCHA)'],
                                 'currency_api' => ['icon' => 'arrows-left-right', 'label' => 'Currency API'],
@@ -96,9 +97,13 @@
                             'captcha'        => '_captcha',
                             'currency_api'   => '_currency_api',
                         ];
+                        // Groups that render a standalone partial (no form wrapper)
+                        $standaloneGroups = ['version_control'];
                     @endphp
 
-                    @if(isset($formGroups[$group]))
+                    @if($group === 'version_control')
+                        @include('admin.settings.partials._git')
+                    @elseif(isset($formGroups[$group]))
                         <form method="POST"
                               action="{{ route('admin.settings.update', $group) }}"
                               @if($group === 'general') enctype="multipart/form-data" @endif

@@ -401,6 +401,118 @@ class SettingsController extends Controller
     }
 
     /**
+     * GET /admin/settings/git-status
+     * Returns current branch, commit hash, commit message, commits_behind, upcoming_commits.
+     */
+    public function gitStatus()
+    {
+        try {
+            $cwd = base_path();
+
+            $branch = $this->runGit('git rev-parse --abbrev-ref HEAD', $cwd);
+            $currentCommit = $this->runGit('git rev-parse HEAD', $cwd);
+            $currentMessage = $this->runGit('git log -1 --pretty=%s', $cwd);
+
+            // Count commits behind origin/main (or origin/master)
+            $remoteBranch = 'origin/main';
+            $countBehind = (int) $this->runGit("git rev-list --count HEAD..{$remoteBranch}", $cwd);
+            if ($countBehind === 0 && trim($this->runGit("git rev-parse --verify {$remoteBranch} 2>/dev/null", $cwd)) === '') {
+                $remoteBranch = 'origin/master';
+                $countBehind = (int) $this->runGit("git rev-list --count HEAD..{$remoteBranch}", $cwd);
+            }
+
+            // Upcoming commit list
+            $logRaw = $this->runGit("git log HEAD..{$remoteBranch} --oneline", $cwd);
+            $upcomingCommits = [];
+            foreach (array_filter(explode("\n", trim($logRaw))) as $line) {
+                $parts = explode(' ', $line, 2);
+                $upcomingCommits[] = [
+                    'hash'    => $parts[0] ?? '',
+                    'message' => $parts[1] ?? '',
+                ];
+            }
+
+            return response()->json([
+                'branch'           => trim($branch),
+                'current_commit'   => trim($currentCommit),
+                'current_message'  => trim($currentMessage),
+                'commits_behind'   => $countBehind,
+                'upcoming_commits' => $upcomingCommits,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('gitStatus failed: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * POST /admin/settings/git-pull
+     * Runs `git pull origin main` (falls back to master). Returns JSON { success, output }.
+     */
+    public function gitPull()
+    {
+        try {
+            $cwd = base_path();
+            $output = $this->runGit('git pull origin main 2>&1', $cwd);
+
+            return response()->json([
+                'success' => true,
+                'output'  => trim($output),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('gitPull failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * POST /admin/settings/git-fetch
+     * Runs `git fetch origin`. Returns JSON { success }.
+     */
+    public function gitFetch()
+    {
+        try {
+            $cwd = base_path();
+            $this->runGit('git fetch origin 2>&1', $cwd);
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            Log::error('gitFetch failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Helper: run a git command in the given working directory.
+     * Returns the stdout output as a string.
+     *
+     * @throws \RuntimeException on non-zero exit code
+     */
+    private function runGit(string $command, string $cwd): string
+    {
+        $output = '';
+        $returnCode = 0;
+        $oldDir = getcwd();
+
+        try {
+            chdir($cwd);
+            exec($command, $lines, $returnCode);
+            $output = implode("\n", $lines);
+        } finally {
+            chdir($oldDir);
+        }
+
+        if ($returnCode !== 0 && !str_contains($command, '2>/dev/null')) {
+            // Non-fatal for status queries; fatal for pull/fetch
+            if (str_contains($command, 'git pull') || str_contains($command, 'git fetch')) {
+                throw new \RuntimeException("Git command failed (exit {$returnCode}): {$command}\nOutput: {$output}");
+            }
+        }
+
+        return $output;
+    }
+
+    /**
      * Clear application caches (cache, views, config, routes).
      * Called via POST /admin/clear-cache — returns JSON.
      */

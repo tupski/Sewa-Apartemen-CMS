@@ -175,3 +175,26 @@ body {
     font-size: 0.9375rem;
     line-height: 1.6;
 }
+
+/* =====================================================
+   WhatsApp Floating Button — Pulse / Attention Animation
+   ===================================================== */
+@keyframes whatsapp-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.7); }
+    70%  { box-shadow: 0 0 0 12px rgba(37, 211, 102, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
+}
+
+@keyframes whatsapp-wobble {
+    0%, 90%, 100% { transform: rotate(0deg) scale(1); }
+    92%  { transform: rotate(-10deg) scale(1.05); }
+    94%  { transform: rotate(8deg) scale(1.05); }
+    96%  { transform: rotate(-6deg) scale(1.05); }
+    98%  { transform: rotate(4deg) scale(1.05); }
+}
+
+.whatsapp-pulse {
+    animation:
+        whatsapp-pulse 2s ease-out infinite,
+        whatsapp-wobble 5s ease-in-out infinite;
+}
