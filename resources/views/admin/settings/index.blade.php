@@ -58,6 +58,16 @@
                         class="py-4 px-6 border-b-2 font-medium text-sm transition">
                     Email Templates
                 </button>
+                <button @click="activeTab = 'captcha'"
+                        :class="activeTab === 'captcha' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        class="py-4 px-6 border-b-2 font-medium text-sm transition">
+                    CAPTCHA
+                </button>
+                <button @click="activeTab = 'currency_api'"
+                        :class="activeTab === 'currency_api' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        class="py-4 px-6 border-b-2 font-medium text-sm transition">
+                    API Kurs
+                </button>
             </nav>
 
             <!-- Settings Form -->
@@ -1222,6 +1232,90 @@
                                 </div>
                             </div>
                         @endforeach
+                    </div>
+                </div>
+
+                <!-- CAPTCHA Tab -->
+                <div x-show="activeTab === 'captcha'" class="p-6" style="display: none;">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">CAPTCHA Settings</h3>
+                    <p class="text-sm text-gray-500 mb-6">Lindungi form login dan reset password dari bot. Kosongkan Secret Key untuk menonaktifkan.</p>
+
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Provider</label>
+                            <select name="captcha_provider" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <option value="none" {{ ($settings['captcha_provider'] ?? 'none') == 'none' ? 'selected' : '' }}>Nonaktif</option>
+                                <option value="recaptcha" {{ ($settings['captcha_provider'] ?? '') == 'recaptcha' ? 'selected' : '' }}>Google reCAPTCHA v3</option>
+                                <option value="turnstile" {{ ($settings['captcha_provider'] ?? '') == 'turnstile' ? 'selected' : '' }}>Cloudflare Turnstile</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Site Key (Public)</label>
+                                <input type="text" name="captcha_site_key"
+                                       value="{{ old('captcha_site_key', $settings['captcha_site_key'] ?? '') }}"
+                                       placeholder="6Le..."
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <p class="text-xs text-gray-500 mt-1">Dirender di frontend form login.</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Secret Key (Server)</label>
+                                <input type="password" name="captcha_secret_key"
+                                       value="{{ old('captcha_secret_key', $settings['captcha_secret_key'] ?? '') }}"
+                                       placeholder="••••••••"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <p class="text-xs text-gray-500 mt-1">Kosong = CAPTCHA dinonaktifkan.</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">reCAPTCHA v3 Min Score <span class="text-gray-400 text-xs">(0.0–1.0, default 0.5)</span></label>
+                            <input type="number" name="captcha_recaptcha_min_score" step="0.1" min="0" max="1"
+                                   value="{{ old('captcha_recaptcha_min_score', $settings['captcha_recaptcha_min_score'] ?? '0.5') }}"
+                                   class="w-40 px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">Hanya berlaku untuk reCAPTCHA v3. Semakin tinggi = semakin ketat.</p>
+                        </div>
+
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-700">
+                            <p class="font-semibold mb-1"><i class="fa-solid fa-circle-info mr-1"></i>Panduan</p>
+                            <ul class="text-xs space-y-1 list-disc list-inside">
+                                <li><strong>reCAPTCHA v3</strong>: daftarkan di <a href="https://www.google.com/recaptcha/admin" target="_blank" class="underline">google.com/recaptcha/admin</a> — pilih v3, domain <code>localhost</code> untuk dev.</li>
+                                <li><strong>Cloudflare Turnstile</strong>: daftarkan di <a href="https://dash.cloudflare.com/?to=/:account/turnstile" target="_blank" class="underline">Cloudflare Dashboard → Turnstile</a>.</li>
+                                <li>CAPTCHA hanya aktif pada POST login dan POST forgot-password.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Currency API Tab -->
+                <div x-show="activeTab === 'currency_api'" class="p-6" style="display: none;">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Pengaturan API Kurs</h3>
+                    <p class="text-sm text-gray-500 mb-6">Kurs diperbarui otomatis 4x/hari via scheduler. Default: frankfurter.app (gratis).</p>
+
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Custom API URL <span class="text-gray-400 text-xs">(opsional)</span></label>
+                            <input type="url" name="currency_api_url"
+                                   value="{{ old('currency_api_url', $settings['currency_api_url'] ?? '') }}"
+                                   placeholder="https://data.fixer.io/api/latest"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">Kosongkan untuk pakai frankfurter.app (gratis, tanpa key).</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">API Key <span class="text-gray-400 text-xs">(opsional)</span></label>
+                            <input type="password" name="currency_api_key"
+                                   value="{{ old('currency_api_key', $settings['currency_api_key'] ?? '') }}"
+                                   placeholder="••••••••"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Target Currencies <span class="text-gray-400 text-xs">(pisah koma)</span></label>
+                            <input type="text" name="currency_target_list"
+                                   value="{{ old('currency_target_list', $settings['currency_target_list'] ?? 'USD,SGD,MYR,EUR,AUD,GBP,JPY') }}"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">Kode ISO 4217. Contoh: USD,SGD,MYR,EUR</p>
+                        </div>
                     </div>
                 </div>
 

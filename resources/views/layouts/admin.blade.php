@@ -189,8 +189,29 @@
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Users</span>
                 </a>
 
-                <!-- SEO Section -->
-                <p class="px-4 pt-5 pb-2 text-xs font-semibold text-gray-400 uppercase" :class="sidebarCollapsed ? 'lg:hidden' : ''">SEO</p>
+                <!-- System Section -->
+                <p class="px-4 pt-5 pb-2 text-xs font-semibold text-gray-400 uppercase" :class="sidebarCollapsed ? 'lg:hidden' : ''">System</p>
+
+                <a href="{{ route('admin.languages.index') }}"
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.languages.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-solid fa-language w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Bahasa</span>
+                </a>
+
+                <a href="{{ route('admin.currency-rates.index') }}"
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.currency-rates.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-solid fa-money-bill-transfer w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Kurs</span>
+                </a>
+
+                <a href="{{ route('admin.slug-settings.index') }}"
+                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.slug-settings.*') ? 'bg-gray-700 text-white' : '' }}">
+                    <i class="fa-solid fa-link w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Slug & Path</span>
+                </a>
 
                 <a href="{{ route('admin.redirects.index') }}"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
@@ -199,7 +220,6 @@
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Redirects</span>
                 </a>
 
-                <!-- Settings -->
                 <a href="{{ route('admin.settings.index') }}"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
                    class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.settings.*') ? 'bg-gray-700 text-white' : '' }}">
@@ -235,6 +255,72 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                             </svg>
                         </a>
+
+                        <!-- Language Switcher -->
+                        @php
+                            $activeLanguages = \App\Models\Language::active();
+                            $currentLocale   = app()->getLocale();
+                            $currentLang     = $activeLanguages->firstWhere('code', $currentLocale) ?? $activeLanguages->first();
+                        @endphp
+                        @if($activeLanguages->count() > 1)
+                        <div x-data="{ langOpen: false }" class="relative">
+                            <button @click="langOpen = !langOpen"
+                                    class="flex items-center gap-1 px-2 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 text-sm transition"
+                                    title="Ganti Bahasa">
+                                <span class="text-base leading-none">{{ $currentLang->flag_emoji ?? strtoupper($currentLocale) }}</span>
+                                <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                            <div x-show="langOpen" @click.away="langOpen = false"
+                                 x-transition
+                                 class="absolute right-0 mt-1 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1"
+                                 style="display:none">
+                                @foreach($activeLanguages as $lang)
+                                <form method="POST" action="{{ route('admin.set-locale') }}">
+                                    @csrf
+                                    <input type="hidden" name="locale" value="{{ $lang->code }}">
+                                    <button type="submit"
+                                            class="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition
+                                                   {{ $lang->code === $currentLocale ? 'font-semibold bg-blue-50 dark:bg-blue-900/30' : '' }}">
+                                        <span class="text-base">{{ $lang->flag_emoji ?? '' }}</span>
+                                        <span>{{ $lang->native_name }}</span>
+                                    </button>
+                                </form>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
+
+                        <!-- Currency Switcher -->
+                        @php
+                            $availableCurrencies = array_merge(['IDR'], array_keys(\App\Services\CurrencyRateService::all()));
+                            $displayCurrency     = session('display_currency', 'IDR');
+                        @endphp
+                        @if(count($availableCurrencies) > 1)
+                        <div x-data="{ curOpen: false }" class="relative">
+                            <button @click="curOpen = !curOpen"
+                                    class="flex items-center gap-1 px-2 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 text-xs font-mono font-bold transition"
+                                    title="Ganti Kurs">
+                                {{ $displayCurrency }}
+                                <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                            <div x-show="curOpen" @click.away="curOpen = false"
+                                 x-transition
+                                 class="absolute right-0 mt-1 w-28 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1 max-h-60 overflow-y-auto"
+                                 style="display:none">
+                                @foreach($availableCurrencies as $cur)
+                                <form method="POST" action="{{ route('admin.set-currency') }}">
+                                    @csrf
+                                    <input type="hidden" name="currency" value="{{ $cur }}">
+                                    <button type="submit"
+                                            class="w-full px-3 py-2 text-xs font-mono text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition
+                                                   {{ $cur === $displayCurrency ? 'font-bold text-blue-600' : '' }}">
+                                        {{ $cur }}
+                                    </button>
+                                </form>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
 
                         <!-- Dark mode toggle -->
                         <button @click="dark = !dark"

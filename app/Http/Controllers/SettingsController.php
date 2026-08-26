@@ -39,7 +39,13 @@ class SettingsController extends Controller
             'contact_address' => $this->settingsService->get('contact_address'),
             'whatsapp_default' => $this->settingsService->get('whatsapp_default'),
             'timezone' => $this->settingsService->get('timezone', 'UTC'),
-            'locale' => $this->settingsService->get('locale', 'en'),
+            'captcha_provider'            => $this->settingsService->get('captcha_provider', 'none'),
+            'captcha_site_key'             => $this->settingsService->get('captcha_site_key', ''),
+            'captcha_secret_key'           => $this->settingsService->get('captcha_secret_key', ''),
+            'captcha_recaptcha_min_score'  => $this->settingsService->get('captcha_recaptcha_min_score', '0.5'),
+            'currency_api_url'             => $this->settingsService->get('currency_api_url', ''),
+            'currency_api_key'             => $this->settingsService->get('currency_api_key', ''),
+            'currency_target_list'         => $this->settingsService->get('currency_target_list', 'USD,SGD,MYR,EUR,AUD,GBP,JPY'),
             'currency' => $this->settingsService->get('currency', 'IDR'),
             // Homepage (hero / CTA / features)
             'hero_title' => $this->settingsService->get('hero_title'),
@@ -241,6 +247,10 @@ class SettingsController extends Controller
     {
         if (str_starts_with($key, 'footer_') || str_starts_with($key, 'social_')) {
             return 'footer';
+        } elseif (str_starts_with($key, 'captcha_')) {
+            return 'captcha';
+        } elseif (str_starts_with($key, 'currency_api') || $key === 'currency_target_list') {
+            return 'currency_api';
         } elseif (in_array($key, ['primary_color', 'secondary_color', 'accent_color', 'header_layout', 'footer_layout', 'enable_dark_mode'])) {
             return 'theme';
         } elseif (in_array($key, ['meta_description', 'meta_keywords', 'google_analytics', 'facebook_pixel'])) {

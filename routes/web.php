@@ -18,6 +18,9 @@ use App\Http\Controllers\SeoController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\VoucherController;
+use App\Http\Controllers\Admin\CurrencyRateController;
+use App\Http\Controllers\Admin\LanguageController;
+use App\Http\Controllers\Admin\SlugSettingsController;
 use Illuminate\Support\Facades\Route;
 
 // Homepage
@@ -122,6 +125,36 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
 
     // Voucher Management
     Route::resource('vouchers', VoucherController::class);
+
+    // Language Management
+    Route::resource('languages', LanguageController::class)->except(['show']);
+    Route::patch('languages/{language}/toggle-status', [LanguageController::class, 'toggleStatus'])->name('languages.toggle-status');
+
+    // Currency Rates
+    Route::get('currency-rates', [CurrencyRateController::class, 'index'])->name('currency-rates.index');
+    Route::post('currency-rates', [CurrencyRateController::class, 'store'])->name('currency-rates.store');
+    Route::put('currency-rates/{currencyRate}', [CurrencyRateController::class, 'update'])->name('currency-rates.update');
+    Route::delete('currency-rates/{currencyRate}', [CurrencyRateController::class, 'destroy'])->name('currency-rates.destroy');
+    Route::post('currency-rates/fetch', [CurrencyRateController::class, 'fetchNow'])->name('currency-rates.fetch');
+
+    // Slug Settings
+    Route::get('slug-settings', [SlugSettingsController::class, 'index'])->name('slug-settings.index');
+    Route::post('slug-settings', [SlugSettingsController::class, 'update'])->name('slug-settings.update');
+
+    // Locale switcher (admin session)
+    Route::post('set-locale', function (\Illuminate\Http\Request $request) {
+        $code = $request->input('locale');
+        $valid = \App\Models\Language::where('code', $code)->where('is_active', true)->exists();
+        if ($valid) session(['locale' => $code]);
+        return back();
+    })->name('admin.set-locale');
+
+    // Currency switcher (admin session)
+    Route::post('set-currency', function (\Illuminate\Http\Request $request) {
+        $cur = strtoupper($request->input('currency', 'IDR'));
+        session(['display_currency' => $cur]);
+        return back();
+    })->name('admin.set-currency');
 });
 
 require __DIR__.'/auth.php';

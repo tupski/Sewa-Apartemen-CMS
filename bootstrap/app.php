@@ -45,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin'             => \App\Http\Middleware\EnsureUserIsAdmin::class,
             // BUG-002 FIX: Installer hanya bisa diakses dari localhost / IP whitelist / token
             'protect.installer' => \App\Http\Middleware\ProtectInstaller::class,
+            'captcha'           => \App\Http\Middleware\VerifyCaptcha::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
