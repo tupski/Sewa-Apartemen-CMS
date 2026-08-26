@@ -943,6 +943,38 @@
                         <h3 class="text-lg font-semibold text-gray-800 mb-1">Pengaturan Booking</h3>
                         <p class="text-sm text-gray-500 mb-6">Konfigurasi perilaku sistem booking yang berlaku untuk semua properti.</p>
 
+                        <!-- Display Mode -->
+                        <div class="mb-5">
+                            <label for="booking_display_mode" class="block text-sm font-medium text-gray-700 mb-1">
+                                Mode Tampilan Halaman Properti
+                            </label>
+                            <select name="booking_display_mode"
+                                    id="booking_display_mode"
+                                    class="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                <option value="form_only" {{ ($settings['booking_display_mode'] ?? 'both') === 'form_only' ? 'selected' : '' }}>Form Booking Saja</option>
+                                <option value="pricing_only" {{ ($settings['booking_display_mode'] ?? 'both') === 'pricing_only' ? 'selected' : '' }}>Tabel Harga + Tombol WhatsApp Saja</option>
+                                <option value="both" {{ ($settings['booking_display_mode'] ?? 'both') === 'both' ? 'selected' : '' }}>Keduanya (Form + Tabel Harga)</option>
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">Mengatur apa yang ditampilkan di sidebar kanan halaman detail properti.</p>
+                        </div>
+
+                        <!-- WhatsApp Number for Pricing Table -->
+                        <div class="mb-5">
+                            <label for="whatsapp_number" class="block text-sm font-medium text-gray-700 mb-1">
+                                Nomor WhatsApp (Tabel Harga)
+                            </label>
+                            <input type="text"
+                                   name="whatsapp_number"
+                                   id="whatsapp_number"
+                                   value="{{ old('whatsapp_number', $settings['whatsapp_number'] ?? '') }}"
+                                   placeholder="6281234567890"
+                                   class="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">
+                            <p class="text-xs text-gray-400 mt-1">Sertakan kode negara, contoh: 6281234567890. Dipakai untuk tombol WhatsApp di tabel harga.</p>
+                            @error('whatsapp_number')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
                         <!-- Min Transit Hours -->
                         <div class="mb-5">
                             <label for="booking_min_transit_hours" class="block text-sm font-medium text-gray-700 mb-1">

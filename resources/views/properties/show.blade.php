@@ -6,11 +6,16 @@
     $whatsapp = \App\Services\SettingsService::get('whatsapp_default', '');
     $contactPhone = \App\Services\SettingsService::get('contact_phone', '');
     $mapsKey = \App\Services\SettingsService::get('google_maps_api_key', '');
+    $displayMode = \App\Services\SettingsService::get('booking_display_mode', 'both');
+    $whatsappNumber = \App\Services\SettingsService::get('whatsapp_number', '') ?: \App\Services\SettingsService::get('whatsapp_default', '');
     $photos = $property->photos;
     $allPhotoUrls = $photos->map(fn ($p) => $p->media->url)->values();
     $firstPhoto = $allPhotoUrls[0] ?? null;
     $restPhotos = $allPhotoUrls->slice(1)->take(6)->values();
     $hasBooking = !empty($property->unit_types) && ($property->hasBookingType('transit') || $property->hasBookingType('daily') || $property->hasBookingType('weekly') || $property->hasBookingType('monthly'));
+    // When pricing_only mode, suppress the booking form even if prices exist
+    $showBookingForm = $hasBooking && $displayMode !== 'pricing_only';
+    $showPricingTable = $hasBooking && $displayMode !== 'form_only';
     $faqs = $property->faqs();
     $nearbyGroups = $property->nearbyByCategory();
     $hasMap = $property->latitude && $property->longitude;
@@ -80,9 +85,10 @@
     <!-- ============ MAIN GRID: LEFT INFO + RIGHT BOOKING (desktop sticky) ============ -->
     <section class="py-8 bg-gray-50 dark:bg-gray-800/50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {{-- Grid changes based on display mode: 3-col when booking form shown, 2-col or full when pricing_only --}}
+            <div class="grid grid-cols-1 {{ $showBookingForm ? 'lg:grid-cols-3' : 'lg:grid-cols-3' }} gap-8">
                 <!-- ======== LEFT COLUMN ======== -->
-                <div class="lg:col-span-2 space-y-8">
+                <div class="{{ $showBookingForm ? 'lg:col-span-2' : 'lg:col-span-2' }} space-y-8">
 
                     <!-- About -->
                     @if ($property->description)
@@ -313,21 +319,32 @@
                         </div>
                     @endif
 
-                    <!-- Contact card (mobile only, since desktop has booking column) -->
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 lg:hidden">
-                        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-3">Tanya Dulu</h2>
-                        @if ($whatsapp)
-                            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}?text={{ urlencode('Halo, saya ingin bertanya tentang ' . $property->name) }}"
-                               target="_blank" rel="noopener"
-                               class="w-full inline-flex items-center justify-center px-5 py-3 rounded-full text-sm font-semibold text-white hover:opacity-90 transition" style="background-color: #25d366">
-                                Chat WhatsApp
-                            </a>
-                        @endif
-                    </div>
+                    {{-- ===== PRICING TABLE (shown when mode is 'both' or 'pricing_only') ===== --}}
+                    @if ($showPricingTable)
+                        @include('properties._pricing-table', [
+                            'property'       => $property,
+                            'whatsappNumber' => $whatsappNumber,
+                            'primaryColor'   => $primaryColor,
+                        ])
+                    @endif
+
+                    <!-- Contact card (mobile only, shown when booking form is NOT the primary CTA) -->
+                    @if ($showBookingForm)
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 lg:hidden">
+                            <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-3">Tanya Dulu</h2>
+                            @if ($whatsapp)
+                                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}?text={{ urlencode('Halo, saya ingin bertanya tentang ' . $property->name) }}"
+                                   target="_blank" rel="noopener"
+                                   class="w-full inline-flex items-center justify-center px-5 py-3 rounded-full text-sm font-semibold text-white hover:opacity-90 transition" style="background-color: #25d366">
+                                    Chat WhatsApp
+                                </a>
+                            @endif
+                        </div>
+                    @endif
                 </div>
 
                 <!-- ======== RIGHT COLUMN: Booking (desktop sticky) ======== -->
-                @if ($hasBooking)
+                @if ($showBookingForm)
                     <div class="hidden lg:block lg:sticky lg:top-24 lg:self-start space-y-6">
                             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
                                 <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Pesan Apartemen</h2>
@@ -361,7 +378,7 @@
     </section>
 
     <!-- ============ MOBILE FLOATING BOOKING BAR ============ -->
-    @if ($hasBooking)
+    @if ($showBookingForm)
         <div id="mob-bk-bar" class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] px-4 py-3">
             <div class="flex items-center justify-between gap-3 max-w-lg mx-auto">
                 <div>
@@ -392,6 +409,7 @@
     </div>
 
     <!-- ============ BOOKING MODAL ============ -->
+    @if ($showBookingForm)
     <div id="bk-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true">
         <div class="absolute inset-0 bg-black/60" data-close></div>
         <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -487,6 +505,7 @@
             </div>
         </div>
     </div>
+    @endif
 @endsection
 
 @push('scripts')
