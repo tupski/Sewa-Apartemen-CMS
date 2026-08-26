@@ -22,6 +22,8 @@
         @endif
     </head>
     <body class="font-sans antialiased">
+        {{-- Google Tag Manager (noscript) — must be immediately after opening <body> --}}
+        @include('components.analytics-body')
         @stack('body_start')
 
         <div class="min-h-screen bg-gray-100">

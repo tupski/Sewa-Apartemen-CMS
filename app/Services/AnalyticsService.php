@@ -28,12 +28,21 @@ HTML;
     }
 
     /**
+     * Normalize a GTM container ID to the safe character set (GTM-XXXXXXX).
+     * Guards against injection by stripping anything outside [A-Za-z0-9-].
+     */
+    protected static function normalizeGtmId($id): string
+    {
+        return preg_replace('/[^A-Za-z0-9\-]/', '', (string) $id);
+    }
+
+    /**
      * Render GTM <head> snippet.
      */
     public static function gtmScript(): string
     {
-        $id = SettingsService::get('google_tag_manager_id');
-        if (empty($id)) {
+        $id = self::normalizeGtmId(SettingsService::get('google_tag_manager_id'));
+        if ($id === '') {
             return '';
         }
 
@@ -53,8 +62,8 @@ HTML;
      */
     public static function gtmNoScript(): string
     {
-        $id = SettingsService::get('google_tag_manager_id');
-        if (empty($id)) {
+        $id = self::normalizeGtmId(SettingsService::get('google_tag_manager_id'));
+        if ($id === '') {
             return '';
         }
 

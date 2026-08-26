@@ -306,5 +306,7 @@
     "Network error. Please try again.": "Terjadi kesalahan jaringan. Silakan coba lagi.",
     "Add Category": "Tambah Kategori",
     "settings.remove_image": "Hapus Foto",
-    "settings.remove_image_confirm": "Apakah Anda yakin ingin menghapus foto ini?"
+    "settings.remove_image_confirm": "Apakah Anda yakin ingin menghapus foto ini?",
+    "settings.gtm_container_id": "Google Tag Manager Container ID",
+    "settings.gtm_help": "Masukkan container ID GTM Anda (format: GTM-XXXXXXX). Jika diisi, skrip Tag Manager akan ditambahkan di bagian head halaman dan fallback noscript tepat setelah tag body dibuka. Kosongkan untuk menonaktifkan."
 }

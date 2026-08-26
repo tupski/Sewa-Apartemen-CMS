@@ -41,6 +41,8 @@
         @endif
     </head>
     <body class="font-sans text-gray-900 antialiased bg-gray-50">
+        {{-- Google Tag Manager (noscript) — must be immediately after opening <body> --}}
+        @include('components.analytics-body')
         @stack('body_start')
 
         {{ $slot }}

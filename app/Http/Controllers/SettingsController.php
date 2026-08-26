@@ -120,7 +120,7 @@ class SettingsController extends Controller
             'google_analytics'      => 'nullable|string',
             'facebook_pixel'        => 'nullable|string',
             'google_analytics_id'   => 'nullable|string|max:255',
-            'google_tag_manager_id' => 'nullable|string|max:255',
+            'google_tag_manager_id' => 'nullable|string|max:255|regex:/^GTM-[A-Z0-9]+$/i',
             'meta_pixel_id'         => 'nullable|string|max:255',
             'search_console_token'  => 'nullable|string|max:255',
             'microsoft_clarity_id'  => 'nullable|string|max:255',

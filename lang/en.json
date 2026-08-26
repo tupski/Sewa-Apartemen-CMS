@@ -306,5 +306,7 @@
     "Network error. Please try again.": "Network error. Please try again.",
     "Add Category": "Add Category",
     "settings.remove_image": "Remove Photo",
-    "settings.remove_image_confirm": "Are you sure you want to remove this photo?"
+    "settings.remove_image_confirm": "Are you sure you want to remove this photo?",
+    "settings.gtm_container_id": "Google Tag Manager Container ID",
+    "settings.gtm_help": "Enter your GTM container ID (format: GTM-XXXXXXX). When set, the Tag Manager script is added to the page head and the noscript fallback right after the opening body tag. Leave empty to disable."
 }

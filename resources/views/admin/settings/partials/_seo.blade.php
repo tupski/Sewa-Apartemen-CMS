@@ -76,14 +76,15 @@
 
             <div>
                 <label for="google_tag_manager_id" class="block text-sm font-medium text-gray-700 mb-2">
-                    Google Tag Manager ID
+                    {{ __('settings.gtm_container_id') }}
                 </label>
                 <input type="text"
                        name="google_tag_manager_id"
                        id="google_tag_manager_id"
                        value="{{ old('google_tag_manager_id', $settings['google_tag_manager_id'] ?? '') }}"
                        placeholder="GTM-XXXXXXX"
-                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">
+                <p class="text-xs text-gray-500 mt-1">{{ __('settings.gtm_help') }}</p>
                 @error('google_tag_manager_id')
                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                 @enderror
