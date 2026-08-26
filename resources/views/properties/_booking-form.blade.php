@@ -63,6 +63,7 @@
                        aria-required="true">
                 {{-- Overlay native date input: tap lands on real picker (works iOS/Android/desktop) --}}
                 <input type="date"
+                       lang="id-ID"
                        class="bkf-checkin-native absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                        tabindex="-1"
                        aria-label="Tanggal Check-in">
@@ -73,8 +74,10 @@
             <label for="{{ $prefix }}-checkin-time" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Waktu Check-in
             </label>
+            {{-- lang="id-ID" forces 24-hour format on the native time picker/value (no AM/PM), incl. mobile --}}
             <input type="time"
                    id="{{ $prefix }}-checkin-time"
+                   lang="id-ID"
                    class="bkf-checkin-time w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2"
                    value="{{ \App\Services\SettingsService::get('booking_checkin_default_time', '14:00') }}">
         </div>
@@ -353,6 +356,16 @@
             var nativeInput = bkf.querySelector('.bkf-checkin-native');
             if (nativeInput) {
                 nativeInput.min = new Date().toISOString().split('T')[0];
+
+                // Open the picker on click anywhere in the field. On desktop, native
+                // date inputs otherwise only open when the calendar icon is clicked;
+                // showPicker() forces it open. Unsupported on iOS Safari (guarded),
+                // where tapping the overlay already opens the native picker.
+                nativeInput.addEventListener('click', function () {
+                    if (typeof nativeInput.showPicker === 'function') {
+                        try { nativeInput.showPicker(); } catch (e) {}
+                    }
+                });
 
                 nativeInput.addEventListener('change', function() {
                     if (nativeInput.value) {
