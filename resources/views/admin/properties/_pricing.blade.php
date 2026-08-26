@@ -241,7 +241,7 @@
 </div>
 
 {{-- ===== PROMO RATES SECTION ===== --}}
-@if($property->exists)
+@if($property?->exists)
 <div class="pt-8" id="promo-rates-section">
     <h3 class="text-lg font-semibold text-gray-800 mb-1">Harga Promosi</h3>
     <p class="text-sm text-gray-500 mb-5">
@@ -445,7 +445,7 @@
 
     // ===== PROMO RATES JS =====
     (function () {
-        var propertyId = {{ $property->id ?? 'null' }};
+        var propertyId = {{ $property?->id ?? 'null' }};
         var csrfToken  = document.querySelector('meta[name="csrf-token"]').content;
 
         var addBtn       = document.getElementById('promo-add-btn');
