@@ -364,7 +364,7 @@
                                     {{-- Card image --}}
                                     <div class="relative aspect-[16/10] bg-gray-200 dark:bg-gray-700 overflow-hidden shrink-0">
                                         @if ($property->featuredImage)
-                                            <img src="{{ $property->featuredImage->url }}"
+                                            <img src="{{ $property->featuredImage?->url }}"
                                                  alt="{{ $property->name }}"
                                                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                  loading="lazy">

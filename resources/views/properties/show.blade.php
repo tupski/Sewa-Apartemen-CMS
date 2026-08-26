@@ -9,7 +9,7 @@
     $displayMode = \App\Services\SettingsService::get('booking_display_mode', 'both');
     $whatsappNumber = \App\Services\SettingsService::get('whatsapp_number', '') ?: \App\Services\SettingsService::get('whatsapp_default', '');
     $photos = $property->photos;
-    $allPhotoUrls = $photos->map(fn ($p) => $p->media->url)->values();
+    $allPhotoUrls = $photos->map(fn ($p) => $p->media?->url)->values();
     $firstPhoto = $allPhotoUrls[0] ?? null;
     $restPhotos = $allPhotoUrls->slice(1)->take(6)->values();
     $hasBooking = !empty($property->unit_types) && ($property->hasBookingType('transit') || $property->hasBookingType('daily') || $property->hasBookingType('weekly') || $property->hasBookingType('monthly'));
@@ -55,7 +55,7 @@
     @elseif ($property->featuredImage)
         <section class="bg-gray-100 dark:bg-gray-900">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-                <img src="{{ $property->featuredImage->url }}" alt="{{ $property->name }}" class="w-full h-[50vh] object-cover rounded-2xl">
+                <img src="{{ $property->featuredImage?->url }}" alt="{{ $property->name }}" class="w-full h-[50vh] object-cover rounded-2xl">
             </div>
         </section>
     @endif
