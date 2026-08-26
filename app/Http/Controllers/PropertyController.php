@@ -384,15 +384,18 @@ class PropertyController extends Controller
             foreach ((array) $files as $file) {
                 try {
                     $originalName = $file->getClientOriginalName();
-                    $safeName = \Illuminate\Support\Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) ?: 'photo';
-                    // FIND-007: extension must come from the verified MIME type, never the client filename
-                    $extByMime = [
-                        'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp',
-                    ];
-                    $extension = $extByMime[$file->getMimeType()] ?? 'bin';
-                    $filename = $safeName . '-' . time() . '-' . \Illuminate\Support\Str::random(8) . '.' . $extension;
-                    $folder = "properties/{$property->id}/{$catSlug}";
-                    $path = $file->storeAs($folder, $filename, 'public');
+                    // FIND-007: extension must come from the verified MIME type, never the client filename.
+                    // Konvensi penamaan + folder terstruktur Apartment/{Nama}/{Kategori} via helper.
+                    $result = upload_file($file, [
+                        'base_folder'   => 'Apartment',
+                        'sub_folders'   => [$property->name, $category],
+                        'name_prefix'   => $property->name,
+                        'name_category' => $category,
+                    ]);
+                    $extension = $result['extension'];
+                    $filename  = $result['filename'];
+                    $folder    = $result['folder'];
+                    $path      = $result['path'];
 
                     $media = \App\Models\Media::create([
                         'user_id' => auth()->id(),

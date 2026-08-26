@@ -74,8 +74,13 @@ class PostController extends Controller
             }
 
             if ($request->hasFile('featured_image')) {
-                $path = $request->file('featured_image')->store('posts', 'public');
-                $data['featured_image'] = $path;
+                $result = upload_file($request->file('featured_image'), [
+                    'base_folder'   => 'Blog',
+                    'sub_folders'   => [$data['title'] ?? 'post'],
+                    'name_prefix'   => 'Blog',
+                    'name_category' => $data['title'] ?? 'post',
+                ]);
+                $data['featured_image'] = $result['path'];
             }
 
             $post = Post::create($data);
@@ -148,8 +153,13 @@ class PostController extends Controller
             }
 
             if ($request->hasFile('featured_image')) {
-                $path = $request->file('featured_image')->store('posts', 'public');
-                $data['featured_image'] = $path;
+                $result = upload_file($request->file('featured_image'), [
+                    'base_folder'   => 'Blog',
+                    'sub_folders'   => [$data['title'] ?? 'post'],
+                    'name_prefix'   => 'Blog',
+                    'name_category' => $data['title'] ?? 'post',
+                ]);
+                $data['featured_image'] = $result['path'];
             }
 
             $post->update($data);

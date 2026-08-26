@@ -29,7 +29,8 @@
         },
         "files": [
             "app/Helpers/activity.php",
-            "app/Helpers/slug.php"
+            "app/Helpers/slug.php",
+            "app/Helpers/upload.php"
         ]
     },
     "autoload-dev": {

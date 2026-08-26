@@ -33,6 +33,9 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
+            // Serve signed URLs at /private — distinct from /storage so the
+            // public disk can own the /storage/{path} route below.
+            'url' => '/private',
             'serve' => true,
             'throw' => false,
             'report' => false,
@@ -43,6 +46,11 @@ return [
             'root' => storage_path('app/public'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
+            // Serve the public disk through Laravel at /storage/{path}.
+            // This makes images load even when the web server cannot follow
+            // the Windows junction (public/storage -> storage/app/public),
+            // which previously caused 403 Forbidden.
+            'serve' => true,
             'throw' => false,
             'report' => false,
         ],

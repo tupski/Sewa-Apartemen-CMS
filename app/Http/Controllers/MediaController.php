@@ -5,8 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Media;
 use App\Http\Requests\MediaRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 // BUG-020 FIX: Hapus import Intervention\Image yang tidak pernah digunakan.
 // Thumbnail generation sudah menggunakan GD native (imagecreatefromjpeg, dll).
 // Import ini dead code yang menyesatkan developer.
@@ -79,17 +77,22 @@ class MediaController extends Controller
 
             $type = $this->getFileType($file->getMimeType());
 
-            // Generate safe filename
             // BUG-004 FIX: Gunakan extension dari MIME type yang sudah diverifikasi server,
             // bukan dari nama file yang dikirim client (mencegah eksekusi file berbahaya).
             $originalName = $file->getClientOriginalName();
-            $safeName = Str::slug(pathinfo($originalName, PATHINFO_FILENAME));
-            $extension = $this->extensionFromMime($file->getMimeType())
-                         ?? strtolower($file->getClientOriginalExtension());
-            $filename = $safeName . '-' . time() . '-' . Str::random(10) . '.' . $extension;
 
-            // Store file
-            $path = $file->storeAs($folder, $filename, 'public');
+            // ── Upload dengan konvensi penamaan Skyhouse + folder terstruktur ──
+            $uploadContext = $validated['alt'] ?? $validated['title'] ?? $folder;
+            $result = upload_file($file, [
+                'base_folder'   => 'Media',
+                'sub_folders'   => [date('Y'), date('m')],
+                'name_prefix'   => 'Media',
+                'name_category' => $uploadContext,
+            ]);
+            $filename = $result['filename'];
+            $extension = $result['extension'];
+            $path = $result['path'];
+            $folder = $result['folder'];
 
             // Get image dimensions if image
             $width = null;
@@ -212,6 +215,8 @@ class MediaController extends Controller
      * Menghindari penggunaan extension dari client yang bisa dimanipulasi.
      *
      * @return string|null  Extension tanpa titik, atau null jika tidak dikenali
+     *
+     * @deprecated Use the global mime_to_extension() helper instead.
      */
     protected function extensionFromMime(string $mimeType): ?string
     {

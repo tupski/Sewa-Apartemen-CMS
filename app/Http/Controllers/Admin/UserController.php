@@ -47,7 +47,13 @@ class UserController extends Controller
         ]);
 
         if ($request->hasFile('avatar')) {
-            $user->avatar = $request->file('avatar')->store('avatars', 'public');
+            $result = upload_file($request->file('avatar'), [
+                'base_folder'   => 'Users',
+                'sub_folders'   => [$user->name ?? 'user'],
+                'name_prefix'   => 'Avatar',
+                'name_category' => $user->name ?? 'user',
+            ]);
+            $user->avatar = $result['path'];
             $user->save();
         }
 
@@ -112,7 +118,13 @@ class UserController extends Controller
         }
 
         if ($request->hasFile('avatar')) {
-            $user->avatar = $request->file('avatar')->store('avatars', 'public');
+            $result = upload_file($request->file('avatar'), [
+                'base_folder'   => 'Users',
+                'sub_folders'   => [$user->name ?? 'user'],
+                'name_prefix'   => 'Avatar',
+                'name_category' => $user->name ?? 'user',
+            ]);
+            $user->avatar = $result['path'];
             $user->save();
         }
 

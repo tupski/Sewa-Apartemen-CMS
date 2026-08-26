@@ -316,7 +316,14 @@ class SettingsController extends Controller
                         if ($existing && Storage::disk('public')->exists($existing)) {
                             Storage::disk('public')->delete($existing);
                         }
-                        $data[$field] = $request->file($field)->store('settings', 'public');
+                        $slugField = str_replace('site_', '', $field);
+                        $result = upload_file($request->file($field), [
+                            'base_folder'   => 'Settings',
+                            'sub_folders'   => [$slugField],
+                            'name_prefix'   => 'Settings',
+                            'name_category' => $slugField,
+                        ]);
+                        $data[$field] = $result['path'];
                     } else {
                         // No new file uploaded: keep the stored value
                         unset($data[$field]);
