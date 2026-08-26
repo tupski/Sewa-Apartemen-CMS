@@ -91,21 +91,37 @@
 <body class="font-sans antialiased bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">
 
     <!-- Header -->
-    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100 shadow-sm dark:bg-gray-900/95 dark:border-gray-800">
-        <div x-data="{ open: false }" x-effect="open ? document.getElementById('mobile-menu').classList.add('menu-open') : document.getElementById('mobile-menu').classList.remove('menu-open')" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100 shadow-sm dark:bg-gray-900/95 dark:border-gray-800"
+            x-data="{ open: false }"
+            @keydown.escape.window="open = false">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16 md:h-20">
-                <!-- Brand -->
-                <a href="{{ url('/') }}" class="flex items-center space-x-2">
-                    @if ($siteLogo)
-                        <img src="{{ asset('storage/' . $siteLogo) }}"
-                             alt="{{ $siteName }}"
-                             class="h-10 w-auto object-contain">
-                    @else
-                        <span class="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold"
-                              style="background-color: {{ $primaryColor }}">{{ mb_substr($siteName, 0, 1) }}</span>
-                        <span class="text-lg md:text-xl font-bold text-gray-900 dark:text-white">{{ $siteName }}</span>
-                    @endif
-                </a>
+                <!-- Left cluster: hamburger (mobile only) + brand -->
+                <div class="flex items-center gap-2">
+                    <!-- Hamburger (mobile) — opens left slide-in drawer -->
+                    <button @click="open = true"
+                            class="lg:hidden inline-flex items-center justify-center p-2 -ml-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 focus:outline-none transition"
+                            :aria-expanded="open.toString()"
+                            aria-controls="mobile-drawer"
+                            aria-label="{{ __('menu.open') }}">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+
+                    <!-- Brand -->
+                    <a href="{{ url('/') }}" class="flex items-center space-x-2">
+                        @if ($siteLogo)
+                            <img src="{{ asset('storage/' . $siteLogo) }}"
+                                 alt="{{ $siteName }}"
+                                 class="h-10 w-auto object-contain">
+                        @else
+                            <span class="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold"
+                                  style="background-color: {{ $primaryColor }}">{{ mb_substr($siteName, 0, 1) }}</span>
+                            <span class="text-lg md:text-xl font-bold text-gray-900 dark:text-white">{{ $siteName }}</span>
+                        @endif
+                    </a>
+                </div>
 
                 <!-- Desktop Nav -->
                 <nav class="hidden lg:flex items-center space-x-8" aria-label="Main navigation">
@@ -117,19 +133,28 @@
                     @endforeach
                 </nav>
 
-                <!-- Actions (desktop) -->
-                <div class="hidden lg:flex items-center space-x-4">
+                <!-- Actions (right, all breakpoints) -->
+                <div class="flex items-center gap-1 sm:gap-2 lg:gap-4">
+                    <!-- Search (magnifier) — opens fullscreen overlay -->
+                    <button type="button"
+                            @click="$dispatch('open-search')"
+                            class="p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 transition focus:outline-none"
+                            aria-label="{{ __('search.open') }}" title="{{ __('search.open') }}">
+                        <i class="fa-solid fa-magnifying-glass w-5 h-5 text-[1.05rem] leading-5 text-center" aria-hidden="true"></i>
+                    </button>
+
                     <!-- Dark mode toggle -->
                     <button @click="dark = !dark"
-                            class="p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 transition"
+                            class="p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 transition focus:outline-none"
                             aria-label="Toggle dark mode" :title="dark ? 'Light mode' : 'Dark mode'">
                         <svg x-show="!dark" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
                         <svg x-show="dark" class="w-5 h-5" style="display: none;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                     </button>
 
+                    <!-- WhatsApp + Find Apartments (desktop only) -->
                     @if ($whatsapp)
                         <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}" target="_blank" rel="noopener"
-                           class="inline-flex items-center px-5 py-2.5 rounded-full text-sm font-semibold text-white transition hover:opacity-90"
+                           class="hidden lg:inline-flex items-center px-5 py-2.5 rounded-full text-sm font-semibold text-white transition hover:opacity-90"
                            style="background-color: #25d366">
                             <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
@@ -137,41 +162,67 @@
                             {{ __('nav.whatsapp') }}
                         </a>
                     @endif
-                    <a href="{{ slug_url('slug_apartments', 'apartments') }}" class="inline-flex items-center px-5 py-2.5 rounded-full text-sm font-semibold text-white transition hover:opacity-90"
+                    <a href="{{ slug_url('slug_apartments', 'apartments') }}" class="hidden lg:inline-flex items-center px-5 py-2.5 rounded-full text-sm font-semibold text-white transition hover:opacity-90"
                        style="background-color: {{ $primaryColor }}">
                        {{ __('nav.find_apartments') }}
                     </a>
                 </div>
+            </div>
+        </div>
 
-                <!-- Mobile toggle -->
-                <div class="flex lg:hidden items-center space-x-2">
-                    <!-- Dark mode toggle (mobile) -->
-                    <button @click="dark = !dark"
-                            class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 focus:outline-none"
-                            aria-label="Toggle dark mode" :title="dark ? 'Light mode' : 'Dark mode'">
-                        <svg x-show="!dark" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
-                        <svg x-show="dark" class="h-5 w-5" style="display: none;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                    </button>
-                    <!-- Hamburger: animates to X when open -->
-                    <button @click="open = !open"
-                            id="mobile-menu-btn"
-                            class="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 focus:outline-none transition"
-                            aria-label="Toggle menu"
-                            :aria-expanded="open.toString()">
-                        <i data-lucide="menu" id="menu-icon-open" class="w-6 h-6" :class="{ 'hidden': open }"></i>
-                        <i data-lucide="x" id="menu-icon-close" class="w-6 h-6 hidden" :class="{ 'hidden': !open }"></i>
+        <!-- ===================== Mobile slide-in drawer (left → right) ===================== -->
+        <div class="lg:hidden" x-cloak>
+            <!-- Backdrop over the exposed area; tap to close -->
+            <div x-show="open"
+                 @click="open = false"
+                 x-transition:enter="transition-opacity ease-out duration-300"
+                 x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition-opacity ease-in duration-200"
+                 x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                 class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+                 aria-hidden="true"></div>
+
+            <!-- Drawer panel: ~80% width, max 320px, slides from the left -->
+            <div id="mobile-drawer"
+                 role="dialog" aria-modal="true" aria-label="{{ __('menu.open') }}"
+                 x-show="open"
+                 x-transition:enter="transition ease-out duration-300 transform"
+                 x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+                 x-transition:leave="transition ease-in duration-200 transform"
+                 x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
+                 class="fixed top-0 left-0 z-50 h-full w-4/5 max-w-xs bg-white dark:bg-gray-900 shadow-2xl flex flex-col">
+                <!-- Drawer header: brand + close (X) -->
+                <div class="flex items-center justify-between h-16 px-4 border-b border-gray-100 dark:border-gray-800">
+                    <a href="{{ url('/') }}" class="flex items-center space-x-2">
+                        @if ($siteLogo)
+                            <img src="{{ asset('storage/' . $siteLogo) }}" alt="{{ $siteName }}" class="h-9 w-auto object-contain">
+                        @else
+                            <span class="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold"
+                                  style="background-color: {{ $primaryColor }}">{{ mb_substr($siteName, 0, 1) }}</span>
+                            <span class="text-base font-bold text-gray-900 dark:text-white">{{ $siteName }}</span>
+                        @endif
+                    </a>
+                    <button @click="open = false"
+                            class="p-2 -mr-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 focus:outline-none transition"
+                            aria-label="{{ __('menu.close') }}">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
                     </button>
                 </div>
-            </div>
 
-            <!-- Mobile Nav — smooth slide via CSS #mobile-menu transition -->
-            <div id="mobile-menu" class="lg:hidden">
-                @foreach ($mainMenu as $item)
-                    <a href="{{ $item->url ?? '#' }}" @if(($item->target ?? '') === '_blank') target="_blank" rel="noopener" @endif>
-                        {{ $item->title }}
-                    </a>
-                @endforeach
-                <div class="pt-2 pb-1 flex space-x-3 px-1">
+                <!-- Drawer nav links -->
+                <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1" aria-label="Mobile navigation">
+                    @foreach ($mainMenu as $item)
+                        <a href="{{ $item->url ?? '#' }}" @if(($item->target ?? '') === '_blank') target="_blank" rel="noopener" @endif
+                           class="block px-3 py-2.5 rounded-lg text-[0.9375rem] font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white transition">
+                            {{ $item->title }}
+                        </a>
+                    @endforeach
+                </nav>
+
+                <!-- Drawer footer CTAs -->
+                <div class="p-4 border-t border-gray-100 dark:border-gray-800 flex space-x-3">
                     @if ($whatsapp)
                         <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $whatsapp) }}" target="_blank" rel="noopener"
                            class="flex-1 text-center px-4 py-2.5 rounded-full text-sm font-semibold text-white" style="background-color: #25d366">
@@ -186,6 +237,76 @@
             </div>
         </div>
     </header>
+
+    <!-- ===================== Fullscreen live-search overlay ===================== -->
+    <div x-data="searchOverlay({ action: @js(route('search.suggest')) })"
+         @open-search.window="openOverlay()"
+         x-cloak>
+        <div x-show="open"
+             x-transition:enter="transition-opacity ease-out duration-200"
+             x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-in duration-150"
+             x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-[60] bg-white/98 dark:bg-gray-900/98 backdrop-blur-md overflow-y-auto"
+             role="dialog" aria-modal="true" aria-label="{{ __('search.open') }}">
+            <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-6 sm:pt-16 pb-10">
+                <!-- Close (X) -->
+                <div class="flex justify-end mb-4">
+                    <button @click="closeOverlay()"
+                            class="p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 focus:outline-none transition"
+                            aria-label="{{ __('search.close') }}" title="{{ __('search.close') }}">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Large input -->
+                <div class="relative">
+                    <span class="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" aria-hidden="true">
+                        <i class="fa-solid fa-magnifying-glass text-xl"></i>
+                    </span>
+                    <input type="text" x-ref="input"
+                           x-model="query" x-on:input="search()" x-on:keydown="onKeydown($event)"
+                           autocomplete="off" spellcheck="false"
+                           placeholder="{{ __('search.placeholder') }}"
+                           aria-label="{{ __('search.placeholder') }}"
+                           :aria-busy="loading.toString()"
+                           class="w-full h-16 pl-14 pr-14 text-lg sm:text-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-0"
+                           :style="'--tw-ring-color: {{ $primaryColor }}'" />
+                    <span x-show="loading" class="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true">
+                        <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                    </span>
+                </div>
+
+                <!-- Live results -->
+                <div class="mt-4">
+                    <ul x-show="hasResults" role="listbox"
+                        class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg ring-1 ring-black/5 border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
+                        <template x-for="(r, i) in results" :key="r.url">
+                            <li role="option" :aria-selected="highlighted === i">
+                                <a x-on:click.prevent="go(r)"
+                                   x-on:mouseenter="highlighted = i"
+                                   href="#" :class="highlighted === i ? 'bg-gray-50 dark:bg-gray-700/60' : ''"
+                                   class="flex items-start justify-between gap-3 px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/60 transition">
+                                    <span class="text-base text-gray-800 dark:text-gray-100" x-html="highlight(r.title)"></span>
+                                    <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide"
+                                          :class="r.type === 'property' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300' : (r.type === 'post' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300')"
+                                          x-text="r.type"></span>
+                                </a>
+                            </li>
+                        </template>
+                    </ul>
+
+                    <!-- No results -->
+                    <div x-show="!hasResults && !loading && query.trim().length >= 2"
+                         class="mt-2 px-5 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                        {{ __('search.no_results') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Page Content -->
     <main>

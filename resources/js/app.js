@@ -179,6 +179,142 @@ Alpine.data('searchAutocomplete', (config = {}) => ({
     },
 }));
 
+// ─── searchOverlay — fullscreen search overlay (header magnifier) ───────────
+// Reuses the SAME public endpoint (route('search.suggest')) and response shape
+// ({ data: [{ title, url, type }] }) as the homepage `searchAutocomplete`
+// component, so live results behave identically. State (open/close) is managed
+// here; opening is triggered by the `open-search` window event dispatched from
+// the header magnifier buttons (decouples Alpine scopes, mirrors share-modal).
+Alpine.data('searchOverlay', (config = {}) => ({
+    open: false,
+    query: '',
+    results: [],
+    loading: false,
+    highlighted: -1,
+    timer: null,
+    controller: null,
+    action: config.action ?? '',
+
+    get hasResults() {
+        return this.results.length > 0;
+    },
+
+    openOverlay() {
+        this.open = true;
+        document.documentElement.classList.add('overflow-hidden');
+        // Autofocus the large input once the overlay is painted.
+        this.$nextTick(() => {
+            const el = this.$refs.input;
+            if (el) el.focus();
+        });
+    },
+
+    closeOverlay() {
+        this.open = false;
+        this.query = '';
+        this.results = [];
+        this.highlighted = -1;
+        this.loading = false;
+        this.controller?.abort();
+        document.documentElement.classList.remove('overflow-hidden');
+    },
+
+    // Highlight query matches in result titles (escaped -> safe for x-html).
+    highlight(title) {
+        const q = this.query.trim();
+        const escaped = escapeHtml(String(title));
+        if (!q) return escaped;
+        const pattern = escapeHtml(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const mark = '<mark class="bg-yellow-200 text-inherit px-0.5 rounded-sm dark:bg-yellow-500/30">' + pattern + '</mark>';
+        return escaped.replace(new RegExp(pattern, 'gi'), () => mark);
+    },
+
+    async search() {
+        clearTimeout(this.timer);
+        const q = this.query.trim();
+
+        if (!q) {
+            this.results = [];
+            this.loading = false;
+            this.highlighted = -1;
+            return;
+        }
+
+        this.timer = setTimeout(async () => {
+            if (this.query.trim().length < 2) {
+                this.results = [];
+                this.loading = false;
+                this.highlighted = -1;
+                return;
+            }
+
+            const key = this.query.trim().toLowerCase();
+
+            // Reuse the shared client-side cache from searchAutocomplete.
+            if (searchCache.has(key)) {
+                this.results = searchCache.get(key);
+                this.highlighted = this.results.length ? 0 : -1;
+                return;
+            }
+
+            this.loading = true;
+            try {
+                this.controller?.abort();
+                this.controller = new AbortController();
+
+                const res = await Promise.race([
+                    fetch(this.action + '?q=' + encodeURIComponent(this.query.trim()), {
+                        headers: { 'Accept': 'application/json' },
+                        signal: this.controller.signal,
+                    }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+                ]);
+                const json = await res.json();
+                const data = json.data ?? [];
+                this.results = data;
+                this.highlighted = this.results.length ? 0 : -1;
+
+                if (searchCache.size >= SEARCH_CACHE_MAX) {
+                    const firstKey = searchCache.keys().next().value;
+                    searchCache.delete(firstKey);
+                }
+                searchCache.set(key, data);
+            } catch (e) {
+                if (e?.name === 'AbortError') return;
+                this.results = [];
+            } finally {
+                this.loading = false;
+            }
+        }, 300);
+    },
+
+    onKeydown(e) {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            this.closeOverlay();
+            return;
+        }
+        if (!this.hasResults) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            this.highlighted = (this.highlighted + 1) % this.results.length;
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            this.highlighted = (this.highlighted - 1 + this.results.length) % this.results.length;
+        } else if (e.key === 'Enter' && this.highlighted >= 0) {
+            e.preventDefault();
+            this.go(this.results[this.highlighted]);
+        }
+    },
+
+    go(result) {
+        const url = result.url;
+        this.closeOverlay();
+        Turbo.visit(url);
+    },
+}));
+
 // ─── photoGallery — property photo uploader / gallery ──────────────────────
 // Registered here (before Alpine.start()) so the component is guaranteed to
 // exist when x-data="photoGallery({...})" is initialised, including after
