@@ -1,150 +1,337 @@
 @extends('layouts.admin')
 
-@section('page-title', 'Media Library')
+@section('page-title', __('media.library'))
 
 @section('content')
-<div class="w-full">
-    <!-- Header with Actions -->
+@php
+    $mediaJson = $media->getCollection()->map(function ($m) {
+        return [
+            'id'                => $m->id,
+            'url'               => $m->url,
+            'thumbnail_url'     => $m->thumbnail_url,
+            'filename'          => $m->filename,
+            'original_filename' => $m->original_filename,
+            'mime_type'         => $m->mime_type,
+            'type'              => $m->type,
+            'size'              => $m->size,
+            'width'             => $m->width,
+            'height'            => $m->height,
+            'directory'         => $m->directory,
+            'alt'               => $m->alt,
+            'title'             => $m->title,
+            'caption'           => $m->caption,
+            'description'       => $m->description,
+            'uploaded_by'       => $m->user?->name,
+            'created_at'        => optional($m->created_at)->toDateTimeString(),
+            'update_url'        => route('admin.media.update', $m),
+            'destroy_url'       => route('admin.media.destroy', $m),
+        ];
+    })->values();
+@endphp
+
+<div class="w-full"
+     x-data="mediaLibrary({
+        items: {{ Illuminate\Support\Js::from($mediaJson) }},
+        uploadUrl: '{{ route('admin.media.upload') }}',
+        fromUrlUrl: '{{ route('admin.media.from-url') }}',
+        indexUrl: '{{ route('admin.media.index') }}',
+        csrf: '{{ csrf_token() }}',
+     })">
+
+    <!-- Header -->
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h2 class="text-2xl font-bold text-gray-800">Media Library</h2>
-            <p class="text-sm text-gray-600 mt-1">Manage your images and files</p>
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ __('media.library') }}</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ __('media.subtitle') }}</p>
         </div>
-        <button onclick="document.getElementById('upload-form').classList.toggle('hidden')"
+        <button type="button" @click="openAdd()"
                 class="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-            </svg>
-            Upload Files
+            <i class="fa-solid fa-plus mr-2"></i>
+            {{ __('media.add') }}
         </button>
     </div>
 
-    <!-- Upload Form (Hidden by default) -->
-    <div id="upload-form" class="hidden mb-6 bg-white rounded-lg shadow-sm p-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Upload New Files</h3>
-        <form action="{{ route('admin.media.upload') }}" method="POST" enctype="multipart/form-data">
-            @csrf
-            <div class="space-y-4">
-                <div>
-                    <label for="files" class="block text-sm font-medium text-gray-700 mb-2">
-                        Select Files
-                    </label>
-                    <input type="file"
-                           name="files[]"
-                           id="files"
-                           multiple
-                           accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx"
-                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                    <p class="text-xs text-gray-500 mt-1">Supported: Images, Videos, PDF, Documents</p>
-                </div>
-
-                <div class="flex items-center justify-end gap-3">
-                    <button type="button"
-                            onclick="document.getElementById('upload-form').classList.add('hidden')"
-                            class="px-6 py-2 bg-white border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition">
-                        Cancel
-                    </button>
-                    <button type="submit"
-                            class="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition">
-                        Upload
-                    </button>
-                </div>
-            </div>
-        </form>
-    </div>
+    <!-- Search / filter -->
+    <form method="GET" action="{{ route('admin.media.index') }}" class="mb-4 flex flex-wrap items-center gap-3">
+        <div class="relative flex-1 min-w-[200px]">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+            <input type="text" name="search" value="{{ request('search') }}"
+                   placeholder="{{ __('media.search_placeholder') }}"
+                   class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-md focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <select name="type"
+                class="px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-md focus:ring-blue-500 focus:border-blue-500">
+            <option value="">{{ __('media.all_types') }}</option>
+            <option value="image" @selected(request('type')==='image')>{{ __('media.type_image') }}</option>
+            <option value="document" @selected(request('type')==='document')>{{ __('media.type_document') }}</option>
+            <option value="video" @selected(request('type')==='video')>{{ __('media.type_video') }}</option>
+        </select>
+        <button type="submit"
+                class="px-4 py-2 bg-gray-200 dark:bg-gray-700 dark:text-gray-100 text-gray-700 font-medium rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+            {{ __('media.filter') }}
+        </button>
+    </form>
 
     <!-- Media Grid -->
-    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div class="bg-white dark:bg-gray-900 rounded-lg shadow-sm overflow-hidden">
         @if($media->count() > 0)
             <div class="p-6">
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-                    @foreach($media as $item)
-                        <div class="relative group border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition">
-                            <!-- Media Preview -->
-                            <div class="aspect-square bg-gray-100 flex items-center justify-center">
-                                @if(str_starts_with($item->mime_type, 'image/'))
-                                    <img src="{{ asset('storage/' . $item->path) }}"
-                                         alt="{{ $item->filename }}"
-                                         class="w-full h-full object-cover">
-                                @elseif(str_starts_with($item->mime_type, 'video/'))
-                                    <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                                    </svg>
-                                @elseif($item->mime_type === 'application/pdf')
-                                    <svg class="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                                    </svg>
-                                @else
-                                    <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                    </svg>
-                                @endif
-                            </div>
-
-                            <!-- Media Info -->
-                            <div class="p-2 bg-white">
-                                <p class="text-xs font-medium text-gray-900 truncate" title="{{ $item->filename }}">
-                                    {{ $item->filename }}
-                                </p>
-                                <p class="text-xs text-gray-500">
-                                    {{ number_format($item->size / 1024, 2) }} KB
-                                </p>
-                            </div>
-
-                            <!-- Action Buttons (Hidden by default, shown on hover) -->
-                            <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                <a href="{{ asset('storage/' . $item->path) }}"
-                                   target="_blank"
-                                   class="p-2 bg-white rounded-full hover:bg-gray-100 transition"
-                                   title="View">
-                                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                    </svg>
-                                </a>
-                                <form action="{{ route('admin.media.destroy', $item) }}"
-                                      method="POST"
-                                      class="inline"
-                                      onsubmit="return confirm('Are you sure you want to delete this file?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit"
-                                            class="p-2 bg-white rounded-full hover:bg-red-100 transition"
-                                            title="Delete">
-                                        <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                        </svg>
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    @endforeach
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    <template x-for="item in items" :key="item.id">
+                        <button type="button" @click="openDetails(item)"
+                                class="group relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:ring-2 hover:ring-blue-500 transition text-left">
+                            <template x-if="item.type === 'image'">
+                                <img :src="item.thumbnail_url || item.url" :alt="item.alt || item.filename"
+                                     class="w-full h-full object-cover" loading="lazy">
+                            </template>
+                            <template x-if="item.type !== 'image'">
+                                <span class="w-full h-full flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400">
+                                    <i class="text-4xl" :class="fileIcon(item)"></i>
+                                    <span class="mt-2 text-[10px] uppercase font-semibold" x-text="item.mime_type.split('/').pop()"></span>
+                                </span>
+                            </template>
+                            <span class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5 opacity-0 group-hover:opacity-100 transition">
+                                <span class="block text-[11px] text-white truncate" x-text="item.title || item.original_filename"></span>
+                            </span>
+                        </button>
+                    </template>
                 </div>
             </div>
 
-            <!-- Pagination -->
-            <div class="px-6 py-4 border-t border-gray-200">
+            <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-800">
                 {{ $media->links() }}
             </div>
         @else
-            <!-- Empty State -->
-            <div class="text-center py-12">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No media files</h3>
-                <p class="mt-1 text-sm text-gray-500">Get started by uploading your first file.</p>
-                <div class="mt-6">
-                    <button onclick="document.getElementById('upload-form').classList.remove('hidden')"
-                            class="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                        </svg>
-                        Upload Files
-                    </button>
-                </div>
+            <div class="text-center py-16">
+                <i class="fa-regular fa-images text-5xl text-gray-300 dark:text-gray-600"></i>
+                <h3 class="mt-3 text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('media.empty_title') }}</h3>
+                <p class="mt-1 text-sm text-gray-500">{{ __('media.empty_subtitle') }}</p>
+                <button type="button" @click="openAdd()"
+                        class="mt-6 inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition">
+                    <i class="fa-solid fa-plus mr-2"></i>
+                    {{ __('media.add') }}
+                </button>
             </div>
         @endif
+    </div>
+
+    {{-- ─────────────────────────  ADD MEDIA MODAL  ───────────────────────── --}}
+    <div x-show="addOpen" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         @keydown.escape.window="addOpen = false">
+        <div class="absolute inset-0 bg-black/50" @click="addOpen = false"></div>
+        <div class="relative bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ __('media.add') }}</h3>
+                <button type="button" @click="addOpen = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex border-b border-gray-200 dark:border-gray-800 px-6">
+                <button type="button" @click="tab = 'upload'"
+                        :class="tab === 'upload' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+                        class="px-4 py-3 -mb-px border-b-2 font-medium text-sm transition">
+                    <i class="fa-solid fa-upload mr-2"></i>{{ __('media.upload_files') }}
+                </button>
+                <button type="button" @click="tab = 'library'; loadLibrary()"
+                        :class="tab === 'library' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+                        class="px-4 py-3 -mb-px border-b-2 font-medium text-sm transition">
+                    <i class="fa-regular fa-images mr-2"></i>{{ __('media.library') }}
+                </button>
+                <button type="button" @click="tab = 'url'"
+                        :class="tab === 'url' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+                        class="px-4 py-3 -mb-px border-b-2 font-medium text-sm transition">
+                    <i class="fa-solid fa-link mr-2"></i>{{ __('media.from_url') }}
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto">
+                {{-- Tab 1: Upload from computer --}}
+                <div x-show="tab === 'upload'">
+                    <div @dragover.prevent="dragging = true"
+                         @dragleave.prevent="dragging = false"
+                         @drop.prevent="handleDrop($event)"
+                         :class="dragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-700'"
+                         class="border-2 border-dashed rounded-lg p-10 text-center transition">
+                        <i class="fa-solid fa-cloud-arrow-up text-4xl text-gray-400 mb-3"></i>
+                        <p class="text-gray-600 dark:text-gray-300 font-medium" x-text="dragging ? '{{ __('media.drop_here') }}' : '{{ __('media.drag_or_click') }}'"></p>
+                        <p class="text-xs text-gray-400 mt-1">{{ __('media.supported_files') }}</p>
+                        <input type="file" x-ref="fileInput" multiple class="hidden"
+                               accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf"
+                               @change="handleFiles($event.target.files)">
+                        <button type="button" @click="$refs.fileInput.click()"
+                                class="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">
+                            {{ __('media.select_files') }}
+                        </button>
+                    </div>
+
+                    <!-- Per-file progress -->
+                    <div class="mt-4 space-y-2" x-show="queue.length">
+                        <template x-for="(f, i) in queue" :key="i">
+                            <div class="flex items-center gap-3 text-sm">
+                                <i class="fa-regular fa-file text-gray-400"></i>
+                                <span class="flex-1 truncate text-gray-700 dark:text-gray-300" x-text="f.name"></span>
+                                <div class="w-32 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div class="h-full transition-all"
+                                         :class="f.status === 'error' ? 'bg-red-500' : 'bg-blue-600'"
+                                         :style="`width: ${f.progress}%`"></div>
+                                </div>
+                                <span class="w-16 text-right text-xs"
+                                      :class="{
+                                        'text-green-600': f.status === 'done',
+                                        'text-red-600': f.status === 'error',
+                                        'text-gray-500': f.status === 'uploading',
+                                      }"
+                                      x-text="f.status === 'done' ? '{{ __('media.done') }}' : (f.status === 'error' ? '{{ __('media.failed') }}' : f.progress + '%')"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- Tab 2: Media Library (browse existing) --}}
+                <div x-show="tab === 'library'">
+                    <div x-show="libraryLoading" class="py-10 text-center text-gray-400">
+                        <i class="fa-solid fa-spinner fa-spin text-2xl"></i>
+                    </div>
+                    <div x-show="!libraryLoading" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                        <template x-for="item in libraryItems" :key="item.id">
+                            <button type="button" @click="addOpen = false; openDetails(item)"
+                                    class="group relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:ring-2 hover:ring-blue-500 transition">
+                                <template x-if="item.type === 'image'">
+                                    <img :src="item.thumbnail_url || item.url" :alt="item.alt || item.filename" class="w-full h-full object-cover" loading="lazy">
+                                </template>
+                                <template x-if="item.type !== 'image'">
+                                    <span class="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400">
+                                        <i class="text-3xl" :class="fileIcon(item)"></i>
+                                    </span>
+                                </template>
+                            </button>
+                        </template>
+                    </div>
+                    <p x-show="!libraryLoading && !libraryItems.length" class="py-10 text-center text-gray-400 text-sm">
+                        {{ __('media.empty_title') }}
+                    </p>
+                </div>
+
+                {{-- Tab 3: Upload from URL --}}
+                <div x-show="tab === 'url'">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ __('media.file_url') }}</label>
+                    <div class="flex gap-2">
+                        <input type="url" x-model="urlValue"
+                               placeholder="{{ __('media.url_placeholder') }}"
+                               class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        <button type="button" @click="importFromUrl()" :disabled="urlLoading || !urlValue"
+                                class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 transition">
+                            <span x-show="!urlLoading">{{ __('media.import') }}</span>
+                            <span x-show="urlLoading"><i class="fa-solid fa-spinner fa-spin mr-1"></i>{{ __('media.importing') }}</span>
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">{{ __('media.url_help') }}</p>
+                    <p x-show="urlError" x-text="urlError" class="text-sm text-red-600 mt-2"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ─────────────────────────  DETAILS MODAL  ───────────────────────── --}}
+    <div x-show="detailsOpen" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         @keydown.escape.window="detailsOpen = false">
+        <div class="absolute inset-0 bg-black/50" @click="detailsOpen = false"></div>
+        <div class="relative bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ __('media.details') }}</h3>
+                <button type="button" @click="detailsOpen = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 p-6 overflow-y-auto" x-show="current">
+                <!-- Preview -->
+                <div class="lg:col-span-2">
+                    <div class="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center min-h-[200px]">
+                        <template x-if="current && current.type === 'image'">
+                            <img :src="current.url" :alt="current.alt || current.filename" class="w-full h-auto object-contain max-h-[50vh]">
+                        </template>
+                        <template x-if="current && current.type === 'video'">
+                            <video :src="current.url" controls class="w-full"></video>
+                        </template>
+                        <template x-if="current && current.type !== 'image' && current.type !== 'video'">
+                            <div class="flex flex-col items-center py-16 text-gray-400">
+                                <i class="text-5xl" :class="fileIcon(current)"></i>
+                                <span class="mt-3 text-sm" x-text="current.mime_type"></span>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Metadata -->
+                    <dl class="mt-4 text-xs space-y-1.5 text-gray-600 dark:text-gray-400" x-show="current">
+                        <div class="flex justify-between gap-2"><dt>{{ __('media.filename') }}</dt><dd class="font-medium text-gray-800 dark:text-gray-200 truncate" x-text="current?.original_filename"></dd></div>
+                        <div class="flex justify-between gap-2"><dt>{{ __('media.mime') }}</dt><dd class="font-medium text-gray-800 dark:text-gray-200" x-text="current?.mime_type"></dd></div>
+                        <div class="flex justify-between gap-2"><dt>{{ __('media.size') }}</dt><dd class="font-medium text-gray-800 dark:text-gray-200" x-text="humanSize(current?.size)"></dd></div>
+                        <div class="flex justify-between gap-2" x-show="current?.width"><dt>{{ __('media.dimensions') }}</dt><dd class="font-medium text-gray-800 dark:text-gray-200" x-text="current?.width + ' × ' + current?.height + ' px'"></dd></div>
+                        <div class="flex justify-between gap-2"><dt>{{ __('media.uploaded_by') }}</dt><dd class="font-medium text-gray-800 dark:text-gray-200" x-text="current?.uploaded_by || '-'"></dd></div>
+                    </dl>
+
+                    <!-- URL + copy -->
+                    <div class="mt-3" x-show="current">
+                        <label class="block text-xs font-medium text-gray-500 mb-1">{{ __('media.url') }}</label>
+                        <div class="flex gap-2">
+                            <input type="text" readonly :value="current?.url"
+                                   class="flex-1 px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-md font-mono">
+                            <button type="button" @click="copyUrl(current?.url)"
+                                    class="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 dark:text-gray-100 text-gray-700 text-xs rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                                <i class="fa-regular fa-copy mr-1"></i><span x-text="copied ? '{{ __('media.copied') }}' : '{{ __('media.copy_url') }}'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Edit form -->
+                <div class="lg:col-span-3">
+                    <form @submit.prevent="saveDetails()" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('media.title') }}</label>
+                            <input type="text" x-model="form.title"
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('media.alt') }}</label>
+                            <input type="text" x-model="form.alt"
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('media.caption') }}</label>
+                            <input type="text" x-model="form.caption"
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('media.description') }}</label>
+                            <textarea x-model="form.description" rows="4"
+                                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-3 border-t border-gray-200 dark:border-gray-800 pt-4">
+                            <button type="button" @click="deleteCurrent()"
+                                    class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition">
+                                <i class="fa-solid fa-trash mr-2"></i>{{ __('media.delete') }}
+                            </button>
+                            <div class="flex items-center gap-3">
+                                <span x-show="saved" class="text-sm text-green-600"><i class="fa-solid fa-check mr-1"></i>{{ __('media.saved') }}</span>
+                                <button type="submit" :disabled="saving"
+                                        class="inline-flex items-center px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 transition">
+                                    <i class="fa-solid fa-check mr-2" x-show="!saving"></i>
+                                    <i class="fa-solid fa-spinner fa-spin mr-2" x-show="saving"></i>
+                                    {{ __('media.save') }}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 @endsection

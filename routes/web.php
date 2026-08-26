@@ -79,8 +79,11 @@ Route::post('/' . slug('slug_booking_status', 'booking/status') . '/validate-vou
 Route::middleware(['auth', 'verified', 'admin'])->prefix(slug('admin_prefix', 'admin'))->name('admin.')->group(function () {
 
     // Media Management
-    Route::resource('media', MediaController::class);
+    // NOTE: custom routes declared BEFORE the resource so 'upload' / 'from-url'
+    // are not matched as a {media} wildcard by the resource's show/update routes.
     Route::post('media/upload', [MediaController::class, 'upload'])->name('media.upload');
+    Route::post('media/from-url', [MediaController::class, 'fromUrl'])->name('media.from-url');
+    Route::resource('media', MediaController::class);
 
     // Pages Management
     Route::resource('pages', PageController::class);

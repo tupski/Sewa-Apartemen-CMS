@@ -620,6 +620,243 @@ Alpine.data('photoGallery', function (config = {}) {
     }, true);
 })();
 
+// ─── Media Library (WordPress-style uploader) ──────────────────────────────
+// Powers resources/views/admin/media/index.blade.php: grid, Add-Media modal
+// (upload / library / from-URL tabs) and the details editor modal.
+Alpine.data('mediaLibrary', (config = {}) => ({
+    items: config.items ?? [],
+    uploadUrl: config.uploadUrl,
+    fromUrlUrl: config.fromUrlUrl,
+    indexUrl: config.indexUrl,
+    csrf: config.csrf,
+
+    // Add-media modal
+    addOpen: false,
+    tab: 'upload',
+    dragging: false,
+    queue: [],
+
+    // Library tab
+    libraryItems: [],
+    libraryLoading: false,
+    libraryLoaded: false,
+
+    // From-URL tab
+    urlValue: '',
+    urlLoading: false,
+    urlError: '',
+
+    // Details modal
+    detailsOpen: false,
+    current: null,
+    form: { title: '', alt: '', caption: '', description: '' },
+    saving: false,
+    saved: false,
+    copied: false,
+
+    openAdd() {
+        this.addOpen = true;
+        this.tab = 'upload';
+        this.queue = [];
+    },
+
+    fileIcon(item) {
+        const mime = item?.mime_type ?? '';
+        if (mime === 'application/pdf') return 'fa-regular fa-file-pdf text-red-500';
+        if (mime.startsWith('video/')) return 'fa-regular fa-file-video';
+        if (mime.startsWith('image/')) return 'fa-regular fa-file-image';
+        return 'fa-regular fa-file';
+    },
+
+    humanSize(bytes) {
+        if (!bytes && bytes !== 0) return '-';
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+    },
+
+    // ── Upload from computer ──
+    handleDrop(e) {
+        this.dragging = false;
+        this.handleFiles(e.dataTransfer.files);
+    },
+
+    handleFiles(fileList) {
+        const files = Array.from(fileList || []);
+        files.forEach((file) => this.uploadOne(file));
+    },
+
+    uploadOne(file) {
+        const entry = { name: file.name, progress: 0, status: 'uploading' };
+        this.queue.push(entry);
+
+        const fd = new FormData();
+        fd.append('files[]', file);
+        fd.append('_token', this.csrf);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', this.uploadUrl, true);
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+        xhr.upload.onprogress = (ev) => {
+            if (ev.lengthComputable) {
+                entry.progress = Math.round((ev.loaded / ev.total) * 100);
+            }
+        };
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                entry.progress = 100;
+                entry.status = 'done';
+                try {
+                    const res = JSON.parse(xhr.responseText);
+                    (res.uploaded || []).forEach((m) => this.items.unshift(m));
+                } catch (_) { /* ignore parse errors */ }
+            } else {
+                entry.status = 'error';
+            }
+        };
+        xhr.onerror = () => { entry.status = 'error'; };
+        xhr.send(fd);
+    },
+
+    // ── Media Library tab ──
+    loadLibrary() {
+        if (this.libraryLoaded) return;
+        this.libraryLoading = true;
+        fetch(this.indexUrl + '?json=1', {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        })
+            .then((r) => r.json())
+            .then((res) => {
+                this.libraryItems = res.data || [];
+                this.libraryLoaded = true;
+            })
+            .catch(() => {})
+            .finally(() => { this.libraryLoading = false; });
+    },
+
+    // ── From URL tab ──
+    importFromUrl() {
+        if (!this.urlValue) return;
+        this.urlLoading = true;
+        this.urlError = '';
+
+        fetch(this.fromUrlUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': this.csrf,
+            },
+            body: JSON.stringify({ url: this.urlValue }),
+        })
+            .then(async (r) => {
+                const data = await r.json().catch(() => ({}));
+                if (!r.ok) throw new Error(data.message || 'Import failed');
+                return data;
+            })
+            .then((data) => {
+                if (data.media) {
+                    this.items.unshift(data.media);
+                    this.libraryItems.unshift(data.media);
+                }
+                this.urlValue = '';
+                this.addOpen = false;
+            })
+            .catch((err) => { this.urlError = err.message; })
+            .finally(() => { this.urlLoading = false; });
+    },
+
+    // ── Details modal ──
+    openDetails(item) {
+        this.current = item;
+        this.form = {
+            title: item.title || '',
+            alt: item.alt || '',
+            caption: item.caption || '',
+            description: item.description || '',
+        };
+        this.saved = false;
+        this.copied = false;
+        this.detailsOpen = true;
+    },
+
+    saveDetails() {
+        if (!this.current) return;
+        this.saving = true;
+        this.saved = false;
+
+        fetch(this.current.update_url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': this.csrf,
+            },
+            body: JSON.stringify({ _method: 'PUT', ...this.form }),
+        })
+            .then(async (r) => {
+                const data = await r.json().catch(() => ({}));
+                if (!r.ok) throw new Error(data.message || 'Save failed');
+                return data;
+            })
+            .then((data) => {
+                this.saved = true;
+                if (data.media) this.syncItem(data.media);
+                setTimeout(() => { this.saved = false; }, 2000);
+            })
+            .catch(() => {})
+            .finally(() => { this.saving = false; });
+    },
+
+    syncItem(media) {
+        const patch = (arr) => {
+            const idx = arr.findIndex((m) => m.id === media.id);
+            if (idx !== -1) arr[idx] = media;
+        };
+        patch(this.items);
+        patch(this.libraryItems);
+        this.current = media;
+    },
+
+    deleteCurrent() {
+        if (!this.current) return;
+        if (!window.confirm('{{ __("media.delete_confirm") }}')) return;
+
+        fetch(this.current.destroy_url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': this.csrf,
+            },
+            body: JSON.stringify({ _method: 'DELETE' }),
+        })
+            .then((r) => {
+                if (!r.ok) throw new Error('Delete failed');
+                const id = this.current.id;
+                this.items = this.items.filter((m) => m.id !== id);
+                this.libraryItems = this.libraryItems.filter((m) => m.id !== id);
+                this.detailsOpen = false;
+                this.current = null;
+            })
+            .catch(() => {});
+    },
+
+    copyUrl(url) {
+        if (!url) return;
+        navigator.clipboard.writeText(url).then(() => {
+            this.copied = true;
+            setTimeout(() => { this.copied = false; }, 2000);
+        });
+    },
+}));
+
 // ponytail: Alpine.start() one-time app-level, sengaja dibiarkan di sini — TIDAK di `turbo:load`.
 // Aman: Alpine memakai MutationObserver pada document (lifecycle.js, startObservingMutations),
 // sehingga node baru dari Turbo body-swap ter-init otomatis via onElAdded -> initTree.
