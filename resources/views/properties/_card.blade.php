@@ -61,14 +61,14 @@
             @endif
         </div>
 
-        {{-- Favorite button (visual only) --}}
+        {{-- Share button — opens the global share modal for THIS property.
+             stop/prevent so clicking it never triggers the card's link navigation. --}}
         <button type="button"
-                class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 dark:bg-gray-800/90 shadow hover:bg-white dark:hover:bg-gray-800 transition"
-                aria-label="Simpan ke favorit"
-                onclick="event.preventDefault()">
-            <svg class="w-4 h-4 text-gray-400 hover:text-red-500 transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"/>
-            </svg>
+                x-data
+                x-on:click.prevent.stop="$dispatch('open-share-modal', { url: @js(route('properties.public.show', $property->slug)), title: @js($property->name) })"
+                class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 dark:bg-gray-800/90 shadow hover:bg-white dark:hover:bg-gray-800 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                aria-label="{{ __('share.button') }}">
+            <i class="fa-solid fa-share-nodes text-sm text-gray-500 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors" aria-hidden="true"></i>
         </button>
 
         {{-- Distance badge (only for nearby section; hidden gracefully when coords missing) --}}

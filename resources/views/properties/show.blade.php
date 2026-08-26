@@ -84,7 +84,18 @@
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 Kembali ke Daftar
             </a>
-            <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white">{{ $property->name }}</h1>
+            <div class="flex items-start justify-between gap-4">
+                <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white">{{ $property->name }}</h1>
+                {{-- Desktop Share button (near title actions) --}}
+                <button type="button"
+                        x-data
+                        x-on:click="$dispatch('open-share-modal', { url: @js(url()->current()), title: @js($property->name) })"
+                        class="hidden md:inline-flex shrink-0 items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        aria-label="{{ __('share.button') }}">
+                    <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>
+                    {{ __('share.button') }}
+                </button>
+            </div>
             @if ($property->city || $property->province)
                 <p class="text-gray-500 dark:text-gray-400 mt-1.5 flex items-center text-sm">
                     <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -434,6 +445,18 @@
             </div>
         </section>
     @endif
+
+    <!-- ============ MOBILE FLOATING SHARE BUTTON (bottom-LEFT, above sticky booking bar) ============ -->
+    {{-- WhatsApp + scroll-to-top floats are bottom-RIGHT, so this sits bottom-LEFT to avoid collision.
+         When the sticky booking bar (#mob-bk-bar) is shown it is lifted higher so it isn't hidden. --}}
+    <button type="button"
+            x-data
+            x-on:click="$dispatch('open-share-modal', { url: @js(url()->current()), title: @js($property->name) })"
+            class="lg:hidden fixed {{ $showBookingForm ? 'bottom-24' : 'bottom-6' }} left-4 z-50 w-12 h-12 rounded-full shadow-xl flex items-center justify-center text-white hover:scale-110 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500"
+            style="background-color: {{ $primaryColor }}"
+            aria-label="{{ __('share.button') }}">
+        <i class="fa-solid fa-share-nodes text-lg" aria-hidden="true"></i>
+    </button>
 
     <!-- ============ MOBILE FLOATING BOOKING BAR ============ -->
     @if ($showBookingForm)

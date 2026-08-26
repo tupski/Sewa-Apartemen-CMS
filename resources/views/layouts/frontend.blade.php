@@ -348,6 +348,9 @@
         });
     </script>
 
+    {{-- Global Share Modal (opened via `open-share-modal` window event) --}}
+    @include('components.share-modal')
+
     @stack('scripts')
 
     <script>
