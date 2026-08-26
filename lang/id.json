@@ -1,4 +1,5 @@
 {
+    "admin.money_prefix": "Rp",
     "nav.find_apartments": "Cari Apartemen",
     "nav.whatsapp": "WhatsApp",
     "nav.home": "Beranda",
@@ -146,7 +147,7 @@
     "prop.all_types": "Semua Tipe",
     "prop.from": "Mulai dari",
     "prop.see_detail": "Lihat Detail",
-    "prop.nearby_heading": "Akomodasi lainnya terdekat dari Apartemen :name",
+    "prop.nearby_heading": "Akomodasi terdekat dari Apartemen :name",
     "prop.empty_title": "Tidak ada apartemen ditemukan",
     "prop.empty_desc": "Coba ubah kata kunci atau filter pencarian Anda.",
     "prop.faq": "Pertanyaan Umum (FAQ)",

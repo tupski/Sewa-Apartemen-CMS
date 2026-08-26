@@ -20,6 +20,31 @@ class PropertyRequest extends FormRequest
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
+    /**
+     * Strip thousand separators from money inputs before validation.
+     *
+     * The admin price inputs (see <x-money-input>) normally arrive as plain
+     * integers because the JS handler strips separators on submit. This is a
+     * server-side belt-and-suspenders: if a formatted value like "150.000"
+     * ever reaches here (JS disabled, programmatic post), we normalise it back
+     * to a clean integer so the `numeric` rule and integer storage still pass.
+     */
+    protected function prepareForValidation(): void
+    {
+        $prices = $this->input('prices');
+
+        if (is_array($prices)) {
+            array_walk_recursive($prices, function (&$value) {
+                if (is_string($value) && $value !== '') {
+                    $stripped = preg_replace('/\D/', '', $value);
+                    $value = $stripped === '' ? null : $stripped;
+                }
+            });
+
+            $this->merge(['prices' => $prices]);
+        }
+    }
+
     public function rules(): array
     {
         $propertyId = $this->route('property') ? $this->route('property')->id : null;

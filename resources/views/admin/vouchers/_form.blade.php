@@ -92,14 +92,12 @@
             <label for="max_discount_amount" class="block text-sm font-medium text-gray-700 mb-1">
                 Maksimal Diskon (Rp)
             </label>
-            <input type="number"
-                   name="max_discount_amount"
-                   id="max_discount_amount"
-                   value="{{ old('max_discount_amount', $voucher->max_discount_amount ?? '') }}"
-                   min="0"
-                   step="1000"
-                   placeholder="Kosongkan = tanpa batas"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-right">
+            <x-money-input
+                name="max_discount_amount"
+                id="max_discount_amount"
+                :value="old('max_discount_amount', $voucher->max_discount_amount ?? '')"
+                placeholder="Kosongkan = tanpa batas"
+                inputClass="w-full py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-right" />
             <p class="text-xs text-gray-400 mt-1">Batas atas diskon persen. Kosongkan untuk tanpa batas.</p>
             @error('max_discount_amount') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
         </div>
@@ -111,14 +109,12 @@
             <label for="min_booking_amount" class="block text-sm font-medium text-gray-700 mb-1">
                 Minimum Total Booking (Rp)
             </label>
-            <input type="number"
-                   name="min_booking_amount"
-                   id="min_booking_amount"
-                   value="{{ old('min_booking_amount', $voucher->min_booking_amount ?? '') }}"
-                   min="0"
-                   step="1000"
-                   placeholder="Kosongkan = tanpa minimum"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-right">
+            <x-money-input
+                name="min_booking_amount"
+                id="min_booking_amount"
+                :value="old('min_booking_amount', $voucher->min_booking_amount ?? '')"
+                placeholder="Kosongkan = tanpa minimum"
+                inputClass="w-full py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm text-right" />
             <p class="text-xs text-gray-400 mt-1">Voucher hanya bisa dipakai jika total booking ≥ nilai ini.</p>
             @error('min_booking_amount') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
         </div>

@@ -544,6 +544,82 @@ Alpine.data('photoGallery', function (config = {}) {
     };
 });
 
+// ─── Money inputs — "Rp" prefix + thousand-separator formatting ────────────
+// A single reusable, framework-agnostic handler for every input marked with
+// `data-money` (see <x-money-input> Blade component). It:
+//   1. Formats the visible value with dot thousand separators as the user types
+//      (e.g. 150000 → 150.000), matching the frontend price display which uses
+//      PHP number_format($n, 0, ',', '.').
+//   2. Formats any pre-filled value on load (edit forms).
+//   3. Strips the separators back to a plain integer right before the owning
+//      form submits, so the server receives clean digits (e.g. "150000") and
+//      existing numeric/integer validation keeps passing — no server change
+//      required.
+//
+// Delegated listeners on `document` make this Turbo-safe: inputs injected by
+// body-swaps or dynamically shown price rows are handled without re-binding.
+(function () {
+    var GROUP = '.'; // thousand separator — matches number_format(n, 0, ',', '.')
+
+    // Keep only digits, then group into threes with GROUP. Leading zeros and
+    // any non-digit characters are discarded. Empty input stays empty.
+    function formatMoney(raw) {
+        var digits = String(raw == null ? '' : raw).replace(/\D/g, '');
+        digits = digits.replace(/^0+(?=\d)/, ''); // strip leading zeros
+        if (digits === '') return '';
+        return digits.replace(/\B(?=(\d{3})+(?!\d))/g, GROUP);
+    }
+
+    // Plain integer string (digits only) for submission.
+    function unformatMoney(value) {
+        return String(value == null ? '' : value).replace(/\D/g, '');
+    }
+
+    function applyFormat(el) {
+        if (!el) return;
+        var formatted = formatMoney(el.value);
+        if (el.value !== formatted) {
+            el.value = formatted;
+        }
+    }
+
+    // Format on input (delegated).
+    document.addEventListener('input', function (e) {
+        var el = e.target;
+        if (el && el.matches && el.matches('[data-money]')) {
+            applyFormat(el);
+        }
+    });
+
+    // Format freshly-rendered values on load and after Turbo navigations.
+    function formatAll(root) {
+        (root || document).querySelectorAll('[data-money]').forEach(applyFormat);
+    }
+    document.addEventListener('DOMContentLoaded', function () { formatAll(document); });
+    document.addEventListener('turbo:load', function () { formatAll(document); });
+    document.addEventListener('turbo:render', function () { formatAll(document); });
+
+    // Strip separators to plain integers right before submit (capture phase so
+    // it runs before other submit handlers serialise the form). We restore the
+    // formatted view afterwards so a validation-failed page keeps looking right.
+    document.addEventListener('submit', function (e) {
+        var form = e.target;
+        if (!form || !form.querySelectorAll) return;
+        var moneyEls = form.querySelectorAll('[data-money]');
+        if (!moneyEls.length) return;
+
+        moneyEls.forEach(function (el) {
+            el.value = unformatMoney(el.value);
+        });
+
+        // Re-apply formatting on the next tick (submit may be prevented, or the
+        // page may stay if navigation is blocked).
+        setTimeout(function () {
+            moneyEls.forEach(applyFormat);
+        }, 0);
+    }, true);
+})();
+
 // ponytail: Alpine.start() one-time app-level, sengaja dibiarkan di sini — TIDAK di `turbo:load`.
 // Aman: Alpine memakai MutationObserver pada document (lifecycle.js, startObservingMutations),
 // sehingga node baru dari Turbo body-swap ter-init otomatis via onElAdded -> initTree.

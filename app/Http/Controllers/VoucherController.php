@@ -91,6 +91,18 @@ class VoucherController extends Controller
             $codeUnique .= ',' . $voucher->id;
         }
 
+        // Belt-and-suspenders: strip thousand separators from the money inputs
+        // (see <x-money-input>) so a formatted value like "150.000" reaching the
+        // server (JS disabled) still passes the integer rules below. The JS
+        // handler normally strips these on submit.
+        foreach (['min_booking_amount', 'max_discount_amount'] as $moneyField) {
+            $raw = $request->input($moneyField);
+            if (is_string($raw)) {
+                $clean = preg_replace('/\D/', '', $raw);
+                $request->merge([$moneyField => $clean === '' ? null : $clean]);
+            }
+        }
+
         $data = $request->validate([
             'code'           => ['required', 'string', 'max:50', $codeUnique],
             'name'           => ['required', 'string', 'max:255'],

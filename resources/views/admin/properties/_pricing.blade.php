@@ -94,20 +94,16 @@
                             <td class="px-4 py-3 text-sm font-medium text-gray-800">{{ $label }}</td>
                             @foreach($transitFields as $slot => $slotLabel)
                                 <td class="px-3 py-3">
-                                    <input type="number"
-                                           name="prices[{{ $key }}][{{ $slot }}_wd]"
-                                           value="{{ old("prices.{$key}.{$slot}_wd", $property?->prices[$key]["{$slot}_wd"] ?? '') }}"
-                                           min="0" step="1000"
-                                           placeholder="Rp"
-                                           class="w-28 px-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm">
+                                    <x-money-input
+                                        :name="'prices['.$key.']['.$slot.'_wd]'"
+                                        :value="old('prices.'.$key.'.'.$slot.'_wd', $property?->prices[$key][$slot.'_wd'] ?? '')"
+                                        inputClass="w-28 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
                                 </td>
                                 <td class="px-3 py-3">
-                                    <input type="number"
-                                           name="prices[{{ $key }}][{{ $slot }}_we]"
-                                           value="{{ old("prices.{$key}.{$slot}_we", $property?->prices[$key]["{$slot}_we"] ?? '') }}"
-                                           min="0" step="1000"
-                                           placeholder="Rp"
-                                           class="w-28 px-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm">
+                                    <x-money-input
+                                        :name="'prices['.$key.']['.$slot.'_we]'"
+                                        :value="old('prices.'.$key.'.'.$slot.'_we', $property?->prices[$key][$slot.'_we'] ?? '')"
+                                        inputClass="w-28 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
                                 </td>
                             @endforeach
                         </tr>
@@ -139,20 +135,16 @@
                         <tr class="price-row {{ !in_array($key, (array)$selectedTypes) ? 'hidden' : '' }}" data-type="{{ $key }}">
                             <td class="px-4 py-3 text-sm font-medium text-gray-800">{{ $label }}</td>
                             <td class="px-3 py-3">
-                                <input type="number"
-                                       name="prices[{{ $key }}][night_wd]"
-                                       value="{{ old("prices.{$key}.night_wd", $property?->prices[$key]['night_wd'] ?? '') }}"
-                                       min="0" step="1000"
-                                       placeholder="Rp"
-                                       class="w-36 px-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm">
+                                <x-money-input
+                                    :name="'prices['.$key.'][night_wd]'"
+                                    :value="old('prices.'.$key.'.night_wd', $property?->prices[$key]['night_wd'] ?? '')"
+                                    inputClass="w-36 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
                             </td>
                             <td class="px-3 py-3">
-                                <input type="number"
-                                       name="prices[{{ $key }}][night_we]"
-                                       value="{{ old("prices.{$key}.night_we", $property?->prices[$key]['night_we'] ?? '') }}"
-                                       min="0" step="1000"
-                                       placeholder="Rp"
-                                       class="w-36 px-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm">
+                                <x-money-input
+                                    :name="'prices['.$key.'][night_we]'"
+                                    :value="old('prices.'.$key.'.night_we', $property?->prices[$key]['night_we'] ?? '')"
+                                    inputClass="w-36 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
                             </td>
                         </tr>
                     @endforeach
@@ -183,12 +175,11 @@
                         <tr class="price-row {{ !in_array($key, (array)$selectedTypes) ? 'hidden' : '' }}" data-type="{{ $key }}">
                             <td class="px-4 py-3 text-sm font-medium text-gray-800">{{ $label }}</td>
                             <td class="px-3 py-3">
-                                <input type="number"
-                                       name="prices[{{ $key }}][weekly]"
-                                       value="{{ old("prices.{$key}.weekly", $property?->prices[$key]['weekly'] ?? '') }}"
-                                       min="0" step="1000"
-                                       placeholder="Kosongkan jika tidak tersedia"
-                                       class="w-64 px-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm">
+                                <x-money-input
+                                    :name="'prices['.$key.'][weekly]'"
+                                    :value="old('prices.'.$key.'.weekly', $property?->prices[$key]['weekly'] ?? '')"
+                                    placeholder="Kosongkan jika tidak tersedia"
+                                    inputClass="w-64 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
                             </td>
                         </tr>
                     @endforeach
@@ -219,12 +210,11 @@
                         <tr class="price-row {{ !in_array($key, (array)$selectedTypes) ? 'hidden' : '' }}" data-type="{{ $key }}">
                             <td class="px-4 py-3 text-sm font-medium text-gray-800">{{ $label }}</td>
                             <td class="px-3 py-3">
-                                <input type="number"
-                                       name="prices[{{ $key }}][monthly]"
-                                       value="{{ old("prices.{$key}.monthly", $property?->prices[$key]['monthly'] ?? '') }}"
-                                       min="0" step="10000"
-                                       placeholder="Kosongkan jika tidak tersedia"
-                                       class="w-64 px-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm">
+                                <x-money-input
+                                    :name="'prices['.$key.'][monthly]'"
+                                    :value="old('prices.'.$key.'.monthly', $property?->prices[$key]['monthly'] ?? '')"
+                                    placeholder="Kosongkan jika tidak tersedia"
+                                    inputClass="w-64 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
                             </td>
                         </tr>
                     @endforeach
@@ -344,8 +334,11 @@
 
             <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Harga Promo (Rp) <span class="text-red-500">*</span></label>
-                <input type="number" id="promo-price" placeholder="0" min="0" step="1000"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 text-right">
+                <x-money-input
+                    id="promo-price"
+                    name="promo_price_display"
+                    placeholder="0"
+                    inputClass="w-full py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 text-right" />
             </div>
 
             <div>
@@ -550,7 +543,9 @@
 
         function buildPayload() {
             var name      = document.getElementById('promo-name').value.trim();
-            var price     = document.getElementById('promo-price').value;
+            // Strip thousand separators added by the [data-money] handler so we
+            // send a plain integer (e.g. "150.000" → 150000).
+            var price     = document.getElementById('promo-price').value.replace(/\D/g, '');
             var startTime = document.getElementById('promo-start-time').value;
             var endTime   = document.getElementById('promo-end-time').value;
             var applies   = appliesTo.value;
@@ -587,7 +582,10 @@
         function populateForm(promo) {
             editIdInput.value = promo.id;
             document.getElementById('promo-name').value       = promo.name;
-            document.getElementById('promo-price').value      = promo.price;
+            // Set raw value then trigger the money formatter to add separators.
+            var promoPriceEl = document.getElementById('promo-price');
+            promoPriceEl.value = promo.price;
+            promoPriceEl.dispatchEvent(new Event('input', { bubbles: true }));
             document.getElementById('promo-start-time').value = promo.start_time ? promo.start_time.substring(0, 5) : '';
             document.getElementById('promo-end-time').value   = promo.end_time ? promo.end_time.substring(0, 5) : '';
             appliesTo.value = promo.applies_to || 'all';
