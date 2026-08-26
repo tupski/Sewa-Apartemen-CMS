@@ -61,10 +61,16 @@
     </div>
 
     {{-- ── Main Form ── --}}
+    {{-- data-turbo="false": force a native browser multipart submit. Turbo Drive
+         otherwise intercepts the POST and serialises its own FormData snapshot,
+         which drops the file inputs injected at submit-time by the photoGallery
+         Alpine component (#photo-submit-container) — so gallery_uploads never
+         reached the server. A native submit guarantees all inputs are sent. --}}
     <form id="property-form"
           method="POST"
           action="{{ route('admin.properties.update', $property) }}"
-          enctype="multipart/form-data">
+          enctype="multipart/form-data"
+          data-turbo="false">
         @csrf
         @method('PUT')
 
