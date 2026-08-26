@@ -99,15 +99,17 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix(slug('admin_prefix', 'a
     Route::post('navigations/reorder', [NavigationController::class, 'reorder'])->name('navigations.reorder');
     Route::patch('navigations/{navigation}/status', [NavigationController::class, 'updateStatus'])->name('navigations.status');
 
+    // Git Version Control (AJAX)
+    // NOTE: these must be declared BEFORE settings/{group?} so 'git-status' /
+    // 'git-pull' / 'git-fetch' are not swallowed as a {group} wildcard value.
+    Route::get('settings/git-status', [SettingsController::class, 'gitStatus'])->name('settings.git-status');
+    Route::post('settings/git-pull', [SettingsController::class, 'gitPull'])->name('settings.git-pull');
+    Route::post('settings/git-fetch', [SettingsController::class, 'gitFetch'])->name('settings.git-fetch');
+
     // Settings Management
     Route::get('settings/{group?}', [SettingsController::class, 'index'])->name('settings.index');
     Route::post('settings/{group}', [SettingsController::class, 'update'])->name('settings.update');
     Route::post('clear-cache', [SettingsController::class, 'clearCache'])->name('clear-cache');
-
-    // Git Version Control (AJAX)
-    Route::get('settings/git-status', [SettingsController::class, 'gitStatus'])->name('settings.git-status');
-    Route::post('settings/git-pull', [SettingsController::class, 'gitPull'])->name('settings.git-pull');
-    Route::post('settings/git-fetch', [SettingsController::class, 'gitFetch'])->name('settings.git-fetch');
 
     // Property Management
     Route::post('properties/bulk-action', [PropertyController::class, 'bulkAction'])->name('properties.bulk-action');

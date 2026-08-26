@@ -173,6 +173,14 @@ class SettingsController extends Controller
         ],
     ];
 
+    /**
+     * Groups that only render a read-only / action panel and therefore have no
+     * persisted keys in $groupKeys. They are valid for index() but not update().
+     */
+    protected array $viewOnlyGroups = [
+        'version_control',
+    ];
+
     public function __construct(SettingsService $settingsService)
     {
         // BUG-007 FIX: only super-admins can access settings
@@ -185,8 +193,10 @@ class SettingsController extends Controller
      */
     public function index(string $group = 'general')
     {
-        // Validate the group; fall back to general for unknown slugs
-        $validGroups = array_keys($this->groupKeys);
+        // Validate the group; fall back to general for unknown slugs.
+        // View-only groups (e.g. version_control) have no persisted keys but are
+        // still valid pages, so they must be whitelisted here as well.
+        $validGroups = array_merge(array_keys($this->groupKeys), $this->viewOnlyGroups);
         if (! in_array($group, $validGroups)) {
             $group = 'general';
         }
