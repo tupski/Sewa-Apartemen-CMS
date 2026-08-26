@@ -418,17 +418,17 @@
     @endif
 
     <!-- ============ LIGHTBOX (all photos) with Category Sidebar ============ -->
-    <div id="gal-lightbox" class="hidden fixed inset-0 z-[60] flex" role="dialog" aria-modal="true" aria-label="Photo gallery">
+    <div id="gal-lightbox" class="hidden fixed inset-0 z-[60] flex" role="dialog" aria-modal="true" aria-label="{{ __('lightbox.gallery') }}">
         <!-- Dark overlay (clickable to close) -->
         <div class="absolute inset-0 bg-black/90" data-gal-close></div>
 
         <!-- Close button (top-right) -->
-        <button type="button" data-gal-close class="absolute top-3 right-3 z-20 text-white/70 hover:text-white text-3xl leading-none w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition">&times;</button>
+        <button type="button" data-gal-close aria-label="{{ __('lightbox.close') }}" title="{{ __('lightbox.close') }}" class="absolute top-3 right-3 z-30 text-white/70 hover:text-white text-3xl leading-none w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition">&times;</button>
 
         <!-- ===== LEFT SIDEBAR (categories) ===== -->
         <aside id="gal-sidebar" class="relative z-10 w-56 lg:w-64 bg-black/60 backdrop-blur-md border-r border-white/10 flex-shrink-0 flex flex-col overflow-y-auto">
             <div class="p-4 border-b border-white/10">
-                <h3 class="text-white/90 text-xs font-semibold uppercase tracking-wider">Categories</h3>
+                <h3 class="text-white/90 text-xs font-semibold uppercase tracking-wider">{{ __('lightbox.categories') }}</h3>
             </div>
             <nav id="gal-cat-list" class="flex-1 p-3 space-y-1">
                 <!-- Populated by JavaScript -->
@@ -436,14 +436,48 @@
         </aside>
 
         <!-- ===== RIGHT CONTENT (image viewer) ===== -->
-        <div class="relative z-10 flex-1 flex items-center justify-center">
-            <button type="button" id="gal-prev" class="absolute left-3 md:left-6 text-white/70 hover:text-white text-5xl z-10 transition">&lsaquo;</button>
-            <img id="gal-lightbox-img" src="" alt="" class="relative max-h-[85vh] max-w-[calc(100vw-18rem)] lg:max-w-[calc(100vw-20rem)] rounded-xl shadow-2xl object-contain select-none">
-            <button type="button" id="gal-next" class="absolute right-3 md:right-6 text-white/70 hover:text-white text-5xl z-10 transition">&rsaquo;</button>
+        <div class="relative z-10 flex-1 flex flex-col min-w-0">
+            <!-- Image stage (arrows + centered image, overflow clipped so transforms stay tidy) -->
+            <div class="relative flex-1 flex items-center justify-center overflow-hidden px-2">
+                <button type="button" id="gal-prev" aria-label="{{ __('lightbox.prev') }}" title="{{ __('lightbox.prev') }}"
+                        class="absolute left-3 md:left-6 z-10 w-11 h-11 flex items-center justify-center rounded-full bg-black/40 text-white/80 hover:text-white hover:bg-black/60 transition">
+                    <i class="fa-solid fa-chevron-left text-xl" aria-hidden="true"></i>
+                </button>
+                <img id="gal-lightbox-img" src="" alt=""
+                     class="relative max-h-[72vh] max-w-full rounded-xl shadow-2xl object-contain select-none transition-transform duration-200 will-change-transform"
+                     style="transform: scale(1) rotate(0deg);">
+                <button type="button" id="gal-next" aria-label="{{ __('lightbox.next') }}" title="{{ __('lightbox.next') }}"
+                        class="absolute right-3 md:right-6 z-10 w-11 h-11 flex items-center justify-center rounded-full bg-black/40 text-white/80 hover:text-white hover:bg-black/60 transition">
+                    <i class="fa-solid fa-chevron-right text-xl" aria-hidden="true"></i>
+                </button>
+            </div>
 
-            <!-- Photo counter (bottom-center) -->
-            <div id="gal-counter" class="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/60 text-sm font-medium bg-black/40 px-3 py-1 rounded-full">
-                1 / 1
+            <!-- Controls + counter + thumbnail strip (below the photo) -->
+            <div class="relative z-10 flex flex-col items-center gap-3 py-3 px-4 bg-gradient-to-t from-black/60 to-transparent">
+                <div class="flex items-center gap-2">
+                    <button type="button" id="gal-zoom-in" aria-label="{{ __('lightbox.zoom_in') }}" title="{{ __('lightbox.zoom_in') }}"
+                            class="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white/80 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition">
+                        <i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" id="gal-zoom-out" aria-label="{{ __('lightbox.zoom_out') }}" title="{{ __('lightbox.zoom_out') }}"
+                            class="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white/80 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition">
+                        <i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" id="gal-rotate-left" aria-label="{{ __('lightbox.rotate_left') }}" title="{{ __('lightbox.rotate_left') }}"
+                            class="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white/80 hover:text-white hover:bg-white/20 transition">
+                        <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" id="gal-rotate-right" aria-label="{{ __('lightbox.rotate_right') }}" title="{{ __('lightbox.rotate_right') }}"
+                            class="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white/80 hover:text-white hover:bg-white/20 transition">
+                        <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+                    </button>
+                    <span id="gal-counter" class="ml-2 text-white/70 text-sm font-medium bg-black/40 px-3 py-1 rounded-full">1 / 1</span>
+                </div>
+
+                <!-- Thumbnail strip -->
+                <div id="gal-thumbs" class="flex gap-2 overflow-x-auto max-w-full py-1 scrollbar-hide" aria-label="{{ __('lightbox.thumbnails') }}">
+                    <!-- Populated by JavaScript -->
+                </div>
             </div>
         </div>
 
@@ -610,11 +644,34 @@
         var mCatEl = document.getElementById('gal-mobile-cat-list');
         var sidebarEl = document.getElementById('gal-sidebar');
         var mbarEl    = document.getElementById('gal-mobile-bar');
+        var thumbsEl  = document.getElementById('gal-thumbs');
+        var zoomInBtn  = document.getElementById('gal-zoom-in');
+        var zoomOutBtn = document.getElementById('gal-zoom-out');
+        var rotLeftBtn  = document.getElementById('gal-rotate-left');
+        var rotRightBtn = document.getElementById('gal-rotate-right');
 
         // State: active category filter ('*' = all photos), current index, current filtered list
         var activeCat = '*';
         var filtered  = photoGallery;   // currently visible photos
         var lbIdx     = 0;              // index within `filtered`
+
+        // Zoom / rotate transform state for the current image
+        var ZOOM_MIN = 0.5, ZOOM_MAX = 4, ZOOM_STEP = 0.25;
+        var zoom = 1, rotation = 0;
+
+        // Apply the combined scale + rotate transform to the image
+        function applyTransform() {
+            lbImg.style.transform = 'scale(' + zoom + ') rotate(' + rotation + 'deg)';
+            if (zoomInBtn)  zoomInBtn.disabled  = zoom >= ZOOM_MAX;
+            if (zoomOutBtn) zoomOutBtn.disabled = zoom <= ZOOM_MIN;
+        }
+
+        // Reset zoom + rotation (called on navigate / open / category change)
+        function resetTransform() {
+            zoom = 1;
+            rotation = 0;
+            applyTransform();
+        }
 
         // Map a GLOBAL index (position in allPhotos / data-photo attribute)
         // to the filtered list — when "All Photos" is active they are identical,
@@ -681,17 +738,39 @@
             mCatEl.innerHTML = mhtml;
         }
 
+        // Render the thumbnail strip for the current filtered list.
+        function renderThumbs() {
+            if (!thumbsEl) return;
+            var html = '';
+            filtered.forEach(function (p, i) {
+                var isActive = (i === lbIdx);
+                html += '<button type="button" class="gal-thumb flex-shrink-0 w-16 h-12 rounded-md overflow-hidden border-2 transition ' +
+                        (isActive ? 'border-white opacity-100' : 'border-transparent opacity-60 hover:opacity-100') + '" data-idx="' + i + '">' +
+                        '<img src="' + esc(p.url) + '" alt="' + esc(p.name || '') + '" class="w-full h-full object-cover" loading="lazy">' +
+                        '</button>';
+            });
+            thumbsEl.innerHTML = html;
+            // Scroll the active thumbnail into view
+            var active = thumbsEl.querySelector('.gal-thumb[data-idx="' + lbIdx + '"]');
+            if (active && active.scrollIntoView) {
+                active.scrollIntoView({ block: 'nearest', inline: 'center' });
+            }
+        }
+
         // Show the photo at `idx` (index within `filtered`)
         function showPhoto(idx) {
             if (!filtered.length) {
                 lbImg.src = '';
                 lbCnt.textContent = '0 / 0';
+                if (thumbsEl) thumbsEl.innerHTML = '';
                 return;
             }
             lbIdx = ((idx % filtered.length) + filtered.length) % filtered.length;
             lbImg.src = filtered[lbIdx].url;
             lbImg.alt = filtered[lbIdx].name || '';
             lbCnt.textContent = (lbIdx + 1) + ' / ' + filtered.length;
+            resetTransform();   // reset zoom/rotation whenever a new image is shown
+            renderThumbs();
         }
 
         function moveLb(d) {
@@ -737,6 +816,32 @@
         // Navigation buttons
         lbPrev.addEventListener('click', function () { moveLb(-1); });
         lbNext.addEventListener('click', function () { moveLb(1); });
+
+        // Thumbnail strip click -> jump to image
+        if (thumbsEl) {
+            thumbsEl.addEventListener('click', function (e) {
+                var btn = e.target.closest('.gal-thumb');
+                if (btn) showPhoto(parseInt(btn.getAttribute('data-idx'), 10));
+            });
+        }
+
+        // Zoom + rotate controls
+        if (zoomInBtn) zoomInBtn.addEventListener('click', function () {
+            zoom = Math.min(ZOOM_MAX, Math.round((zoom + ZOOM_STEP) * 100) / 100);
+            applyTransform();
+        });
+        if (zoomOutBtn) zoomOutBtn.addEventListener('click', function () {
+            zoom = Math.max(ZOOM_MIN, Math.round((zoom - ZOOM_STEP) * 100) / 100);
+            applyTransform();
+        });
+        if (rotLeftBtn) rotLeftBtn.addEventListener('click', function () {
+            rotation -= 90;
+            applyTransform();
+        });
+        if (rotRightBtn) rotRightBtn.addEventListener('click', function () {
+            rotation += 90;
+            applyTransform();
+        });
 
         // Close on overlay click or close button
         document.querySelectorAll('[data-gal-close]').forEach(function (el) {
