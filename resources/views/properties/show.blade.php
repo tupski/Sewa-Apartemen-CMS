@@ -5,7 +5,6 @@
     $secondaryColor = \App\Services\SettingsService::get('secondary_color', '#10b981');
     $whatsapp = \App\Services\SettingsService::get('whatsapp_default', '');
     $contactPhone = \App\Services\SettingsService::get('contact_phone', '');
-    $mapsKey = \App\Services\SettingsService::get('google_maps_api_key', '');
     $displayMode = \App\Services\SettingsService::get('booking_display_mode', 'both');
     $whatsappNumber = \App\Services\SettingsService::get('whatsapp_number', '') ?: \App\Services\SettingsService::get('whatsapp_default', '');
     $photos = $property->photos;
@@ -20,6 +19,16 @@
     $nearbyGroups = $property->nearbyByCategory();
     $hasMap = $property->latitude && $property->longitude;
 @endphp
+
+@if($hasMap ?? false)
+@push('head')
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+    #property-detail-map { z-index: 1; }
+    .leaflet-container { border-radius: 0; }
+</style>
+@endpush
+@endif
 
 @section('content')
     <!-- ============ GALLERY HEADER (Traveloka style) ============ -->
@@ -220,15 +229,7 @@
 
                             @if ($hasMap)
                                 <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-6">
-                                    @if ($mapsKey)
-                                        <iframe
-                                            src="https://www.google.com/maps/embed/v1/place?key={{ $mapsKey }}&q={{ $property->latitude }},{{ $property->longitude }}&zoom=15"
-                                            class="w-full h-[300px]" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
-                                    @else
-                                        <iframe
-                                            src="https://maps.google.com/maps?q={{ $property->latitude }},{{ $property->longitude }}&z=15&output=embed"
-                                            class="w-full h-[300px]" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
-                                    @endif
+                                    <div id="property-detail-map" style="height:300px;width:100%;"></div>
                                 </div>
                             @endif
 
@@ -509,6 +510,23 @@
 @endsection
 
 @push('scripts')
+@if($hasMap)
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+    var mapLat = {{ $property->latitude }};
+    var mapLng = {{ $property->longitude }};
+    var map = L.map('property-detail-map', { scrollWheelZoom: false }).setView([mapLat, mapLng], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+    }).addTo(map);
+    L.marker([mapLat, mapLng]).addTo(map)
+        .bindPopup('<strong>{{ addslashes($property->name) }}</strong>{{ $property->address ? "<br>" . addslashes($property->address) : "" }}')
+        .openPopup();
+})();
+</script>
+@endif
 <script>
 (function () {
     var allPhotos = @json($allPhotoUrls);
