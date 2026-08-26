@@ -36,6 +36,13 @@
                 {{-- Session Status --}}
                 <x-auth-session-status class="mb-4" :status="session('status')" />
 
+                {{-- CAPTCHA / general validation errors (e.g. failed captcha) --}}
+                @if ($errors->has('captcha'))
+                    <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                        {{ $errors->first('captcha') }}
+                    </div>
+                @endif
+
                 <form method="POST" action="{{ route('login') }}" novalidate>
                     @csrf
 
@@ -56,17 +63,16 @@
                     {{-- Password --}}
                     <div class="mt-5">
                         <x-input-label for="password" :value="__('Password')" />
-                        <x-text-input id="password"
-                                      class="block mt-1 w-full"
-                                      type="password"
-                                      name="password"
-                                      required
-                                      autocomplete="current-password" />
+                        <x-password-input id="password"
+                                          class="mt-1"
+                                          name="password"
+                                          autocomplete="current-password"
+                                          required />
                         <x-input-error :messages="$errors->get('password')" class="mt-2" />
                     </div>
 
-                    {{-- Remember Me & Forgot Password --}}
-                    <div class="flex items-center justify-between mt-5">
+                    {{-- Remember Me --}}
+                    <div class="flex items-center mt-5">
                         <label for="remember_me" class="inline-flex items-center cursor-pointer">
                             <input id="remember_me"
                                    type="checkbox"
@@ -75,15 +81,10 @@
                                    name="remember">
                             <span class="ms-2 text-sm text-gray-600">{{ __('Remember me') }}</span>
                         </label>
-
-                        @if (Route::has('password.request'))
-                            <a href="{{ route('password.request') }}"
-                               class="text-sm font-medium hover:underline transition-colors"
-                               style="color: {{ $primaryColor }}">
-                                {{ __('Forgot password?') }}
-                            </a>
-                        @endif
                     </div>
+
+                    {{-- CAPTCHA (rendered only when enabled & configured) --}}
+                    <x-captcha action="login" />
 
                     {{-- Submit --}}
                     <div class="mt-6">

@@ -17,7 +17,7 @@ Route::middleware('guest')->group(function () {
 
     // VERIFY-009: rate-limit account enumeration / brute force
     Route::post('register', [RegisteredUserController::class, 'store'])
-        ->middleware('throttle:5,1');
+        ->middleware(['throttle:5,1', 'captcha']);
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
@@ -36,6 +36,7 @@ Route::middleware('guest')->group(function () {
         ->name('password.reset');
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
+        ->middleware(['throttle:5,1', 'captcha'])
         ->name('password.store');
 });
 

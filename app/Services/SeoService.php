@@ -99,6 +99,44 @@ class SeoService
     }
 
     /**
+     * Resolve any image reference (Media URL, storage-relative path, or absolute
+     * URL) into an ABSOLUTE URL suitable for Open Graph / Twitter previews.
+     *
+     * When no image is provided, falls back to a sitewide OG image
+     * (`site_og_image` setting) and then to the site logo, so shared links
+     * always show a preview image.
+     */
+    public static function absoluteImageUrl(?string $image): string
+    {
+        $image = trim((string) $image);
+
+        if ($image === '') {
+            // Sitewide fallback: dedicated OG image, then the site logo.
+            $fallback = trim((string) SettingsService::get('site_og_image', ''))
+                ?: trim((string) SettingsService::get('site_logo', ''));
+
+            if ($fallback === '') {
+                return '';
+            }
+
+            $image = $fallback;
+        }
+
+        // Already absolute.
+        if (Str::startsWith($image, ['http://', 'https://', '//'])) {
+            return $image;
+        }
+
+        // Root-relative URL (e.g. Storage::url() output like "/storage/...").
+        if (Str::startsWith($image, '/')) {
+            return url($image);
+        }
+
+        // Bare storage-relative path (e.g. a setting storing "logos/logo.png").
+        return url('storage/' . ltrim($image, '/'));
+    }
+
+    /**
      * Render Open Graph tags as HTML string.
      */
     public static function openGraphTags(array $data): string
@@ -108,10 +146,15 @@ class SeoService
             'title' => SettingsService::get('site_name', config('app.name')),
             'description' => '',
             'image' => '',
-            'url' => url()->current(),
+            'url' => $data['canonical'] ?? url()->current(),
             'type' => 'website',
+            'site_name' => SettingsService::get('site_name', config('app.name')),
+            'price_amount' => null,
+            'price_currency' => null,
         ];
         $data = array_merge($defaults, $data);
+
+        $image = static::absoluteImageUrl($data['image']);
 
         if ($data['title']) {
             $tags .= '<meta property="og:title" content="' . e($data['title']) . '">' . "\n";
@@ -119,11 +162,22 @@ class SeoService
         if ($data['description']) {
             $tags .= '<meta property="og:description" content="' . e($data['description']) . '">' . "\n";
         }
-        if ($data['image']) {
-            $tags .= '<meta property="og:image" content="' . e($data['image']) . '">' . "\n";
+        if ($image) {
+            $tags .= '<meta property="og:image" content="' . e($image) . '">' . "\n";
+            $tags .= '<meta property="og:image:alt" content="' . e($data['title']) . '">' . "\n";
         }
         $tags .= '<meta property="og:url" content="' . e($data['url']) . '">' . "\n";
         $tags .= '<meta property="og:type" content="' . e($data['type']) . '">' . "\n";
+        if ($data['site_name']) {
+            $tags .= '<meta property="og:site_name" content="' . e($data['site_name']) . '">' . "\n";
+        }
+        $tags .= '<meta property="og:locale" content="' . e(str_replace('-', '_', app()->getLocale())) . '">' . "\n";
+
+        // Product price tags (only meaningful when type=product and a price is set).
+        if ($data['type'] === 'product' && $data['price_amount'] !== null && $data['price_amount'] !== '') {
+            $tags .= '<meta property="product:price:amount" content="' . e((string) $data['price_amount']) . '">' . "\n";
+            $tags .= '<meta property="product:price:currency" content="' . e((string) ($data['price_currency'] ?: 'IDR')) . '">' . "\n";
+        }
 
         return $tags;
     }
@@ -141,15 +195,17 @@ class SeoService
         ];
         $data = array_merge($defaults, $data);
 
-        $tags .= '<meta name="twitter:card" content="summary_large_image">' . "\n";
+        $image = static::absoluteImageUrl($data['image']);
+
+        $tags .= '<meta name="twitter:card" content="' . ($image ? 'summary_large_image' : 'summary') . '">' . "\n";
         if ($data['title']) {
             $tags .= '<meta name="twitter:title" content="' . e($data['title']) . '">' . "\n";
         }
         if ($data['description']) {
             $tags .= '<meta name="twitter:description" content="' . e($data['description']) . '">' . "\n";
         }
-        if ($data['image']) {
-            $tags .= '<meta name="twitter:image" content="' . e($data['image']) . '">' . "\n";
+        if ($image) {
+            $tags .= '<meta name="twitter:image" content="' . e($image) . '">' . "\n";
         }
 
         return $tags;
@@ -204,6 +260,9 @@ class SeoService
             'image' => $image,
             'robots' => 'index, follow',
             'type' => $type,
+            'site_name' => SettingsService::get('site_name', config('app.name')),
+            'price_amount' => null,
+            'price_currency' => null,
             'jsonld' => [
                 SchemaService::organization(),
                 SchemaService::website(),
@@ -229,13 +288,45 @@ class SeoService
         $og = $seo?->open_graph ?? [];
         $tw = $seo?->twitter ?? [];
 
+        // Property-specific enrichment: main photo, price into description, product OG.
+        $image = $og['image'] ?? $tw['image'] ?? '';
+        $type = $og['type'] ?? 'website';
+        $priceAmount = null;
+        $priceCurrency = null;
+
+        if ($model instanceof \App\Models\Property) {
+            // Prefer featured image, then first gallery photo, for a rich preview.
+            if ($image === '') {
+                $image = $model->featuredImage?->url
+                    ?: optional($model->photos->first())->media?->url
+                    ?: '';
+            }
+
+            $lowest = $model->lowestPrice();
+            if ($lowest !== null && $lowest > 0) {
+                $priceAmount = (int) $lowest;
+                $priceCurrency = 'IDR';
+                $type = $og['type'] ?? 'product';
+
+                // Fold the price into the description ("Mulai dari Rp X").
+                $priceLabel = 'Mulai dari Rp ' . number_format($lowest, 0, ',', '.');
+                $baseDesc = trim(strip_tags((string) $description));
+                $description = $baseDesc !== ''
+                    ? $priceLabel . '. ' . $baseDesc
+                    : $priceLabel . ' — ' . $title;
+            }
+        }
+
         return [
             'title' => static::title($title),
-            'description' => static::description($description),
+            'description' => static::description(strip_tags((string) $description)),
             'canonical' => $canonical,
-            'image' => $og['image'] ?? $tw['image'] ?? '',
+            'image' => $image,
             'robots' => $robots,
-            'type' => $og['type'] ?? 'website',
+            'type' => $type,
+            'site_name' => SettingsService::get('site_name', config('app.name')),
+            'price_amount' => $priceAmount,
+            'price_currency' => $priceCurrency,
             'jsonld' => static::buildJsonLdForModel($model),
         ];
     }
@@ -244,11 +335,14 @@ class SeoService
     {
         return [
             'title' => static::title($data['title'] ?? ''),
-            'description' => static::description($data['description'] ?? ''),
+            'description' => static::description(strip_tags((string) ($data['description'] ?? ''))),
             'canonical' => $data['canonical'] ?? url()->current(),
             'image' => $data['image'] ?? '',
             'robots' => $data['robots'] ?? 'index, follow',
             'type' => $data['type'] ?? 'website',
+            'site_name' => $data['site_name'] ?? SettingsService::get('site_name', config('app.name')),
+            'price_amount' => $data['price_amount'] ?? null,
+            'price_currency' => $data['price_currency'] ?? null,
             'jsonld' => $data['jsonld'] ?? [],
         ];
     }
@@ -262,6 +356,9 @@ class SeoService
             'image' => '',
             'robots' => 'index, follow',
             'type' => 'website',
+            'site_name' => SettingsService::get('site_name', config('app.name')),
+            'price_amount' => null,
+            'price_currency' => null,
             'jsonld' => [
                 SchemaService::organization(),
                 SchemaService::website(),

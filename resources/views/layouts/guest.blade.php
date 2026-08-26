@@ -31,6 +31,7 @@
             :root {
                 --guest-primary: {{ $guestPrimary }};
             }
+            [x-cloak] { display: none !important; }
         </style>
 
         @stack('head')

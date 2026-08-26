@@ -151,6 +151,11 @@
                             @error('message') <p class="text-red-500 text-sm mt-1">{{ $message }}</p> @enderror
                         </div>
 
+                        {{-- CAPTCHA (rendered only when enabled & configured) --}}
+                        <x-captcha action="contact" />
+
+                        @error('captcha') <p class="text-red-500 text-sm">{{ $message }}</p> @enderror
+
                         <button type="submit"
                                 class="inline-flex items-center justify-center px-6 py-2.5 rounded-full text-sm font-semibold text-white transition hover:opacity-90"
                                 style="background-color: {{ $primaryColor }}">

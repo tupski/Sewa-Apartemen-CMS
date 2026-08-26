@@ -247,8 +247,54 @@
 
                     <!-- ===== What's Around ===== -->
                     @if ($hasMap || $nearbyGroups)
+                        @php
+                            // Directions destination: prefer precise lat/lng, else the
+                            // full postal address, so the universal Google Maps
+                            // "dir/?api=1" URL resolves correctly on app + web.
+                            $dirDestination = $hasMap
+                                ? ($property->latitude . ',' . $property->longitude)
+                                : trim(implode(', ', array_filter([
+                                    $property->address,
+                                    $property->city,
+                                    $property->province,
+                                ])));
+                            $directionsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($dirDestination);
+                            // Engaging Bahasa Indonesia caption for sharing directions.
+                            $dirPrice = $property->lowestPrice()
+                                ? 'mulai dari Rp ' . number_format($property->lowestPrice(), 0, ',', '.')
+                                : 'lokasi strategis & nyaman';
+                            $dirCaption = '✨ Cek ' . $property->name . ' — ' . $dirPrice . '! '
+                                . 'Lihat detail & petunjuk arah di sini: ' . $directionsUrl;
+                        @endphp
                         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 md:p-8">
                             <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">What's Around {{ $property->name }}</h2>
+
+                            @if ($dirDestination)
+                                {{-- Directions actions: open Google Maps (app on mobile / web on desktop)
+                                     + share the directions link via the global share modal. --}}
+                                <div class="flex flex-col sm:flex-row gap-3 mb-6">
+                                    <a href="{{ $directionsUrl }}" target="_blank" rel="noopener"
+                                       class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold text-white hover:opacity-90 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                                       style="background-color: {{ $primaryColor }}"
+                                       aria-label="{{ __('directions.button') }}">
+                                        <i class="fa-solid fa-diamond-turn-right" aria-hidden="true"></i>
+                                        {{ __('directions.button') }}
+                                    </a>
+                                    <button type="button"
+                                            x-data
+                                            x-on:click="$dispatch('open-share-modal', {
+                                                url: @js($directionsUrl),
+                                                title: @js($property->name),
+                                                text: @js($dirCaption),
+                                                heading: @js(__('directions.share_title'))
+                                            })"
+                                            class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                            aria-label="{{ __('directions.share') }}">
+                                        <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>
+                                        {{ __('directions.share') }}
+                                    </button>
+                                </div>
+                            @endif
 
                             @if ($hasMap)
                                 <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-6">

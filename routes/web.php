@@ -48,7 +48,7 @@ Route::get('/robots.txt', [SeoController::class, 'robots'])->name('robots');
 
 // Public Contact page + form submission
 Route::get('/kontak', [\App\Http\Controllers\ContactController::class, 'index'])->name('contact');
-Route::post('/kontak', [\App\Http\Controllers\ContactController::class, 'store'])->name('contact.store')->middleware('throttle:5,1');
+Route::post('/kontak', [\App\Http\Controllers\ContactController::class, 'store'])->name('contact.store')->middleware(['throttle:5,1', 'captcha']);
 
 // Public Promotions page
 Route::get('/promosi', [\App\Http\Controllers\PromotionController::class, 'index'])->name('promotions');

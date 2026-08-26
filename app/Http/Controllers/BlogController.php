@@ -51,12 +51,18 @@ class BlogController extends Controller
 
         // Ponytail: bila post punya seo metadata kustom, dipakai langsung;
         // fallback ke metaTags() dari title/excerpt bila kosong.
+        // Sertakan featured image (absolut via SeoService) agar preview sosial kaya.
+        $postImage = $post->featured_image
+            ? \Illuminate\Support\Facades\Storage::disk('public')->url($post->featured_image)
+            : '';
         $seo = $post->seo
             ? \App\Services\SeoService::metaTagsArray($post)
             : \App\Services\SeoService::metaTags(
                 $post->title,
                 Str::limit(strip_tags($post->excerpt ?? $post->content), 160),
                 url('/blog/' . $post->slug),
+                $postImage,
+                'article',
             );
 
         return view('blog.show', array_merge(compact('post', 'relatedPosts', 'seo'), $sidebarData));

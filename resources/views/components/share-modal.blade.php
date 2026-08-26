@@ -2,18 +2,25 @@
     Global Share Modal (Alpine.js)
 
     A single, app-wide share modal. Any "Share" trigger anywhere on the page
-    dispatches a `open-share-modal` window event carrying the target URL + title:
+    dispatches a `open-share-modal` window event carrying the target URL + title
+    and (optionally) an engaging caption:
 
         window.dispatchEvent(new CustomEvent('open-share-modal', {
-            detail: { url: 'https://…', title: 'Property name' }
+            detail: {
+                url: 'https://…',      // link to share (page URL or maps directions URL)
+                title: 'Property name',
+                text: 'Engaging caption …'   // optional; falls back to title
+            }
         }))
 
     This keeps state global (one modal instance) while still letting each card /
     button share its own target — the payload is passed on open, so cards in a
     loop don't each need their own Alpine component.
 
-    Share targets: WhatsApp, SMS, Telegram, X (Twitter), Facebook,
-    Instagram (copy-link hint), and Copy Link (with "Copied!" state).
+    Share targets: WhatsApp, Telegram, Facebook Messenger, Instagram (copy-link
+    hint), Email, SMS, X (Twitter), Facebook, and Copy Link (with "Copied!"
+    state). The Web Share API is offered as a progressive enhancement when the
+    browser supports it (typically mobile).
 --}}
 <div
     x-data="shareModal()"
@@ -54,9 +61,7 @@
     >
         {{-- Header --}}
         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-            <h3 id="share-modal-title" class="text-base font-bold text-gray-900 dark:text-white">
-                {{ __('share.title') }}
-            </h3>
+            <h3 id="share-modal-title" class="text-base font-bold text-gray-900 dark:text-white" x-text="heading || @js(__('share.title'))"></h3>
             <button
                 type="button"
                 x-on:click="close()"
@@ -69,6 +74,15 @@
 
         {{-- Share targets --}}
         <div class="p-5">
+            {{-- Native share (Web Share API) — progressive enhancement, mostly mobile --}}
+            <button type="button" x-show="canNativeShare" x-cloak x-on:click="nativeShare()"
+                    class="w-full mb-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition hover:opacity-90"
+                    style="background-color: {{ \App\Services\SettingsService::get('primary_color', '#3b82f6') }}"
+                    aria-label="{{ __('share.native') }}">
+                <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>
+                {{ __('share.native') }}
+            </button>
+
             <div class="grid grid-cols-4 gap-3">
                 {{-- WhatsApp --}}
                 <a :href="waUrl" target="_blank" rel="noopener"
@@ -80,16 +94,6 @@
                     <span class="text-[11px] text-gray-600 dark:text-gray-400 text-center leading-tight">{{ __('share.whatsapp') }}</span>
                 </a>
 
-                {{-- SMS --}}
-                <a :href="smsUrl"
-                   class="flex flex-col items-center gap-2 group focus:outline-none"
-                   aria-label="{{ __('share.sms') }}">
-                    <span class="w-12 h-12 flex items-center justify-center rounded-full bg-green-600 text-white group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-comment-sms text-xl" aria-hidden="true"></i>
-                    </span>
-                    <span class="text-[11px] text-gray-600 dark:text-gray-400 text-center leading-tight">{{ __('share.sms') }}</span>
-                </a>
-
                 {{-- Telegram --}}
                 <a :href="telegramUrl" target="_blank" rel="noopener"
                    class="flex flex-col items-center gap-2 group focus:outline-none"
@@ -98,6 +102,48 @@
                         <i class="fa-brands fa-telegram text-xl" aria-hidden="true"></i>
                     </span>
                     <span class="text-[11px] text-gray-600 dark:text-gray-400 text-center leading-tight">{{ __('share.telegram') }}</span>
+                </a>
+
+                {{-- Facebook Messenger --}}
+                <button type="button" x-on:click="shareMessenger()"
+                        class="flex flex-col items-center gap-2 group focus:outline-none"
+                        aria-label="{{ __('share.messenger') }}">
+                    <span class="w-12 h-12 flex items-center justify-center rounded-full text-white group-hover:scale-110 transition-transform"
+                          style="background: linear-gradient(45deg, #0695FF 0%, #A334FA 100%);">
+                        <i class="fa-brands fa-facebook-messenger text-xl" aria-hidden="true"></i>
+                    </span>
+                    <span class="text-[11px] text-gray-600 dark:text-gray-400 text-center leading-tight">{{ __('share.messenger') }}</span>
+                </button>
+
+                {{-- Instagram (copy link hint) --}}
+                <button type="button" x-on:click="copyForInstagram()"
+                        class="flex flex-col items-center gap-2 group focus:outline-none"
+                        aria-label="{{ __('share.instagram') }}">
+                    <span class="w-12 h-12 flex items-center justify-center rounded-full text-white group-hover:scale-110 transition-transform"
+                          style="background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);">
+                        <i class="fa-brands fa-instagram text-xl" aria-hidden="true"></i>
+                    </span>
+                    <span class="text-[11px] text-gray-600 dark:text-gray-400 text-center leading-tight">{{ __('share.instagram') }}</span>
+                </button>
+
+                {{-- Email --}}
+                <a :href="emailUrl"
+                   class="flex flex-col items-center gap-2 group focus:outline-none"
+                   aria-label="{{ __('share.email') }}">
+                    <span class="w-12 h-12 flex items-center justify-center rounded-full bg-gray-500 dark:bg-gray-600 text-white group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-envelope text-xl" aria-hidden="true"></i>
+                    </span>
+                    <span class="text-[11px] text-gray-600 dark:text-gray-400 text-center leading-tight">{{ __('share.email') }}</span>
+                </a>
+
+                {{-- SMS --}}
+                <a :href="smsUrl"
+                   class="flex flex-col items-center gap-2 group focus:outline-none"
+                   aria-label="{{ __('share.sms') }}">
+                    <span class="w-12 h-12 flex items-center justify-center rounded-full bg-green-600 text-white group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-comment-sms text-xl" aria-hidden="true"></i>
+                    </span>
+                    <span class="text-[11px] text-gray-600 dark:text-gray-400 text-center leading-tight">{{ __('share.sms') }}</span>
                 </a>
 
                 {{-- X (Twitter) --}}
@@ -119,17 +165,6 @@
                     </span>
                     <span class="text-[11px] text-gray-600 dark:text-gray-400 text-center leading-tight">{{ __('share.facebook') }}</span>
                 </a>
-
-                {{-- Instagram (copy link hint) --}}
-                <button type="button" x-on:click="copyForInstagram()"
-                        class="flex flex-col items-center gap-2 group focus:outline-none"
-                        aria-label="{{ __('share.instagram') }}">
-                    <span class="w-12 h-12 flex items-center justify-center rounded-full text-white group-hover:scale-110 transition-transform"
-                          style="background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);">
-                        <i class="fa-brands fa-instagram text-xl" aria-hidden="true"></i>
-                    </span>
-                    <span class="text-[11px] text-gray-600 dark:text-gray-400 text-center leading-tight">{{ __('share.instagram') }}</span>
-                </button>
 
                 {{-- Copy Link --}}
                 <button type="button" x-on:click="copyLink()"
@@ -172,15 +207,21 @@
                 isOpen: false,
                 url: '',
                 title: '',
+                caption: '',       // engaging share caption (falls back to title)
+                heading: '',       // modal heading (falls back to share.title)
                 copied: false,
                 igHint: false,
+                canNativeShare: false,
                 _copyTimer: null,
 
                 open(detail) {
                     this.url = (detail && detail.url) || window.location.href;
                     this.title = (detail && detail.title) || document.title;
+                    this.caption = (detail && detail.text) || this.title;
+                    this.heading = (detail && detail.heading) || '';
                     this.copied = false;
                     this.igHint = false;
+                    this.canNativeShare = !!(navigator.share);
                     this.isOpen = true;
                     document.body.classList.add('overflow-y-hidden');
                 },
@@ -194,13 +235,42 @@
                 // Encoded getters for each share target
                 get eUrl() { return encodeURIComponent(this.url); },
                 get eTitle() { return encodeURIComponent(this.title); },
-                get eText() { return encodeURIComponent(this.title + ' ' + this.url); },
+                get eCaption() { return encodeURIComponent(this.caption); },
+                // Caption + URL together (used where a single text field carries both)
+                get eText() { return encodeURIComponent(this.caption + ' ' + this.url); },
 
                 get waUrl() { return 'https://wa.me/?text=' + this.eText; },
-                get smsUrl() { return 'sms:?body=' + this.eText; },
-                get telegramUrl() { return 'https://t.me/share/url?url=' + this.eUrl + '&text=' + this.eTitle; },
-                get xUrl() { return 'https://twitter.com/intent/tweet?url=' + this.eUrl + '&text=' + this.eTitle; },
+                get smsUrl() { return 'sms:?&body=' + this.eText; },
+                get telegramUrl() { return 'https://t.me/share/url?url=' + this.eUrl + '&text=' + this.eCaption; },
+                get xUrl() { return 'https://twitter.com/intent/tweet?url=' + this.eUrl + '&text=' + this.eCaption; },
                 get facebookUrl() { return 'https://www.facebook.com/sharer/sharer.php?u=' + this.eUrl; },
+                get emailUrl() {
+                    return 'mailto:?subject=' + this.eTitle + '&body=' + encodeURIComponent(this.caption + '\n\n' + this.url);
+                },
+
+                nativeShare() {
+                    if (!navigator.share) return;
+                    navigator.share({
+                        title: this.title,
+                        text: this.caption,
+                        url: this.url,
+                    }).catch(() => {});
+                },
+
+                shareMessenger() {
+                    // Try the Messenger app deep link first (mobile); fall back to the
+                    // web sharer, which works everywhere without an app_id.
+                    var deep = 'fb-messenger://share?link=' + this.eUrl;
+                    var web  = 'https://www.facebook.com/sharer/sharer.php?u=' + this.eUrl;
+                    var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                    if (isMobile) {
+                        window.location.href = deep;
+                        // Fallback if the app isn't installed.
+                        setTimeout(() => { window.open(web, '_blank', 'noopener'); }, 800);
+                    } else {
+                        window.open(web, '_blank', 'noopener');
+                    }
+                },
 
                 _flagCopied() {
                     this.copied = true;
@@ -209,14 +279,16 @@
                 },
 
                 copyToClipboard() {
+                    // Copy the caption + URL so Instagram / paste targets get the full message.
+                    var payload = this.caption ? (this.caption + ' ' + this.url) : this.url;
                     if (navigator.clipboard && navigator.clipboard.writeText) {
-                        return navigator.clipboard.writeText(this.url);
+                        return navigator.clipboard.writeText(payload);
                     }
                     // Fallback for non-secure contexts / older browsers
                     return new Promise((resolve, reject) => {
                         try {
                             var ta = document.createElement('textarea');
-                            ta.value = this.url;
+                            ta.value = payload;
                             ta.style.position = 'fixed';
                             ta.style.opacity = '0';
                             document.body.appendChild(ta);
