@@ -65,6 +65,16 @@ $admin = $this->makeAdmin(User::factory()->create());
     public function test_blog_sidebar_is_cached(): void
     {
         $this->get(route('blog.index'))->assertStatus(200);
-        $this->assertTrue(Cache::has('blog_sidebar'));
+
+        // BUG-018: sidebar data is cached under the 'blog' cache tag when the
+        // driver supports tagging, otherwise under a plain key. Mirror the
+        // controller's fallback logic when asserting the cache was populated.
+        try {
+            $cached = Cache::tags(['blog'])->has('blog_sidebar');
+        } catch (\BadMethodCallException $e) {
+            $cached = Cache::has('blog_sidebar');
+        }
+
+        $this->assertTrue($cached);
     }
 }

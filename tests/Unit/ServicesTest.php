@@ -95,13 +95,17 @@ class ServicesTest extends TestCase
 
     // ==================== SeoService ====================
 
-    public function test_seo_title_truncates_to_60_chars(): void
+    public function test_seo_title_uses_standardized_format(): void
     {
+        // New standardized format: "{Page Title} - {Site Name}" (no 60-char truncation).
+        SettingsService::set('site_name', 'MySite');
+
         $title = 'A Very Long Title That Exceeds Sixty Characters By A Large Margin Indeed For Testing';
 
         $result = SeoService::title($title);
 
-        $this->assertLessThanOrEqual(60, mb_strlen($result));
+        $this->assertStringStartsWith('A Very Long Title', $result);
+        $this->assertStringEndsWith(' - MySite', $result);
     }
 
     public function test_seo_title_appends_site_name(): void
@@ -111,7 +115,8 @@ class ServicesTest extends TestCase
         $result = SeoService::title('Hello World');
 
         $this->assertStringContainsString('MySite', $result);
-        $this->assertStringContainsString('|', $result);
+        $this->assertStringContainsString(' - ', $result);
+        $this->assertEquals('Hello World - MySite', $result);
     }
 
     public function test_seo_title_does_not_double_append_site_name(): void
