@@ -5,14 +5,33 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+        @php
+            $guestSiteName    = \App\Services\SettingsService::get('site_name', config('app.name', 'Sewa Apartemen'));
+            $guestSiteLogo    = \App\Services\SettingsService::get('site_logo', '');
+            $guestSiteFavicon = \App\Services\SettingsService::get('site_favicon', '');
+            $guestPrimary     = \App\Services\SettingsService::get('primary_color', '#3b82f6');
+        @endphp
+
+        <title>{{ $guestSiteName }}</title>
+
+        @if($guestSiteFavicon)
+            <link rel="icon" type="image/x-icon" href="{{ asset('storage/' . $guestSiteFavicon) }}">
+        @else
+            <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+        @endif
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+        <style>
+            :root {
+                --guest-primary: {{ $guestPrimary }};
+            }
+        </style>
 
         @stack('head')
 
@@ -21,20 +40,10 @@
             @include('components.analytics')
         @endif
     </head>
-    <body class="font-sans text-gray-900 antialiased">
+    <body class="font-sans text-gray-900 antialiased bg-gray-50">
         @stack('body_start')
 
-        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">
-            <div>
-                <a href="/">
-                    <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
-                </a>
-            </div>
-
-            <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg">
-                {{ $slot }}
-            </div>
-        </div>
+        {{ $slot }}
 
         @stack('scripts')
     </body>
