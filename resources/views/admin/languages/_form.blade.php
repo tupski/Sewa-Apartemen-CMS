@@ -1,3 +1,6 @@
+@php
+    $flagPreview = $language->flag ?? '';
+@endphp
 <div class="space-y-6">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
@@ -31,9 +34,14 @@
         </div>
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Emoji Bendera <span class="text-gray-400 text-xs">(opsional)</span></label>
-            <input type="text" name="flag_emoji" value="{{ old('flag_emoji', $language->flag_emoji ?? '') }}"
-                   placeholder="🇮🇩" maxlength="10"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500">
+            <div class="flex items-center gap-2">
+                <input type="text" name="flag_emoji" value="{{ old('flag_emoji', $language->flag_emoji ?? '') }}"
+                       placeholder="🇮🇩" maxlength="10" x-data
+                       @input="document.getElementById('flag-preview').textContent = $event.target.value"
+                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500">
+                <span id="flag-preview" class="text-2xl leading-none">{{ old('flag_emoji', $flagPreview) }}</span>
+            </div>
+            <p class="text-xs text-gray-400 mt-1">Kosongkan untuk otomatis memakai bendera dari kode bahasa/negara.</p>
         </div>
         <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Urutan Tampil</label>

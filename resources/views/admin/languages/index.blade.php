@@ -37,10 +37,8 @@
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <td class="px-5 py-3 text-gray-500">{{ $lang->sort_order }}</td>
                     <td class="px-5 py-3 text-2xl">
-                        @if($lang->flag_emoji)
-                            {{ $lang->flag_emoji }}
-                        @elseif($lang->flag_code)
-                            <span class="fi fi-{{ strtolower($lang->flag_code) }}"></span>
+                        @if($lang->flag)
+                            <span class="leading-none" title="{{ $lang->flag_code ?: strtoupper($lang->code) }}">{{ $lang->flag }}</span>
                         @else
                             <span class="text-gray-300">—</span>
                         @endif

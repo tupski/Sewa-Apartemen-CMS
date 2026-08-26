@@ -63,11 +63,17 @@
          class="min-h-screen lg:flex">
         <!-- Sidebar -->
         <aside :class="[sidebarOpen ? 'translate-x-0' : '-translate-x-full', sidebarCollapsed ? 'lg:w-20' : 'lg:w-64']"
-               class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 lg:shrink-0 flex flex-col">
+               class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 lg:shrink-0 flex flex-col h-full overflow-hidden">
             <div class="flex items-center justify-between h-16 px-4 bg-gray-900 shrink-0">
-                <a href="{{ route('dashboard') }}" class="text-white text-xl font-bold flex items-center gap-2 overflow-hidden">
-                    <i class="fa-solid fa-building text-blue-400 shrink-0"></i>
-                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''" class="truncate">CMS Admin</span>
+                <a href="{{ route('dashboard') }}" class="flex items-center gap-2 overflow-hidden min-w-0"
+                   :class="sidebarCollapsed ? 'lg:justify-center' : ''">
+                    @if($adminSiteLogo)
+                        <img src="{{ asset('storage/' . $adminSiteLogo) }}" alt="Logo"
+                             class="h-8 w-auto max-w-[9rem] shrink-0 object-contain" :class="sidebarCollapsed ? 'lg:hidden' : ''">
+                    @else
+                        <i class="fa-solid fa-building text-blue-400 shrink-0"></i>
+                    @endif
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''" class="truncate text-white text-lg font-bold">CMS Admin</span>
                 </a>
                 <div class="flex items-center gap-1">
                     <!-- Collapse toggle (desktop) -->
@@ -274,7 +280,7 @@
                             <button @click="langOpen = !langOpen"
                                     class="flex items-center gap-1 px-2 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 text-sm transition"
                                     title="Ganti Bahasa">
-                                <span class="text-base leading-none">{{ $currentLang->flag_emoji ?? strtoupper($currentLocale) }}</span>
+                                <span class="text-base leading-none">{{ $currentLang->flag ?? strtoupper($currentLocale) }}</span>
                                 <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                             </button>
                             <div x-show="langOpen" @click.away="langOpen = false"
@@ -288,7 +294,7 @@
                                     <button type="submit"
                                             class="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition
                                                    {{ $lang->code === $currentLocale ? 'font-semibold bg-blue-50 dark:bg-blue-900/30' : '' }}">
-                                        <span class="text-base">{{ $lang->flag_emoji ?? '' }}</span>
+                                        <span class="text-base leading-none">{{ $lang->flag ?? '' }}</span>
                                         <span>{{ $lang->native_name }}</span>
                                     </button>
                                 </form>
