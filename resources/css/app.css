@@ -90,3 +90,59 @@ body {
     background-color: #1e3a5f;
     color: #93c5fd;
 }
+
+/* =====================================================
+   Lightbox — Category Sidebar
+   ===================================================== */
+#gal-lightbox {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+#gal-lightbox:not(.hidden) {
+    opacity: 1;
+}
+
+#gal-lightbox img {
+    transition: opacity 0.15s ease;
+}
+
+#gal-sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+#gal-sidebar::-webkit-scrollbar {
+    width: 4px;
+}
+#gal-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 2px;
+}
+
+/* Mobile scrollbar hide */
+#gal-mobile-cat-list {
+    scrollbar-width: none;
+}
+#gal-mobile-cat-list::-webkit-scrollbar {
+    display: none;
+}
+
+/* Smooth fade between image changes */
+#gal-lightbox-img {
+    transition: opacity 0.15s ease;
+}
+#gal-lightbox-img.loading {
+    opacity: 0.5;
+}
+
+/* Category button hover lift */
+.gal-cat-btn {
+    cursor: pointer;
+}
+
+/* Lightbox responsive */
+@media (max-width: 767px) {
+    #gal-lightbox-img {
+        max-width: calc(100vw - 2rem) !important;
+        max-height: 75vh !important;
+    }
+}

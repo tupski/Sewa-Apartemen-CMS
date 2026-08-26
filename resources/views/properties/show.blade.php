@@ -8,7 +8,15 @@
     $displayMode = \App\Services\SettingsService::get('booking_display_mode', 'both');
     $whatsappNumber = \App\Services\SettingsService::get('whatsapp_number', '') ?: \App\Services\SettingsService::get('whatsapp_default', '');
     $photos = $property->photos;
-    $allPhotoUrls = $photos->map(fn ($p) => $p->media?->url)->values();
+    // Flat list of photos with category info (used by the lightbox).
+    $photoGallery = $photos->map(function ($p) {
+        return [
+            'url'      => $p->media?->url,
+            'category' => $p->category ?: 'Other',
+            'name'     => $p->media?->alt_text ?: $p->media?->name ?: ($p->media?->original_name ?? ''),
+        ];
+    })->filter(function ($p) { return !empty($p['url']); })->values();
+    $allPhotoUrls = $photoGallery->pluck('url')->values();
     $firstPhoto = $allPhotoUrls[0] ?? null;
     $restPhotos = $allPhotoUrls->slice(1)->take(6)->values();
     $hasBooking = !empty($property->unit_types) && ($property->hasBookingType('transit') || $property->hasBookingType('daily') || $property->hasBookingType('weekly') || $property->hasBookingType('monthly'));
@@ -400,13 +408,42 @@
         <div class="h-20 lg:hidden"></div>
     @endif
 
-    <!-- ============ LIGHTBOX (all photos) ============ -->
-    <div id="gal-lightbox" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <!-- ============ LIGHTBOX (all photos) with Category Sidebar ============ -->
+    <div id="gal-lightbox" class="hidden fixed inset-0 z-[60] flex" role="dialog" aria-modal="true" aria-label="Photo gallery">
+        <!-- Dark overlay (clickable to close) -->
         <div class="absolute inset-0 bg-black/90" data-gal-close></div>
-        <button type="button" data-gal-close class="absolute top-5 right-5 text-white/80 hover:text-white text-4xl leading-none z-10">&times;</button>
-        <button type="button" id="gal-prev" class="absolute left-4 md:left-8 text-white/80 hover:text-white text-4xl z-10">&lsaquo;</button>
-        <img id="gal-lightbox-img" src="" alt="" class="relative max-h-[85vh] max-w-[90vw] rounded-xl shadow-2xl object-contain">
-        <button type="button" id="gal-next" class="absolute right-4 md:right-8 text-white/80 hover:text-white text-4xl z-10">&rsaquo;</button>
+
+        <!-- Close button (top-right) -->
+        <button type="button" data-gal-close class="absolute top-3 right-3 z-20 text-white/70 hover:text-white text-3xl leading-none w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition">&times;</button>
+
+        <!-- ===== LEFT SIDEBAR (categories) ===== -->
+        <aside id="gal-sidebar" class="relative z-10 w-56 lg:w-64 bg-black/60 backdrop-blur-md border-r border-white/10 flex-shrink-0 flex flex-col overflow-y-auto">
+            <div class="p-4 border-b border-white/10">
+                <h3 class="text-white/90 text-xs font-semibold uppercase tracking-wider">Categories</h3>
+            </div>
+            <nav id="gal-cat-list" class="flex-1 p-3 space-y-1">
+                <!-- Populated by JavaScript -->
+            </nav>
+        </aside>
+
+        <!-- ===== RIGHT CONTENT (image viewer) ===== -->
+        <div class="relative z-10 flex-1 flex items-center justify-center">
+            <button type="button" id="gal-prev" class="absolute left-3 md:left-6 text-white/70 hover:text-white text-5xl z-10 transition">&lsaquo;</button>
+            <img id="gal-lightbox-img" src="" alt="" class="relative max-h-[85vh] max-w-[calc(100vw-18rem)] lg:max-w-[calc(100vw-20rem)] rounded-xl shadow-2xl object-contain select-none">
+            <button type="button" id="gal-next" class="absolute right-3 md:right-6 text-white/70 hover:text-white text-5xl z-10 transition">&rsaquo;</button>
+
+            <!-- Photo counter (bottom-center) -->
+            <div id="gal-counter" class="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/60 text-sm font-medium bg-black/40 px-3 py-1 rounded-full">
+                1 / 1
+            </div>
+        </div>
+
+        <!-- ===== MOBILE BOTTOM BAR (categories) ===== -->
+        <div id="gal-mobile-bar" class="hidden fixed bottom-0 left-0 right-0 z-20 bg-black/80 backdrop-blur-md border-t border-white/10">
+            <div class="flex overflow-x-auto gap-1 p-2 scrollbar-hide" id="gal-mobile-cat-list">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
     </div>
 
     <!-- ============ BOOKING MODAL ============ -->
@@ -532,7 +569,8 @@
 @endif
 <script>
 (function () {
-    var allPhotos = @json($allPhotoUrls);
+    var allPhotos     = @json($allPhotoUrls);
+    var photoGallery  = @json($photoGallery);
     var prices = @json($property->prices ?? []);
     var weekendDays = @json($property->weekendDays());
     var unitTypeLabels = @json(\App\Models\Property::UNIT_TYPES);
@@ -540,36 +578,184 @@
     var maxDays = {{ $property->maxBookingDays() ?: 365 }};
     var buckets = [3, 6, 9, 12, 24];
 
-    // ---------- Lightbox ----------
-    var lb = document.getElementById('gal-lightbox');
-    var lbImg = document.getElementById('gal-lightbox-img');
-    var lbIndex = 0;
+    // ===== LIGHTBOX with Category Sidebar =====
+    (function () {
+        var lb     = document.getElementById('gal-lightbox');
+        var lbImg  = document.getElementById('gal-lightbox-img');
+        var lbPrev = document.getElementById('gal-prev');
+        var lbNext = document.getElementById('gal-next');
+        var lbCnt  = document.getElementById('gal-counter');
+        var catEl  = document.getElementById('gal-cat-list');
+        var mCatEl = document.getElementById('gal-mobile-cat-list');
+        var sidebarEl = document.getElementById('gal-sidebar');
+        var mbarEl    = document.getElementById('gal-mobile-bar');
 
-    function openLb(i) {
-        lbIndex = i;
-        lbImg.src = allPhotos[lbIndex];
-        lb.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-    }
-    function moveLb(d) {
-        lbIndex = (lbIndex + d + allPhotos.length) % allPhotos.length;
-        lbImg.src = allPhotos[lbIndex];
-    }
-    document.querySelectorAll('[data-photo]').forEach(function (el) {
-        el.addEventListener('click', function () { openLb(parseInt(el.dataset.photo, 10)); });
-    });
-    document.getElementById('gal-open').addEventListener('click', function () { openLb(0); });
-    document.querySelectorAll('[data-gal-close]').forEach(function (el) {
-        el.addEventListener('click', function () { lb.classList.add('hidden'); document.body.style.overflow = ''; });
-    });
-    document.getElementById('gal-prev').addEventListener('click', function () { moveLb(-1); });
-    document.getElementById('gal-next').addEventListener('click', function () { moveLb(1); });
-    document.addEventListener('keydown', function (e) {
-        if (lb.classList.contains('hidden')) return;
-        if (e.key === 'Escape') { lb.classList.add('hidden'); document.body.style.overflow = ''; }
-        if (e.key === 'ArrowLeft') moveLb(-1);
-        if (e.key === 'ArrowRight') moveLb(1);
-    });
+        // State: active category filter ('*' = all photos), current index, current filtered list
+        var activeCat = '*';
+        var filtered  = photoGallery;   // currently visible photos
+        var lbIdx     = 0;              // index within `filtered`
+
+        // Map a GLOBAL index (position in allPhotos / data-photo attribute)
+        // to the filtered list — when "All Photos" is active they are identical,
+        // otherwise find the photo with the same URL.
+        function globalToFilteredIdx(globalIdx) {
+            var globalUrl = allPhotos[globalIdx];
+            for (var i = 0; i < filtered.length; i++) {
+                if (filtered[i].url === globalUrl) return i;
+            }
+            return 0;
+        }
+
+        // Filtered URL array (convenience)
+        function filteredUrls() {
+            return filtered.map(function (p) { return p.url; });
+        }
+
+        // Build categories from actual data (only categories that have photos)
+        function buildCategories() {
+            var catCount = {};
+            photoGallery.forEach(function (p) {
+                var c = p.category || 'Other';
+                catCount[c] = (catCount[c] || 0) + 1;
+            });
+            return {
+                cats: Object.keys(catCount).sort(),
+                catCount: catCount
+            };
+        }
+
+        function esc(s) {
+            return String(s).replace(/&/g, '&').replace(/"/g, '"').replace(/</g, '<').replace(/>/g, '>');
+        }
+
+        // Render the desktop sidebar + mobile bar
+        function renderCategories() {
+            var data = buildCategories();
+
+            var html = '';
+            html += '<button type="button" class="gal-cat-btn flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm font-medium transition ' +
+                    (activeCat === '*' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white hover:bg-white/10') + '" data-cat="*">' +
+                    '<span>All Photos</span>' +
+                    '<span class="text-xs ml-2 opacity-70">' + photoGallery.length + '</span>' +
+                    '</button>';
+            data.cats.forEach(function (c) {
+                var isActive = (activeCat === c);
+                html += '<button type="button" class="gal-cat-btn flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm font-medium transition ' +
+                        (isActive ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white hover:bg-white/10') + '" data-cat="' + esc(c) + '">' +
+                        '<span>' + esc(c) + '</span>' +
+                        '<span class="text-xs ml-2 opacity-70">' + data.catCount[c] + '</span>' +
+                        '</button>';
+            });
+            catEl.innerHTML = html;
+
+            var mhtml = '';
+            mhtml += '<button type="button" class="gal-cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium transition whitespace-nowrap ' +
+                     (activeCat === '*' ? 'bg-white text-black' : 'bg-white/15 text-white/80 hover:bg-white/25') + '" data-cat="*">All (' + photoGallery.length + ')</button>';
+            data.cats.forEach(function (c) {
+                var isActive = (activeCat === c);
+                mhtml += '<button type="button" class="gal-cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium transition whitespace-nowrap ' +
+                         (isActive ? 'bg-white text-black' : 'bg-white/15 text-white/80 hover:bg-white/25') + '" data-cat="' + esc(c) + '">' +
+                         esc(c) + ' (' + data.catCount[c] + ')</button>';
+            });
+            mCatEl.innerHTML = mhtml;
+        }
+
+        // Show the photo at `idx` (index within `filtered`)
+        function showPhoto(idx) {
+            if (!filtered.length) {
+                lbImg.src = '';
+                lbCnt.textContent = '0 / 0';
+                return;
+            }
+            lbIdx = ((idx % filtered.length) + filtered.length) % filtered.length;
+            lbImg.src = filtered[lbIdx].url;
+            lbImg.alt = filtered[lbIdx].name || '';
+            lbCnt.textContent = (lbIdx + 1) + ' / ' + filtered.length;
+        }
+
+        function moveLb(d) {
+            showPhoto(lbIdx + d);
+        }
+
+        // Open the lightbox, showing the photo at GLOBAL index `globalIdx`
+        function openLb(globalIdx) {
+            activeCat = '*';
+            filtered  = photoGallery;
+            renderCategories();
+            showPhoto(globalToFilteredIdx(globalIdx));
+            lb.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLb() {
+            lb.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        // Filter to a category ('*' = all)
+        function onCatClick(cat) {
+            activeCat = cat;
+            filtered  = (cat === '*') ? photoGallery.slice() : photoGallery.filter(function (p) {
+                return (p.category || 'Other') === cat;
+            });
+            renderCategories();
+            showPhoto(0);
+        }
+
+        // Desktop sidebar category click
+        catEl.addEventListener('click', function (e) {
+            var btn = e.target.closest('.gal-cat-btn');
+            if (btn) onCatClick(btn.getAttribute('data-cat'));
+        });
+        // Mobile bar category click
+        mCatEl.addEventListener('click', function (e) {
+            var btn = e.target.closest('.gal-cat-btn');
+            if (btn) onCatClick(btn.getAttribute('data-cat'));
+        });
+
+        // Navigation buttons
+        lbPrev.addEventListener('click', function () { moveLb(-1); });
+        lbNext.addEventListener('click', function () { moveLb(1); });
+
+        // Close on overlay click or close button
+        document.querySelectorAll('[data-gal-close]').forEach(function (el) {
+            el.addEventListener('click', closeLb);
+        });
+
+        // Open from thumbnail gallery
+        document.querySelectorAll('[data-photo]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                openLb(parseInt(el.dataset.photo, 10));
+            });
+        });
+        document.getElementById('gal-open').addEventListener('click', function () { openLb(0); });
+
+        // Keyboard support (Escape, arrows)
+        document.addEventListener('keydown', function (e) {
+            if (lb.classList.contains('hidden')) return;
+            if (e.key === 'Escape') closeLb();
+            if (e.key === 'ArrowLeft') moveLb(-1);
+            if (e.key === 'ArrowRight') moveLb(1);
+        });
+
+        // Responsive: sidebar -> top/bottom bar on small screens
+        function checkMobile() {
+            var isMobile = window.innerWidth < 768;
+            sidebarEl.classList.toggle('hidden', isMobile);
+            mbarEl.classList.toggle('hidden', !isMobile);
+        }
+        window.addEventListener('resize', checkMobile);
+        // Re-check responsiveness whenever the lightbox is opened
+        var origRemove = lb.classList.remove.bind(lb.classList);
+        lb.classList.remove = function () {
+            origRemove.apply(lb.classList, arguments);
+            if (arguments[0] === 'hidden') checkMobile();
+        };
+
+        // Initial render
+        renderCategories();
+        checkMobile();
+    })();
 
     // ---------- Booking ----------
     var modal = document.getElementById('bk-modal');
