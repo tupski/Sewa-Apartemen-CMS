@@ -84,23 +84,6 @@
         @enderror
     </div>
 
-    {{-- WhatsApp Number for Pricing Table --}}
-    <div>
-        <label for="whatsapp_number" class="block text-sm font-medium text-gray-700 mb-1">
-            Nomor WhatsApp (Tabel Harga)
-        </label>
-        <input type="text"
-               name="whatsapp_number"
-               id="whatsapp_number"
-               value="{{ old('whatsapp_number', $settings['whatsapp_number'] ?? '') }}"
-               placeholder="6281234567890"
-               class="w-full max-w-sm px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">
-        <p class="text-xs text-gray-400 mt-1">Sertakan kode negara, contoh: 6281234567890. Dipakai untuk tombol WhatsApp di tabel harga.</p>
-        @error('whatsapp_number')
-            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-        @enderror
-    </div>
-
     {{-- Min Transit Hours --}}
     <div>
         <label for="booking_min_transit_hours" class="block text-sm font-medium text-gray-700 mb-1">

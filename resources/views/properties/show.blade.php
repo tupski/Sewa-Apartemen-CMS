@@ -6,7 +6,7 @@
     $whatsapp = \App\Services\SettingsService::get('whatsapp_default', '');
     $contactPhone = \App\Services\SettingsService::get('contact_phone', '');
     $displayMode = \App\Services\SettingsService::get('booking_display_mode', 'both');
-    $whatsappNumber = \App\Services\SettingsService::get('whatsapp_number', '') ?: \App\Services\SettingsService::get('whatsapp_default', '');
+    $whatsappNumber = \App\Services\SettingsService::get('whatsapp_default', '');
     $photos = $property->photos;
     // Flat list of photos with category info (used by the lightbox).
     $photoGallery = $photos->map(function ($p) {

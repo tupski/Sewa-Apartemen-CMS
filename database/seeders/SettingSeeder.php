@@ -152,7 +152,6 @@ class SettingSeeder extends Seeder
             'booking_checkin_default_time' => '14:00',
             'booking_auto_confirm'         => '0',
             'booking_display_mode'         => 'both',
-            'whatsapp_number'              => '',
         ];
         foreach ($bookingSettings as $key => $value) {
             Setting::updateOrCreate(
