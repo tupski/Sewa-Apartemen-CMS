@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+-<!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}"
       x-data="{ dark: document.documentElement.classList.contains('dark') }"
       x-init="$watch('dark', v => { document.documentElement.classList.toggle('dark', v); localStorage.setItem('theme', v ? 'dark' : 'light'); })"
@@ -96,8 +96,12 @@
             <div class="flex justify-between items-center h-16 md:h-20">
                 <!-- Brand -->
                 <a href="{{ url('/') }}" class="flex items-center space-x-2">
-                    <span class="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold"
-                          style="background-color: {{ $primaryColor }}">{{ mb_substr($siteName, 0, 1) }}</span>
+                    @if ($siteLogo)
+                        <img src="{{ asset('storage/' . $siteLogo) }}" alt="{{ $siteName }}" class="h-10 w-auto">
+                    @else
+                        <span class="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold"
+                              style="background-color: {{ $primaryColor }}">{{ mb_substr($siteName, 0, 1) }}</span>
+                    @endif
                     <span class="text-lg md:text-xl font-bold text-gray-900 dark:text-white">{{ $siteName }}</span>
                 </a>
 
@@ -194,8 +198,12 @@
                 <!-- Brand -->
                 <div class="md:col-span-2">
                     <div class="flex items-center space-x-2 mb-4">
-                        <span class="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold"
-                              style="background-color: {{ $primaryColor }}">{{ mb_substr($siteName, 0, 1) }}</span>
+                        @if ($siteLogo)
+                            <img src="{{ asset('storage/' . $siteLogo) }}" alt="{{ $siteName }}" class="h-10 w-auto">
+                        @else
+                            <span class="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold"
+                                  style="background-color: {{ $primaryColor }}">{{ mb_substr($siteName, 0, 1) }}</span>
+                        @endif
                         <span class="text-lg font-bold text-white">{{ $siteName }}</span>
                     </div>
                     @if ($siteDescription)

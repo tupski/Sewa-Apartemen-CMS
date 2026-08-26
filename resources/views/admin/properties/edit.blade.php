@@ -91,8 +91,6 @@
                             @enderror
                         </div>
                     </div>
-
-                    </div>
                 </div>
 
                 <!-- Location Section -->
@@ -198,8 +196,6 @@
                             </div>
                         </div>
                     </div>
-
-                    </div>
                 </div>
 
                 <!-- Status & Featured Section -->
@@ -243,17 +239,16 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Room Types & Pricing -->
-                    @include('admin.properties._pricing', ['property' => $property])
-
-                    <!-- Policy, Documents & Nearby Places -->
-                    @include('admin.properties._policy', ['property' => $property ?? null])
-
-                    <!-- Photo Gallery -->
-                    @include('admin.properties._photos', ['property' => $property])
-
                 </div>
+
+                <!-- Room Types & Pricing -->
+                @include('admin.properties._pricing', ['property' => $property])
+
+                <!-- Policy, Documents & Nearby Places -->
+                @include('admin.properties._policy', ['property' => $property ?? null])
+
+                <!-- Photo Gallery -->
+                @include('admin.properties._photos', ['property' => $property])
 
                 <!-- Amenities Section -->
                 <div>
@@ -261,24 +256,22 @@
                         <h3 class="text-lg font-bold text-gray-900">Amenities</h3>
                     </div>
 
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            @forelse($amenities as $amenity)
-                                <label class="flex items-center p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
-                                    <input type="checkbox"
-                                           name="amenities[]"
-                                           value="{{ $amenity->id }}"
-                                           {{ $property->amenities->contains($amenity->id) ? 'checked' : '' }}
-                                           class="h-4 w-4 text-blue-600 rounded focus:ring-blue-500">
-                                    <span class="ml-2 text-sm text-gray-700">{{ $amenity->name }}</span>
-                                </label>
-                            @empty
-                                <div class="col-span-3 text-center py-4 text-gray-500">
-                                    No amenities available. Please create some amenities first.
-                                </div>
-                            @endforelse
-                        </div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        @forelse($amenities as $amenity)
+                            <label class="flex items-center p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
+                                <input type="checkbox"
+                                       name="amenities[]"
+                                       value="{{ $amenity->id }}"
+                                       {{ $property->amenities->contains($amenity->id) ? 'checked' : '' }}
+                                       class="h-4 w-4 text-blue-600 rounded focus:ring-blue-500">
+                                <span class="ml-2 text-sm text-gray-700">{{ $amenity->name }}</span>
+                            </label>
+                        @empty
+                            <div class="col-span-3 text-center py-4 text-gray-500">
+                                No amenities available. Please create some amenities first.
+                            </div>
+                        @endforelse
                     </div>
-
                 </div>
 
                 <!-- SEO Section -->
@@ -287,7 +280,7 @@
                         <h3 class="text-lg font-bold text-gray-900">SEO</h3>
                     </div>
 
-                        <div class="space-y-4">
+                    <div class="space-y-4">
                             <!-- Meta Title -->
                             <div>
                                 <label for="meta_title" class="block text-sm font-medium text-gray-700 mb-2">

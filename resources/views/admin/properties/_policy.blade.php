@@ -12,7 +12,7 @@
     <h3 class="text-lg font-semibold text-gray-800 mb-2">Kebijakan & Lokasi</h3>
     <p class="text-sm text-gray-500 mb-4">Check-in/out, dokumen, metode check-in, batas maksimal durasi, dan tempat di sekitar properti.</p>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <div>
             <label for="checkin_time" class="block text-sm font-medium text-gray-700 mb-2">Check-in Time</label>
             <input type="time" name="checkin_time" id="checkin_time" value="{{ $checkinTime }}"

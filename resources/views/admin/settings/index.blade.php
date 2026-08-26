@@ -43,10 +43,20 @@
                         class="py-4 px-6 border-b-2 font-medium text-sm transition">
                     Booking
                 </button>
+                <button @click="activeTab = 'email'"
+                        :class="activeTab === 'email' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        class="py-4 px-6 border-b-2 font-medium text-sm transition">
+                    Email
+                </button>
                 <button @click="activeTab = 'integrations'"
                         :class="activeTab === 'integrations' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                         class="py-4 px-6 border-b-2 font-medium text-sm transition">
                     Integrations
+                </button>
+                <button @click="activeTab = 'email_templates'"
+                        :class="activeTab === 'email_templates' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        class="py-4 px-6 border-b-2 font-medium text-sm transition">
+                    Email Templates
                 </button>
             </nav>
 
@@ -989,6 +999,197 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- ===== EMAIL TAB ===== -->
+                <div x-show="activeTab === 'email'" class="p-6 space-y-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-1">Pengaturan Email (SMTP)</h3>
+                    <p class="text-sm text-gray-500 mb-6">Konfigurasi SMTP untuk pengiriman email notifikasi, booking, reset password, dll.</p>
+
+                    <div class="space-y-6">
+                        <!-- Mail Driver -->
+                        <div>
+                            <label for="mail_mailer" class="block text-sm font-medium text-gray-700 mb-2">
+                                Mail Driver
+                            </label>
+                            <select name="mail_mailer"
+                                    id="mail_mailer"
+                                    class="w-full max-w-xs px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <option value="smtp" {{ ($settings['mail_mailer'] ?? 'smtp') === 'smtp' ? 'selected' : '' }}>SMTP</option>
+                                <option value="sendmail" {{ ($settings['mail_mailer'] ?? '') === 'sendmail' ? 'selected' : '' }}>Sendmail</option>
+                                <option value="log" {{ ($settings['mail_mailer'] ?? '') === 'log' ? 'selected' : '' }}>Log (Development)</option>
+                                <option value="array" {{ ($settings['mail_mailer'] ?? '') === 'array' ? 'selected' : '' }}>Array (Testing)</option>
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">Pilih driver pengiriman email. Gunakan 'log' untuk development.</p>
+                        </div>
+
+                        <!-- SMTP Settings (shown when mailer = smtp) -->
+                        <div x-data="{ showSmtp: '{{ old('mail_mailer', $settings['mail_mailer'] ?? 'smtp') }}' === 'smtp' }"
+                             @mail-mailer-changed.window="showSmtp = $event.detail.value === 'smtp'"
+                             x-show="showSmtp"
+                             class="space-y-6 p-4 bg-blue-50 border border-blue-100 rounded-lg">
+                            <h4 class="text-md font-semibold text-gray-700 mb-4">SMTP Configuration</h4>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="mail_host" class="block text-sm font-medium text-gray-700 mb-2">
+                                        SMTP Host <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="text"
+                                           name="mail_host"
+                                           id="mail_host"
+                                           value="{{ old('mail_host', $settings['mail_host'] ?? '') }}"
+                                           placeholder="smtp.gmail.com"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                           required>
+                                    @error('mail_host')
+                                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <div>
+                                    <label for="mail_port" class="block text-sm font-medium text-gray-700 mb-2">
+                                        SMTP Port <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="number"
+                                           name="mail_port"
+                                           id="mail_port"
+                                           value="{{ old('mail_port', $settings['mail_port'] ?? '587') }}"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                           required>
+                                    @error('mail_port')
+                                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="mail_username" class="block text-sm font-medium text-gray-700 mb-2">
+                                        SMTP Username <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="text"
+                                           name="mail_username"
+                                           id="mail_username"
+                                           value="{{ old('mail_username', $settings['mail_username'] ?? '') }}"
+                                           placeholder="user@example.com"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                           required>
+                                    @error('mail_username')
+                                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <div>
+                                    <label for="mail_password" class="block text-sm font-medium text-gray-700 mb-2">
+                                        SMTP Password <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="password"
+                                           name="mail_password"
+                                           id="mail_password"
+                                           value="{{ old('mail_password', $settings['mail_password'] ?? '') }}"
+                                           placeholder="••••••••"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                           required autocomplete="off">
+                                    @error('mail_password')
+                                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="mail_encryption" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Encryption
+                                    </label>
+                                    <select name="mail_encryption"
+                                            id="mail_encryption"
+                                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="tls" {{ ($settings['mail_encryption'] ?? 'tls') === 'tls' ? 'selected' : '' }}>TLS (recommended)</option>
+                                        <option value="ssl" {{ ($settings['mail_encryption'] ?? '') === 'ssl' ? 'selected' : '' }}>SSL</option>
+                                        <option value="" {{ ($settings['mail_encryption'] ?? '') === '' ? 'selected' : '' }}>None</option>
+                                    </select>
+                                    <p class="text-xs text-gray-400 mt-1">TLS untuk port 587, SSL untuk port 465.</p>
+                                </div>
+
+                                <div>
+                                    <label for="mail_from_address" class="block text-sm font-medium text-gray-700 mb-2">
+                                        From Address <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="email"
+                                           name="mail_from_address"
+                                           id="mail_from_address"
+                                           value="{{ old('mail_from_address', $settings['mail_from_address'] ?? '') }}"
+                                           placeholder="noreply@example.com"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                           required>
+                                    @error('mail_from_address')
+                                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="mail_from_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                    From Name
+                                </label>
+                                <input type="text"
+                                       name="mail_from_name"
+                                       id="mail_from_name"
+                                       value="{{ old('mail_from_name', $settings['mail_from_name'] ?? config('app.name')) }}"
+                                       placeholder="{{ config('app.name') }}"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                @error('mail_from_name')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <!-- Test Email Button -->
+                        <div class="border-t border-gray-200 pt-4">
+                            <button type="button"
+                                    onclick="sendTestEmail()"
+                                    class="px-4 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition">
+                                <i class="fa-solid fa-paper-plane mr-2"></i> Send Test Email
+                            </button>
+                            <p class="text-xs text-gray-500 mt-2">Kirim email uji ke alamat email admin yang sedang login.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== EMAIL TEMPLATES TAB ===== -->
+                <div x-show="activeTab === 'email_templates'" class="p-6 space-y-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-1">Email Templates</h3>
+                    <p class="text-sm text-gray-500 mb-6">Kustomisasi template email untuk notifikasi sistem.</p>
+
+                    <div class="space-y-6">
+                        @foreach(['booking_confirmation' => 'Booking Confirmation', 'booking_cancellation' => 'Booking Cancellation', 'password_reset' => 'Password Reset', 'welcome' => 'Welcome Email'] as $templateKey => $templateLabel)
+                            <div class="border border-gray-200 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="font-medium text-gray-800">{{ $templateLabel }}</h4>
+                                    <span class="text-xs text-gray-500">Key: {{ $templateKey }}</span>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="email_{{ $templateKey }}_subject" class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                                        <input type="text"
+                                               name="email_{{ $templateKey }}_subject"
+                                               id="email_{{ $templateKey }}_subject"
+                                               value="{{ old('email_' . $templateKey . '_subject', $settings['email_' . $templateKey . '_subject'] ?? '') }}"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="email_{{ $templateKey }}_body" class="block text-sm font-medium text-gray-700 mb-1">Body (HTML)</label>
+                                        <textarea name="email_{{ $templateKey }}_body"
+                                                  id="email_{{ $templateKey }}_body"
+                                                  rows="6"
+                                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm font-mono">{{ old('email_' . $templateKey . '_body', $settings['email_' . $templateKey . '_body'] ?? '') }}</textarea>
+                                        <p class="text-xs text-gray-500 mt-1">Gunakan {{ user.name }}, {{ booking.code }}, dll. sebagai placeholder.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
 

@@ -80,6 +80,24 @@ class SettingsController extends Controller
             // Webhook (owner notifications)
             'notification_webhook' => $this->settingsService->get('notification_webhook'),
             'notification_webhook_secret' => $this->settingsService->get('notification_webhook_secret'),
+            // Email (SMTP)
+            'mail_mailer' => $this->settingsService->get('mail_mailer', 'smtp'),
+            'mail_host' => $this->settingsService->get('mail_host'),
+            'mail_port' => $this->settingsService->get('mail_port', '587'),
+            'mail_username' => $this->settingsService->get('mail_username'),
+            'mail_password' => $this->settingsService->get('mail_password'),
+            'mail_encryption' => $this->settingsService->get('mail_encryption', 'tls'),
+            'mail_from_address' => $this->settingsService->get('mail_from_address'),
+            'mail_from_name' => $this->settingsService->get('mail_from_name', config('app.name')),
+            // Email Templates
+            'email_booking_confirmation_subject' => $this->settingsService->get('email_booking_confirmation_subject'),
+            'email_booking_confirmation_body' => $this->settingsService->get('email_booking_confirmation_body'),
+            'email_booking_cancellation_subject' => $this->settingsService->get('email_booking_cancellation_subject'),
+            'email_booking_cancellation_body' => $this->settingsService->get('email_booking_cancellation_body'),
+            'email_password_reset_subject' => $this->settingsService->get('email_password_reset_subject'),
+            'email_password_reset_body' => $this->settingsService->get('email_password_reset_body'),
+            'email_welcome_subject' => $this->settingsService->get('email_welcome_subject'),
+            'email_welcome_body' => $this->settingsService->get('email_welcome_body'),
         ];
 
         return view('admin.settings.index', compact('settings'));
@@ -141,6 +159,24 @@ class SettingsController extends Controller
                 'google_maps_api_key' => 'nullable|string|max:255',
                 'notification_webhook' => 'nullable|url|max:500',
                 'notification_webhook_secret' => 'nullable|string|max:255',
+                // Email (SMTP)
+                'mail_mailer' => 'nullable|string|in:smtp,sendmail,log,array',
+                'mail_host' => 'nullable|string|max:255',
+                'mail_port' => 'nullable|integer|min:1|max:65535',
+                'mail_username' => 'nullable|string|max:255',
+                'mail_password' => 'nullable|string|max:255',
+                'mail_encryption' => 'nullable|string|in:tls,ssl',
+                'mail_from_address' => 'nullable|email',
+                'mail_from_name' => 'nullable|string|max:255',
+                // Email Templates
+                'email_booking_confirmation_subject' => 'nullable|string|max:255',
+                'email_booking_confirmation_body' => 'nullable|string',
+                'email_booking_cancellation_subject' => 'nullable|string|max:255',
+                'email_booking_cancellation_body' => 'nullable|string',
+                'email_password_reset_subject' => 'nullable|string|max:255',
+                'email_password_reset_body' => 'nullable|string',
+                'email_welcome_subject' => 'nullable|string|max:255',
+                'email_welcome_body' => 'nullable|string',
             ]);
 
             if ($validator->fails()) {
@@ -215,6 +251,10 @@ class SettingsController extends Controller
             return 'integrations';
         } elseif (str_starts_with($key, 'hero_') || str_starts_with($key, 'cta_') || str_starts_with($key, 'features_')) {
             return 'homepage';
+        } elseif (str_starts_with($key, 'mail_')) {
+            return 'email';
+        } elseif (str_starts_with($key, 'email_')) {
+            return 'email_templates';
         }
 
         return 'general';
