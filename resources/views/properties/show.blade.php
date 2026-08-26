@@ -566,7 +566,10 @@
             </div>
 
             <!-- Controls + counter + thumbnail strip (below the photo) -->
-            <div class="relative z-10 flex flex-col items-center gap-3 py-3 px-4 bg-gradient-to-t from-black/60 to-transparent">
+            {{-- On mobile the category bar (#gal-mobile-bar) is fixed to the bottom, so we add
+                 extra bottom padding here (pb-24) to lift the button group + thumbnail strip
+                 above it. Desktop keeps the original compact padding (md:pb-3). --}}
+            <div class="relative z-30 flex flex-col items-center gap-3 pt-3 pb-24 md:pb-3 px-4 bg-gradient-to-t from-black/60 to-transparent">
                 <div class="flex items-center gap-2">
                     <button type="button" id="gal-zoom-in" aria-label="{{ __('lightbox.zoom_in') }}" title="{{ __('lightbox.zoom_in') }}"
                             class="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white/80 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition">
@@ -763,10 +766,16 @@
         var rotLeftBtn  = document.getElementById('gal-rotate-left');
         var rotRightBtn = document.getElementById('gal-rotate-right');
 
-        // State: active category filter ('*' = all photos), current index, current filtered list
-        var activeCat = '*';
-        var filtered  = photoGallery;   // currently visible photos
+        // State:
+        //   filtered  – the full ordered gallery (next/prev traverse ALL photos so the
+        //               user can move across categories; category buttons jump/scroll
+        //               rather than filtering to a subset).
+        //   lbIdx     – index of the current photo within `filtered`.
+        //   activeCat – the CURRENT photo's category; kept in sync on every navigation
+        //               (next/prev/thumbnail/keyboard) so the category bar highlights it.
+        var filtered  = photoGallery;   // full gallery (never sliced)
         var lbIdx     = 0;              // index within `filtered`
+        var activeCat = null;          // current photo's category (null before first show)
 
         // Zoom / rotate transform state for the current image
         var ZOOM_MIN = 0.5, ZOOM_MAX = 4, ZOOM_STEP = 0.25;
@@ -819,16 +828,13 @@
             return String(s).replace(/&/g, '&').replace(/"/g, '"').replace(/</g, '<').replace(/>/g, '>');
         }
 
-        // Render the desktop sidebar + mobile bar
+        // Render the desktop sidebar + mobile bar. The active state now reflects the
+        // CURRENT photo's category (`activeCat`) rather than a filter selection, so the
+        // highlight follows the image as the user navigates next/prev/thumbnails.
         function renderCategories() {
             var data = buildCategories();
 
             var html = '';
-            html += '<button type="button" class="gal-cat-btn flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm font-medium transition ' +
-                    (activeCat === '*' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white hover:bg-white/10') + '" data-cat="*">' +
-                    '<span>All Photos</span>' +
-                    '<span class="text-xs ml-2 opacity-70">' + photoGallery.length + '</span>' +
-                    '</button>';
             data.cats.forEach(function (c) {
                 var isActive = (activeCat === c);
                 html += '<button type="button" class="gal-cat-btn flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm font-medium transition ' +
@@ -840,8 +846,6 @@
             catEl.innerHTML = html;
 
             var mhtml = '';
-            mhtml += '<button type="button" class="gal-cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium transition whitespace-nowrap ' +
-                     (activeCat === '*' ? 'bg-white text-black' : 'bg-white/15 text-white/80 hover:bg-white/25') + '" data-cat="*">All (' + photoGallery.length + ')</button>';
             data.cats.forEach(function (c) {
                 var isActive = (activeCat === c);
                 mhtml += '<button type="button" class="gal-cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium transition whitespace-nowrap ' +
@@ -849,6 +853,22 @@
                          esc(c) + ' (' + data.catCount[c] + ')</button>';
             });
             mCatEl.innerHTML = mhtml;
+
+            scrollActiveCatIntoView();
+        }
+
+        // Scroll the active category button into view in both the desktop sidebar
+        // (vertical) and the mobile bottom bar (horizontal) so it stays visible.
+        function scrollActiveCatIntoView() {
+            if (activeCat == null) return;
+            var sel = '.gal-cat-btn[data-cat="' + (window.CSS && CSS.escape ? CSS.escape(activeCat) : activeCat) + '"]';
+            [catEl, mCatEl].forEach(function (container) {
+                if (!container) return;
+                var btn = container.querySelector(sel);
+                if (btn && btn.scrollIntoView) {
+                    btn.scrollIntoView({ block: 'nearest', inline: 'center' });
+                }
+            });
         }
 
         // Render the thumbnail strip for the current filtered list.
@@ -884,17 +904,33 @@
             lbCnt.textContent = (lbIdx + 1) + ' / ' + filtered.length;
             resetTransform();   // reset zoom/rotation whenever a new image is shown
             renderThumbs();
+            // Keep the active category in sync with the current photo so the
+            // category bar highlight follows next/prev/thumbnail navigation.
+            syncActiveCat();
+        }
+
+        // Recompute the active category from the current photo, then re-render the
+        // category bars (highlight + auto-scroll) only when it actually changed.
+        function syncActiveCat() {
+            if (!filtered.length) return;
+            var cat = filtered[lbIdx].category || 'Other';
+            if (cat !== activeCat) {
+                activeCat = cat;
+                renderCategories();
+            } else {
+                scrollActiveCatIntoView();
+            }
         }
 
         function moveLb(d) {
             showPhoto(lbIdx + d);
         }
 
-        // Open the lightbox, showing the photo at GLOBAL index `globalIdx`
+        // Open the lightbox, showing the photo at GLOBAL index `globalIdx`.
+        // `filtered` is always the full gallery; showPhoto() derives activeCat
+        // from the current photo and renders the category bars.
         function openLb(globalIdx) {
-            activeCat = '*';
-            filtered  = photoGallery;
-            renderCategories();
+            filtered = photoGallery;
             showPhoto(globalToFilteredIdx(globalIdx));
             lb.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
@@ -905,14 +941,16 @@
             document.body.style.overflow = '';
         }
 
-        // Filter to a category ('*' = all)
+        // Category click: jump to the FIRST photo of that category within the full
+        // gallery. next/prev still traverse every photo; showPhoto() re-syncs the
+        // active-category highlight from whatever photo becomes current.
         function onCatClick(cat) {
-            activeCat = cat;
-            filtered  = (cat === '*') ? photoGallery.slice() : photoGallery.filter(function (p) {
-                return (p.category || 'Other') === cat;
-            });
-            renderCategories();
-            showPhoto(0);
+            for (var i = 0; i < filtered.length; i++) {
+                if ((filtered[i].category || 'Other') === cat) {
+                    showPhoto(i);
+                    return;
+                }
+            }
         }
 
         // Desktop sidebar category click
