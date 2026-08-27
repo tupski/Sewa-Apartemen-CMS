@@ -928,6 +928,8 @@
     // ===== LIGHTBOX with Category Sidebar =====
     (function () {
         var lb     = document.getElementById('gal-lightbox');
+        if (!lb) return;
+
         var lbImg  = document.getElementById('gal-lightbox-img');
         var lbPrev = document.getElementById('gal-prev');
         var lbNext = document.getElementById('gal-next');
@@ -1181,7 +1183,11 @@
                 openLb(parseInt(el.dataset.photo, 10));
             });
         });
-        document.getElementById('gal-open').addEventListener('click', function () { openLb(0); });
+        // "View all photos" overlay — only rendered when the property has photos.
+        var galOpenBtn = document.getElementById('gal-open');
+        if (galOpenBtn) {
+            galOpenBtn.addEventListener('click', function () { openLb(0); });
+        }
 
         // Keyboard support (Escape, arrows)
         document.addEventListener('keydown', function (e) {
@@ -1211,7 +1217,14 @@
     })();
 
     // ---------- Booking ----------
+    // #bk-modal and every bk-* element below it are only rendered when
+    // $showBookingForm is true (display mode 'both'/'form_only' AND the property has
+    // bookable prices). In 'pricing_only' mode — or when no unit type has a price —
+    // none of that markup exists, so bail out of the whole booking block cleanly
+    // instead of dereferencing nulls.
     var modal = document.getElementById('bk-modal');
+    if (!modal) return;
+
     var $summary = document.getElementById('bk-modal-summary');
     var $name = document.getElementById('bk-name');
     var $phone = document.getElementById('bk-phone');
@@ -1462,14 +1475,14 @@
     // Mobile bar opens modal with embedded form
     var mobOpen = document.getElementById('mob-bk-open');
     var contactFields = document.getElementById('bk-contact-fields');
-    var submitBtnWrap = document.getElementById('bk-submit-btn-wrap');
     if (mobOpen) {
         mobOpen.addEventListener('click', function () {
             modal.classList.remove('hidden');
             // Reset: hide contact fields on mobile until form filled
+            // (#bk-submit lives inside #bk-contact-fields, so hiding the wrapper
+            //  hides the submit button too).
             if (window.innerWidth < 1024) {
                 contactFields.classList.add('hidden');
-                submitBtnWrap.classList.add('hidden');
             }
         });
     }
@@ -1483,9 +1496,8 @@
                 var total = parseFloat(mobileForm.dataset.total || 0);
                 if (total <= 0) return; // bindForm handles error display
 
-                // Show contact fields and submit button
+                // Show contact fields (incl. the submit button nested inside)
                 contactFields.classList.remove('hidden');
-                submitBtnWrap.classList.remove('hidden');
 
                 // Build summary for desktop (modal already has form visible on mobile)
                 var type = getRoomType(mobileForm);

@@ -374,7 +374,7 @@
         {{-- ══ MOBILE FILTER TRIGGER (Fixed bottom-center pill) ════════════ --}}
         <button @click="filterOpen = true"
                 type="button"
-                class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-6 py-3 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-200 shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700/70 transition lg:hidden"
+                class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-6 py-3 rounded-full bg-red-600 border border-red-600 text-sm font-semibold text-white shadow-lg hover:bg-red-700 hover:border-red-700 active:bg-red-800 transition lg:hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900"
                 aria-label="{{ __('prop.filter') }}">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" d="M3 6h18M7 12h10M11 18h2"/>
