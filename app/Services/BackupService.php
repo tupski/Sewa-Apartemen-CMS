@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class BackupService
@@ -102,6 +103,13 @@ class BackupService
      * Each group's tables are truncated and re-populated inside a single
      * database transaction so the restore is atomic.
      *
+     * SEC-09: every row is filtered against the live column list for its table
+     * before insertion, so a crafted backup file cannot introduce arbitrary
+     * columns (e.g. an invented `is_admin` on `users`). Unknown keys are dropped
+     * and logged rather than aborting the whole restore — a backup taken from an
+     * older/newer schema of the same app must still be restorable. Rows that are
+     * not well-formed key/value maps are skipped entirely.
+     *
      * @param  array{groups: array<string, array<string, list<array<string, mixed>>>>}  $data
      * @throws \Throwable
      */
@@ -112,11 +120,15 @@ class BackupService
         DB::transaction(function () use ($groups): void {
             // Disable FK checks for the duration of the restore so truncates
             // don't fail due to referential integrity constraints.
-            DB::statement('SET FOREIGN_KEY_CHECKS=0');
+            $this->setForeignKeyChecks(false);
 
             try {
                 foreach ($groups as $groupKey => $tables) {
                     if (! array_key_exists($groupKey, self::TABLE_MAP)) {
+                        continue;
+                    }
+
+                    if (! is_array($tables)) {
                         continue;
                     }
 
@@ -125,19 +137,131 @@ class BackupService
                             continue;
                         }
 
+                        // Only tables this service is responsible for.
+                        if (! in_array($table, self::TABLE_MAP[$groupKey], true)) {
+                            Log::warning('Backup restore: table not in group map, skipped.', [
+                                'group' => $groupKey,
+                                'table' => $table,
+                            ]);
+                            continue;
+                        }
+
                         DB::table($table)->truncate();
 
-                        if (! empty($rows)) {
-                            // Insert in chunks to avoid hitting query-size limits
-                            foreach (array_chunk($rows, 500) as $chunk) {
-                                DB::table($table)->insert($chunk);
-                            }
+                        if (! is_array($rows) || $rows === []) {
+                            continue;
+                        }
+
+                        $sanitized = $this->sanitizeRows($table, $rows);
+
+                        if ($sanitized === []) {
+                            continue;
+                        }
+
+                        // Insert in chunks to avoid hitting query-size limits
+                        foreach (array_chunk($sanitized, 500) as $chunk) {
+                            DB::table($table)->insert($chunk);
                         }
                     }
                 }
             } finally {
-                DB::statement('SET FOREIGN_KEY_CHECKS=1');
+                $this->setForeignKeyChecks(true);
             }
         });
+    }
+
+    /**
+     * Toggle referential-integrity enforcement for the restore.
+     *
+     * The mechanism is unchanged for MySQL/MariaDB (`SET FOREIGN_KEY_CHECKS`);
+     * the statement is merely dialect-aware so the restore path also works on
+     * the SQLite connection used by `.env.example` and the test suite, where
+     * the MySQL syntax is a hard parse error.
+     */
+    protected function setForeignKeyChecks(bool $enabled): void
+    {
+        $driver = DB::connection()->getDriverName();
+
+        match ($driver) {
+            'mysql', 'mariadb' => DB::statement('SET FOREIGN_KEY_CHECKS=' . ($enabled ? '1' : '0')),
+            'sqlite' => DB::statement('PRAGMA foreign_keys=' . ($enabled ? 'ON' : 'OFF')),
+            'pgsql' => null, // no session-level equivalent; deferred FKs handle this
+            default => null,
+        };
+    }
+
+    /**
+     * Filter backup rows down to columns that actually exist on the table.
+     *
+     * @param  array<int|string, mixed>  $rows
+     * @return list<array<string, mixed>>
+     */
+    protected function sanitizeRows(string $table, array $rows): array
+    {
+        $columns = Schema::getColumnListing($table);
+
+        if ($columns === []) {
+            Log::warning('Backup restore: no columns resolved for table, rows skipped.', [
+                'table' => $table,
+            ]);
+
+            return [];
+        }
+
+        $allowed = array_flip($columns);
+        $sanitized = [];
+        $droppedKeys = [];
+        $skippedRows = 0;
+
+        foreach ($rows as $row) {
+            if ($row instanceof \stdClass) {
+                $row = (array) $row;
+            }
+
+            if (! is_array($row) || $row === []) {
+                $skippedRows++;
+                continue;
+            }
+
+            $clean = [];
+
+            foreach ($row as $key => $value) {
+                if (! is_string($key) || ! isset($allowed[$key])) {
+                    $droppedKeys[is_scalar($key) ? (string) $key : '(non-scalar)'] = true;
+                    continue;
+                }
+
+                // Nested structures are never valid column values here.
+                if (is_array($value) || is_object($value)) {
+                    $droppedKeys[$key] = true;
+                    continue;
+                }
+
+                $clean[$key] = $value;
+            }
+
+            if ($clean === []) {
+                $skippedRows++;
+                continue;
+            }
+
+            $sanitized[] = $clean;
+        }
+
+        if ($droppedKeys !== []) {
+            Log::warning('Backup restore: dropped unknown/invalid columns.', [
+                'table'   => $table,
+                'columns' => array_keys($droppedKeys),
+            ]);
+        }
+
+        if ($skippedRows > 0) {
+            Log::warning('Backup restore: skipped malformed rows.', [
+                'table' => $table,
+                'count' => $skippedRows,
+            ]);
+        }
+
+        return $sanitized;
     }
 }

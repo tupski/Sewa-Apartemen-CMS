@@ -11,21 +11,24 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * Installer hanya bisa diakses dari:
  *  1. Localhost / loopback (127.0.0.1, ::1) — development
- *  2. IP yang ada di INSTALLER_ALLOWED_IPS (.env, comma-separated)
- *  3. Request yang membawa INSTALLER_TOKEN yang benar (.env)
+ *  2. IP yang ada di installer.allowed_ips (comma-separated)
+ *  3. Request yang membawa installer.token yang benar
  *
- * Jika tidak ada konfigurasi sama sekali (INSTALLER_ALLOWED_IPS dan
- * INSTALLER_TOKEN keduanya kosong), hanya localhost yang diizinkan.
+ * Jika tidak ada konfigurasi sama sekali (allowed_ips dan token keduanya
+ * kosong), hanya localhost yang diizinkan — fail-closed.
  * Ini melindungi server production dari akses ulang installer jika
  * file installed.lock terhapus secara tidak sengaja.
+ *
+ * SEC-11: nilai dibaca via config() (config/installer.php) bukan env(),
+ * agar tetap benar ketika konfigurasi di-cache di production.
  */
 class ProtectInstaller
 {
     public function handle(Request $request, Closure $next): Response
     {
         $clientIp    = $request->ip();
-        $allowedIps  = array_filter(array_map('trim', explode(',', env('INSTALLER_ALLOWED_IPS', ''))));
-        $tokenEnv    = env('INSTALLER_TOKEN', '');
+        $allowedIps  = array_filter(array_map('trim', explode(',', (string) config('installer.allowed_ips', ''))));
+        $tokenEnv    = (string) config('installer.token', '');
         $tokenHeader = $request->header('X-Installer-Token', '');
         $tokenQuery  = $request->query('installer_token', '');
 

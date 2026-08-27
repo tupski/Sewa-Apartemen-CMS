@@ -44,6 +44,12 @@ storage/app/public/*
 storage/app/backup
 storage/app/temp
 
+# Per-environment runtime artifacts
+storage/installed.lock
+
+# Security scanner config (may contain credentials)
+cyberstrike.json
+
 # Logs
 *.log
 storage/logs/laravel.log

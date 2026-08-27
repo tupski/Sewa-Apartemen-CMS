@@ -162,6 +162,24 @@ function gitVersionControl() {
         pullOutput: '',
         lastChecked: '',
 
+        // Parse a fetch Response as JSON, but fail with a clear message when the
+        // server returned an HTML page instead (expired session -> 302 /login,
+        // 419 CSRF, 403, or a 500 error page). Without this guard res.json()
+        // throws "Unexpected token '<'" on the <!DOCTYPE of those HTML pages.
+        async parseJson(res) {
+            const ct = res.headers.get('content-type') || '';
+            if (res.redirected || !ct.includes('application/json')) {
+                if (res.status === 401 || res.status === 419 || res.redirected) {
+                    throw new Error('Sesi login berakhir. Muat ulang halaman lalu login kembali.');
+                }
+                if (res.status === 403) {
+                    throw new Error('Akses ditolak. Akun Anda tidak memiliki hak akses admin.');
+                }
+                throw new Error(`Respons server tidak valid (HTTP ${res.status}).`);
+            }
+            return res.json();
+        },
+
         async loadStatus() {
             this.loading = true;
             this.error = null;
@@ -169,7 +187,7 @@ function gitVersionControl() {
                 const res = await fetch('{{ route('admin.settings.git-status') }}', {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                 });
-                const json = await res.json();
+                const json = await this.parseJson(res);
                 if (!res.ok) throw new Error(json.error ?? 'Server error');
                 this.status = json;
                 this.lastChecked = new Date().toLocaleTimeString();
@@ -192,7 +210,7 @@ function gitVersionControl() {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     }
                 });
-                const json = await res.json();
+                const json = await this.parseJson(res);
                 if (!res.ok || !json.success) throw new Error(json.error ?? 'Fetch failed');
                 if (window.toast) window.toast('Remote fetched successfully', 'success');
                 await this.loadStatus();
@@ -217,7 +235,7 @@ function gitVersionControl() {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     }
                 });
-                const json = await res.json();
+                const json = await this.parseJson(res);
                 if (!res.ok || !json.success) throw new Error(json.error ?? 'Pull failed');
                 this.pullOutput = json.output ?? '';
                 if (window.toast) window.toast('Git pull completed successfully', 'success');

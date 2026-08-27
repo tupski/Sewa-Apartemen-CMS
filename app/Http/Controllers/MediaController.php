@@ -377,8 +377,13 @@ class MediaController extends Controller
             throw new \RuntimeException(__('media.url_invalid'));
         }
 
+        // parse_url() keeps the brackets on IPv6 literals ("[::1]"); strip them
+        // for validation and for the CURLOPT_RESOLVE name field.
+        $bareHost = trim($host, '[]');
+        $port = (int) ($parts['port'] ?? ($scheme === 'https' ? 443 : 80));
+
         // ── SSRF guard: resolve host and reject private/loopback/link-local IPs ──
-        $this->assertPublicHost($host);
+        $pinnedIp = $this->assertPublicHost($bareHost);
 
         if (! function_exists('curl_init')) {
             throw new \RuntimeException('cURL extension is required for URL import.');
@@ -387,22 +392,7 @@ class MediaController extends Controller
         $ch = curl_init();
         $maxBytes = $this->maxUrlBytes;
 
-        curl_setopt_array($ch, [
-            CURLOPT_URL            => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => false, // do not follow redirects (SSRF safety)
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_TIMEOUT        => 20,
-            CURLOPT_MAXFILESIZE    => $maxBytes,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_USERAGENT      => 'SewaApartemenCMS-MediaImporter/1.0',
-            // Abort mid-stream if the response body exceeds the cap.
-            CURLOPT_NOPROGRESS     => false,
-            CURLOPT_PROGRESSFUNCTION => function ($res, $dlTotal, $dlNow) use ($maxBytes) {
-                return ($dlTotal > $maxBytes || $dlNow > $maxBytes) ? 1 : 0;
-            },
-        ]);
+        curl_setopt_array($ch, $this->buildCurlOptions($url, $bareHost, $port, $pinnedIp, $maxBytes));
 
         $body = curl_exec($ch);
         $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -439,11 +429,64 @@ class MediaController extends Controller
     }
 
     /**
-     * Reject hosts that resolve to private, loopback, or link-local ranges.
+     * Build the curl option set for a URL import.
+     *
+     * Split out from {@see downloadFromUrl()} so the SSRF-relevant options
+     * (notably CURLOPT_RESOLVE pinning) are directly assertable in tests.
+     *
+     * @return array<int, mixed>
+     */
+    protected function buildCurlOptions(
+        string $url,
+        string $host,
+        int $port,
+        string $pinnedIp,
+        int $maxBytes
+    ): array {
+        $options = [
+            CURLOPT_URL            => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => false, // do not follow redirects (SSRF safety)
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT        => 20,
+            CURLOPT_MAXFILESIZE    => $maxBytes,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_USERAGENT      => 'SewaApartemenCMS-MediaImporter/1.0',
+            // Abort mid-stream if the response body exceeds the cap.
+            CURLOPT_NOPROGRESS     => false,
+            CURLOPT_PROGRESSFUNCTION => function ($res, $dlTotal, $dlNow) use ($maxBytes) {
+                return ($dlTotal > $maxBytes || $dlNow > $maxBytes) ? 1 : 0;
+            },
+        ];
+
+        // SEC-08: close the DNS-rebinding window. assertPublicHost() resolved
+        // and validated an IP; pin it so curl cannot perform its own lookup and
+        // land on a different (private) address. Literal-IP URLs need no entry
+        // because there is no name for a hostile resolver to re-answer.
+        if (! filter_var($host, FILTER_VALIDATE_IP)) {
+            $target = filter_var($pinnedIp, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false
+                ? '[' . $pinnedIp . ']'
+                : $pinnedIp;
+
+            $options[CURLOPT_RESOLVE] = [$host . ':' . $port . ':' . $target];
+        }
+
+        return $options;
+    }
+
+    /**
+     * Reject hosts that resolve to private, loopback, link-local, CGNAT,
+     * metadata-service, or otherwise non-routable addresses.
+     *
+     * Every address the host resolves to must pass; the first one is returned
+     * so the caller can pin it via CURLOPT_RESOLVE.
+     *
+     * @return string the validated IP to connect to
      *
      * @throws \RuntimeException
      */
-    protected function assertPublicHost(string $host): void
+    protected function assertPublicHost(string $host): string
     {
         // If host is a literal IP, validate it directly.
         $ips = [];
@@ -474,15 +517,117 @@ class MediaController extends Controller
         }
 
         foreach ($ips as $ip) {
-            $isPublic = filter_var(
-                $ip,
-                FILTER_VALIDATE_IP,
-                FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
-            );
-            if ($isPublic === false) {
+            if ($this->isBlockedIp($ip)) {
                 throw new \RuntimeException(__('media.url_blocked_host'));
             }
         }
+
+        return $ips[0];
+    }
+
+    /**
+     * IPv4/IPv6 ranges that must never be reachable through URL import.
+     *
+     * FILTER_FLAG_NO_PRIV_RANGE|NO_RES_RANGE alone leaves gaps (notably CGNAT
+     * 100.64.0.0/10 and the cloud metadata endpoint), so the ranges are listed
+     * explicitly here as well.
+     *
+     * @var array<int, string>
+     */
+    protected array $blockedCidrs = [
+        // IPv4
+        '0.0.0.0/8',          // "this network" / unspecified
+        '10.0.0.0/8',         // RFC1918
+        '100.64.0.0/10',      // CGNAT (RFC6598)
+        '127.0.0.0/8',        // loopback
+        '169.254.0.0/16',     // link-local, includes 169.254.169.254 metadata
+        '172.16.0.0/12',      // RFC1918
+        '192.0.0.0/24',       // IETF protocol assignments
+        '192.0.2.0/24',       // TEST-NET-1
+        '192.168.0.0/16',     // RFC1918
+        '198.18.0.0/15',      // benchmarking
+        '198.51.100.0/24',    // TEST-NET-2
+        '203.0.113.0/24',     // TEST-NET-3
+        '224.0.0.0/4',        // multicast
+        '240.0.0.0/4',        // reserved
+        '255.255.255.255/32', // broadcast
+        // IPv6
+        '::/128',             // unspecified
+        '::1/128',            // loopback
+        '64:ff9b::/96',       // NAT64
+        '100::/64',           // discard-only
+        '2001:db8::/32',      // documentation
+        'fc00::/7',           // unique-local
+        'fe80::/10',          // link-local
+        'ff00::/8',           // multicast
+    ];
+
+    /**
+     * Decide whether an IP falls inside a blocked range.
+     */
+    protected function isBlockedIp(string $ip): bool
+    {
+        if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
+            return true; // not an address we can reason about → refuse
+        }
+
+        // Unwrap IPv4-mapped/compatible IPv6 (::ffff:169.254.169.254) so the
+        // IPv4 rules below still apply.
+        if (preg_match('/^::(?:ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/i', $ip, $m)
+            && filter_var($m[1], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false) {
+            $ip = $m[1];
+        }
+
+        foreach ($this->blockedCidrs as $cidr) {
+            if ($this->ipInCidr($ip, $cidr)) {
+                return true;
+            }
+        }
+
+        // Keep PHP's own private/reserved detection as a backstop for anything
+        // the explicit list misses.
+        return filter_var(
+            $ip,
+            FILTER_VALIDATE_IP,
+            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+        ) === false;
+    }
+
+    /**
+     * Binary CIDR containment test, valid for both IPv4 and IPv6.
+     */
+    protected function ipInCidr(string $ip, string $cidr): bool
+    {
+        [$subnet, $bits] = array_pad(explode('/', $cidr, 2), 2, null);
+        $bits = (int) $bits;
+
+        $ipBin = @inet_pton($ip);
+        $subnetBin = @inet_pton($subnet);
+
+        if ($ipBin === false || $subnetBin === false) {
+            return false;
+        }
+
+        // Different families never match.
+        if (strlen($ipBin) !== strlen($subnetBin)) {
+            return false;
+        }
+
+        $wholeBytes = intdiv($bits, 8);
+        $remainder = $bits % 8;
+
+        if ($wholeBytes > 0
+            && strncmp($ipBin, $subnetBin, $wholeBytes) !== 0) {
+            return false;
+        }
+
+        if ($remainder === 0) {
+            return true;
+        }
+
+        $mask = ~((1 << (8 - $remainder)) - 1) & 0xFF;
+
+        return (ord($ipBin[$wholeBytes]) & $mask) === (ord($subnetBin[$wholeBytes]) & $mask);
     }
 
     /**

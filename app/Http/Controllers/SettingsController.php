@@ -8,9 +8,16 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Symfony\Component\Process\Process;
 
 class SettingsController extends Controller
 {
+    /**
+     * SEC-13: Generic message returned to the client for git failures.
+     * Full detail (paths, remote URLs) stays in the application log only.
+     */
+    private const GIT_GENERIC_ERROR = 'Git operation failed. Check the application log for details.';
+
     protected $settingsService;
 
     /**
@@ -364,10 +371,11 @@ class SettingsController extends Controller
                 'trace'     => $e->getTraceAsString(),
             ]);
 
+            // SEC-13: detail lengkap hanya di log, klien menerima pesan generik.
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Gagal menyimpan pengaturan: ' . $e->getMessage());
+                ->with('error', 'Gagal menyimpan pengaturan. Periksa log aplikasi untuk detail.');
         }
     }
 
@@ -419,20 +427,22 @@ class SettingsController extends Controller
         try {
             $cwd = base_path();
 
-            $branch = $this->runGit('git rev-parse --abbrev-ref HEAD', $cwd);
-            $currentCommit = $this->runGit('git rev-parse HEAD', $cwd);
-            $currentMessage = $this->runGit('git log -1 --pretty=%s', $cwd);
+            $branch = $this->runGit(['rev-parse', '--abbrev-ref', 'HEAD'], $cwd);
+            $currentCommit = $this->runGit(['rev-parse', 'HEAD'], $cwd);
+            $currentMessage = $this->runGit(['log', '-1', '--pretty=%s'], $cwd);
 
-            // Count commits behind origin/main (or origin/master)
+            // Count commits behind origin/main (or origin/master).
+            // $remoteBranch is always passed as a discrete process argument — never
+            // interpolated into a shell string (SEC-03).
             $remoteBranch = 'origin/main';
-            $countBehind = (int) $this->runGit("git rev-list --count HEAD..{$remoteBranch}", $cwd);
-            if ($countBehind === 0 && trim($this->runGit("git rev-parse --verify {$remoteBranch} 2>/dev/null", $cwd)) === '') {
+            $countBehind = (int) $this->runGit(['rev-list', '--count', 'HEAD..' . $remoteBranch], $cwd);
+            if ($countBehind === 0 && $this->runGit(['rev-parse', '--verify', $remoteBranch], $cwd) === '') {
                 $remoteBranch = 'origin/master';
-                $countBehind = (int) $this->runGit("git rev-list --count HEAD..{$remoteBranch}", $cwd);
+                $countBehind = (int) $this->runGit(['rev-list', '--count', 'HEAD..' . $remoteBranch], $cwd);
             }
 
             // Upcoming commit list
-            $logRaw = $this->runGit("git log HEAD..{$remoteBranch} --oneline", $cwd);
+            $logRaw = $this->runGit(['log', 'HEAD..' . $remoteBranch, '--oneline'], $cwd);
             $upcomingCommits = [];
             foreach (array_filter(explode("\n", trim($logRaw))) as $line) {
                 $parts = explode(' ', $line, 2);
@@ -451,7 +461,7 @@ class SettingsController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('gitStatus failed: ' . $e->getMessage());
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json(['error' => self::GIT_GENERIC_ERROR], 500);
         }
     }
 
@@ -463,7 +473,7 @@ class SettingsController extends Controller
     {
         try {
             $cwd = base_path();
-            $output = $this->runGit('git pull origin main 2>&1', $cwd);
+            $output = $this->runGit(['pull', 'origin', 'main'], $cwd, true, true);
 
             return response()->json([
                 'success' => true,
@@ -471,7 +481,7 @@ class SettingsController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('gitPull failed: ' . $e->getMessage());
-            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            return response()->json(['success' => false, 'error' => self::GIT_GENERIC_ERROR], 500);
         }
     }
 
@@ -483,42 +493,56 @@ class SettingsController extends Controller
     {
         try {
             $cwd = base_path();
-            $this->runGit('git fetch origin 2>&1', $cwd);
+            $this->runGit(['fetch', 'origin'], $cwd, true, true);
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
             Log::error('gitFetch failed: ' . $e->getMessage());
-            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            return response()->json(['success' => false, 'error' => self::GIT_GENERIC_ERROR], 500);
         }
     }
 
     /**
      * Helper: run a git command in the given working directory.
-     * Returns the stdout output as a string.
      *
-     * @throws \RuntimeException on non-zero exit code
+     * SEC-03: uses Symfony Process with array arguments, so nothing is passed
+     * through a shell and no argument can be interpolated into a command string.
+     * The working directory is supplied as the process cwd instead of chdir(),
+     * which avoids mutating global process state.
+     *
+     * @param  array<int, string>  $args             git arguments, without the leading "git"
+     * @param  bool                $throwOnFailure   throw when git exits non-zero (pull/fetch)
+     * @param  bool                $includeStderr    append stderr to the returned output
+     * @return string                                trimmed stdout (plus stderr when requested)
+     *
+     * @throws \RuntimeException on non-zero exit code when $throwOnFailure is true
      */
-    private function runGit(string $command, string $cwd): string
+    private function runGit(array $args, string $cwd, bool $throwOnFailure = false, bool $includeStderr = false): string
     {
-        $output = '';
-        $returnCode = 0;
-        $oldDir = getcwd();
+        $process = new Process(array_merge(['git'], $args), $cwd);
+        $process->setTimeout(120);
+        $process->run();
 
-        try {
-            chdir($cwd);
-            exec($command, $lines, $returnCode);
-            $output = implode("\n", $lines);
-        } finally {
-            chdir($oldDir);
-        }
+        $output = trim($process->getOutput());
 
-        if ($returnCode !== 0 && !str_contains($command, '2>/dev/null')) {
-            // Non-fatal for status queries; fatal for pull/fetch
-            if (str_contains($command, 'git pull') || str_contains($command, 'git fetch')) {
-                throw new \RuntimeException("Git command failed (exit {$returnCode}): {$command}\nOutput: {$output}");
+        if ($includeStderr) {
+            $stderr = trim($process->getErrorOutput());
+            if ($stderr !== '') {
+                $output = $output === '' ? $stderr : $output . "\n" . $stderr;
             }
         }
 
+        if (!$process->isSuccessful() && $throwOnFailure) {
+            throw new \RuntimeException(sprintf(
+                "Git command failed (exit %s): git %s\nOutput: %s\nError: %s",
+                $process->getExitCode(),
+                implode(' ', $args),
+                trim($process->getOutput()),
+                trim($process->getErrorOutput())
+            ));
+        }
+
+        // Non-fatal for status queries: return whatever stdout was produced.
         return $output;
     }
 

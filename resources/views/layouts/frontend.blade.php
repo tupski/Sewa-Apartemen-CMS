@@ -186,6 +186,11 @@
         </div>
 
         <!-- ===================== Mobile slide-in drawer (left → right) ===================== -->
+        {{-- Teleported to <body>: the header's `backdrop-blur` (backdrop-filter) makes
+             it the containing block for position:fixed children, so an in-header drawer
+             gets `h-full` = header height (64px) and the nav links overflow hidden.
+             Teleporting escapes that containing block while keeping the `open` scope. --}}
+        <template x-teleport="body">
         <div class="lg:hidden" x-cloak>
             <!-- Backdrop over the exposed area; tap to close -->
             <div x-show="open"
@@ -281,6 +286,7 @@
                 </div>
             </div>
         </div>
+        </template>
     </header>
 
     <!-- ===================== Fullscreen live-search overlay ===================== -->
