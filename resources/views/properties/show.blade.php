@@ -593,6 +593,7 @@
 
             {{-- Backdrop --}}
             <div
+                id="price-sheet-backdrop"
                 x-show="open"
                 x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0"
@@ -607,8 +608,13 @@
             ></div>
 
             {{-- Slide-up bottom sheet with full pricing table --}}
+            {{-- Slides up from the bottom edge, so a swipe DOWN dismisses it. The sheet is
+                 its own scroll container (overflow-y-auto), so the gesture only engages at
+                 scrollTop 0 and otherwise leaves the pricing table scrolling normally.
+                 Closing goes through the same `open = false` as the X button / backdrop. --}}
             <div
                 x-show="open"
+                x-swipe-close="{ direction: 'down', backdrop: '#price-sheet-backdrop', onClose: () => open = false }"
                 x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="translate-y-full opacity-0"
                 x-transition:enter-end="translate-y-0 opacity-100"
@@ -651,7 +657,7 @@
     <!-- ============ LIGHTBOX (all photos) with Category Sidebar ============ -->
     <div id="gal-lightbox" class="hidden fixed inset-0 z-[60] flex" role="dialog" aria-modal="true" aria-label="{{ __('lightbox.gallery') }}">
         <!-- Dark overlay (clickable to close) -->
-        <div class="absolute inset-0 bg-black/90" data-gal-close></div>
+        <div id="gal-lightbox-overlay" class="absolute inset-0 bg-black/90" data-gal-close></div>
 
         <!-- Close button (top-right) -->
         <button type="button" data-gal-close aria-label="{{ __('lightbox.close') }}" title="{{ __('lightbox.close') }}" class="absolute top-3 right-3 z-30 text-white/70 hover:text-white text-3xl leading-none w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition">&times;</button>
@@ -726,8 +732,8 @@
     <!-- ============ BOOKING MODAL ============ -->
     @if ($showBookingForm)
     <div id="bk-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true">
-        <div class="absolute inset-0 bg-black/60" data-close></div>
-        <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div id="bk-modal-backdrop" class="absolute inset-0 bg-black/60" data-close></div>
+        <div id="bk-modal-panel" class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div id="bk-form-state">
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ $property->name }} — Pesan</h3>
@@ -1177,6 +1183,21 @@
             el.addEventListener('click', closeLb);
         });
 
+        // Swipe DOWN to dismiss (touch devices). Uses the shared gesture utility
+        // from resources/js/app.js and routes through closeLb() so the body
+        // scroll-lock is released exactly as it is for the X button / overlay tap.
+        // Vetoed while the image is zoomed or rotated so pinch-inspection and the
+        // rotate controls keep working. There is no pre-existing swipe navigation
+        // in this lightbox (next/prev are buttons + arrow keys), so nothing to keep.
+        if (window.enableSwipeToClose && lb) {
+            window.enableSwipeToClose(lb, {
+                direction: 'down',
+                backdrop: '#gal-lightbox-overlay',
+                canStart: function () { return zoom === 1 && rotation % 360 === 0; },
+                onClose: closeLb
+            });
+        }
+
         // Open from thumbnail gallery
         document.querySelectorAll('[data-photo]').forEach(function (el) {
             el.addEventListener('click', function () {
@@ -1531,9 +1552,28 @@
         }
     }
 
+    // Single close path for the booking sheet, shared by the X button, the
+    // backdrop tap and the swipe-down gesture below.
+    function closeBkModal() {
+        modal.classList.add('hidden');
+    }
+
     document.querySelectorAll('[data-close]').forEach(function (el) {
-        el.addEventListener('click', function () { modal.classList.add('hidden'); });
+        el.addEventListener('click', closeBkModal);
     });
+
+    // Swipe DOWN to dismiss the booking sheet (touch devices). Uses the shared
+    // gesture utility from resources/js/app.js; both the utility and the panel
+    // element are guarded because #bk-modal-panel only exists when the booking
+    // subtree is rendered and the bundle may not have evaluated yet.
+    var bkPanel = document.getElementById('bk-modal-panel');
+    if (window.enableSwipeToClose && bkPanel) {
+        window.enableSwipeToClose(bkPanel, {
+            direction: 'down',
+            backdrop: '#bk-modal-backdrop',
+            onClose: closeBkModal
+        });
+    }
 
     $submit.addEventListener('click', function () {
         var name  = $name.value.trim();

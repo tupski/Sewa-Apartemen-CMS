@@ -388,7 +388,8 @@
 
         {{-- ══ MOBILE FILTER DRAWER ══════════════════════════════════════════ --}}
         {{-- Backdrop --}}
-        <div x-show="filterOpen"
+        <div id="filter-drawer-backdrop"
+             x-show="filterOpen"
              x-cloak
              x-transition:enter="transition-opacity duration-200"
              x-transition:enter-start="opacity-0"
@@ -402,8 +403,13 @@
         </div>
 
         {{-- Drawer panel --}}
+        {{-- Bottom sheet: it slides UP from the bottom edge, so a swipe DOWN dismisses it.
+             The gesture only engages while the scrollable filter body (#filter-form-mobile)
+             is at scrollTop 0, and it routes through the same `filterOpen = false` used by
+             the X button, the backdrop tap and the Escape handler in listingPage(). --}}
         <div x-show="filterOpen"
              x-cloak
+             x-swipe-close="{ direction: 'down', backdrop: '#filter-drawer-backdrop', scrollContainer: '#filter-form-mobile', onClose: () => filterOpen = false }"
              x-transition:enter="transition-transform duration-300 ease-out"
              x-transition:enter-start="translate-y-full"
              x-transition:enter-end="translate-y-0"

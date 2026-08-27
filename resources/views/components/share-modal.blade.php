@@ -36,6 +36,7 @@
 >
     {{-- Backdrop --}}
     <div
+        id="share-modal-backdrop"
         x-show="isOpen"
         x-transition:enter="ease-out duration-200"
         x-transition:enter-start="opacity-0"
@@ -49,8 +50,11 @@
     ></div>
 
     {{-- Panel --}}
+    {{-- On mobile this is a bottom sheet (items-end + rounded-t-2xl), so a swipe DOWN
+         dismisses it via the same close() the X button and backdrop tap call. --}}
     <div
         x-show="isOpen"
+        x-swipe-close="{ direction: 'down', backdrop: '#share-modal-backdrop', onClose: () => close() }"
         x-transition:enter="ease-out duration-200"
         x-transition:enter-start="opacity-0 translate-y-6 sm:translate-y-0 sm:scale-95"
         x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"

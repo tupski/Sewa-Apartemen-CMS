@@ -196,7 +196,8 @@
         <template x-teleport="body">
         <div class="lg:hidden" x-cloak>
             <!-- Backdrop over the exposed area; tap to close -->
-            <div x-show="open"
+            <div id="mobile-drawer-backdrop"
+                 x-show="open"
                  @click="open = false"
                  x-transition:enter="transition-opacity ease-out duration-300"
                  x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
@@ -206,9 +207,13 @@
                  aria-hidden="true"></div>
 
             <!-- Drawer panel: ~80% width, max 320px, slides from the left -->
+            {{-- Swipe LEFT (the panel's own slide-out direction) dismisses it on touch
+                 devices; the gesture calls the same `open = false` the X button and the
+                 backdrop tap use, so aria-expanded / x-cloak / Escape all still apply. --}}
             <div id="mobile-drawer"
                  role="dialog" aria-modal="true" aria-label="{{ __('menu.open') }}"
                  x-show="open"
+                 x-swipe-close="{ direction: 'left', backdrop: '#mobile-drawer-backdrop', onClose: () => open = false }"
                  x-transition:enter="transition ease-out duration-300 transform"
                  x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
                  x-transition:leave="transition ease-in duration-200 transform"

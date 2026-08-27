@@ -1147,6 +1147,351 @@ Alpine.data('mediaLibrary', (config = {}) => ({
     },
 }));
 
+// ─── Swipe-to-close gestures for slide-in / slide-up panels ────────────────
+// ONE implementation shared by every dismissible panel on the public
+// frontend: the Alpine-driven mobile menu drawer, the listing filter sheet and
+// the price sheet, plus the hand-written vanilla-JS booking sheet and gallery
+// lightbox on the property detail page.
+//
+// The gesture NEVER hides the panel itself — it calls the panel's OWN close
+// path (`onClose`), the same one the X button / backdrop tap / Escape use — so
+// body-scroll locks, focus restore, aria-expanded, x-cloak and every other
+// side effect keep working untouched.
+//
+// Alpine usage (the expression is evaluated in the component scope, so
+// `onClose` can flip the very same state the close button flips):
+//
+//     <div x-show="open"
+//          x-swipe-close="{ direction: 'left',
+//                           backdrop: '#mobile-drawer-backdrop',
+//                           onClose: () => open = false }">
+//
+// Vanilla usage (exposed on `window` because inline @push('scripts') blocks are
+// classic scripts that run BEFORE this deferred module — callers must guard):
+//
+//     if (window.enableSwipeToClose) {
+//         var stop = window.enableSwipeToClose(panelEl, {
+//             direction: 'down',
+//             backdrop: '#gal-lightbox-overlay',
+//             canStart: function () { return zoom === 1; },
+//             onClose: closeLb,
+//         });
+//     }
+//
+// Options:
+//   direction       'left' | 'right' | 'up' | 'down'  — the direction the
+//                   finger travels to dismiss (matches the panel's slide-out).
+//   onClose         REQUIRED. The panel's existing close function.
+//   backdrop        Element or CSS selector, faded proportionally to the drag.
+//                   Selectors are resolved lazily (works with x-teleport).
+//   scrollContainer Element/selector overriding scroll-edge auto-detection.
+//   canStart        () => boolean — veto a gesture (e.g. lightbox is zoomed).
+//   liveDrag        false disables the follow-the-finger transform.
+//   distanceRatio   commit threshold as a fraction of panel size (default .25)
+//   velocity        flick threshold in px/ms (default .4)
+//   maxDuration     ms after which a flick no longer counts (default 800)
+//   slop            px of movement before the axis is locked (default 8)
+const SWIPE_AXIS = { left: 'x', right: 'x', up: 'y', down: 'y' };
+const SWIPE_SIGN = { left: -1, right: 1, up: -1, down: 1 };
+
+// Controls where a drag has its own meaning, so the panel must not steal it.
+const SWIPE_IGNORE_SELECTOR = [
+    'input[type="range"]',
+    'input[type="number"]',
+    'select',
+    'textarea',
+    '[contenteditable="true"]',
+    '[data-no-swipe-close]',
+].join(', ');
+
+const swipeReducedMotion = () =>
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function swipeResolveEl(target) {
+    if (!target) return null;
+    if (typeof target === 'string') return document.querySelector(target);
+    return target instanceof Element ? target : null;
+}
+
+function swipeIsScrollable(el, axis) {
+    const style = getComputedStyle(el);
+    const overflow = axis === 'y' ? style.overflowY : style.overflowX;
+    if (!/(auto|scroll|overlay)/.test(overflow)) return false;
+    return axis === 'y'
+        ? el.scrollHeight > el.clientHeight + 1
+        : el.scrollWidth > el.clientWidth + 1;
+}
+
+// Nearest scrollable element along `axis`, walking from `from` up to and
+// including `panel`. Returns null when nothing in that chain scrolls.
+function swipeFindScrollable(from, panel, axis) {
+    let node = from instanceof Element ? from : null;
+    while (node) {
+        if (swipeIsScrollable(node, axis)) return node;
+        if (node === panel) break;
+        node = node.parentElement;
+    }
+    return null;
+}
+
+// A close drag may only begin when the content is already parked at the edge
+// the drag would scroll towards — a bottom sheet only follows a swipe-down
+// while its scroller sits at scrollTop === 0.
+function swipeAtScrollEdge(scroller, direction) {
+    if (!scroller) return true;
+    switch (direction) {
+        case 'down':  return scroller.scrollTop <= 0;
+        case 'up':    return scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
+        case 'right': return scroller.scrollLeft <= 0;
+        case 'left':  return scroller.scrollLeft + scroller.clientWidth >= scroller.scrollWidth - 1;
+        default:      return true;
+    }
+}
+
+function enableSwipeToClose(panel, options = {}) {
+    const el = swipeResolveEl(panel);
+    const noop = () => {};
+    if (!el || typeof options.onClose !== 'function') return noop;
+
+    const direction     = SWIPE_AXIS[options.direction] ? options.direction : 'down';
+    const axis          = SWIPE_AXIS[direction];
+    const sign          = SWIPE_SIGN[direction];
+    const distanceRatio = typeof options.distanceRatio === 'number' ? options.distanceRatio : 0.25;
+    const flick         = typeof options.velocity === 'number' ? options.velocity : 0.4;
+    const maxDuration   = typeof options.maxDuration === 'number' ? options.maxDuration : 800;
+    const slop          = typeof options.slop === 'number' ? options.slop : 8;
+    const wantsLiveDrag = options.liveDrag !== false;
+    const canStart      = typeof options.canStart === 'function' ? options.canStart : () => true;
+
+    const CLOSE_MS = 160; // our own drag-out animation
+    const SNAP_MS  = 200; // snap-back animation
+    const LEAVE_MS = 400; // grace period for the panel's own leave transition
+
+    let tracking = false;  // a candidate touch is being followed
+    let dragging = false;  // committed: the panel is following the finger
+    let animating = false; // a close/snap animation owns the inline styles
+    let axisStart = 0, crossStart = 0, startTime = 0;
+    let lastPos = 0, lastTime = 0, prevPos = 0, prevTime = 0;
+    let size = 0;
+    let scroller = null;
+    let backdrop = null;
+    let liveDrag = wantsLiveDrag;
+    let timer = null;
+
+    const axisOf  = (t) => (axis === 'y' ? t.clientY : t.clientX);
+    const crossOf = (t) => (axis === 'y' ? t.clientX : t.clientY);
+    const translate = (offset) =>
+        axis === 'y' ? `translate3d(0, ${offset}px, 0)` : `translate3d(${offset}px, 0, 0)`;
+
+    // Hand the inline styles back so the panel's own classes / x-transition
+    // take over again and reopening starts from a clean slate.
+    function clearStyles() {
+        el.style.transform = '';
+        el.style.transition = '';
+        el.style.willChange = '';
+        if (backdrop) {
+            backdrop.style.opacity = '';
+            backdrop.style.transition = '';
+        }
+        backdrop = null;
+    }
+
+    function abandon() {
+        tracking = false;
+        dragging = false;
+    }
+
+    function onTouchStart(e) {
+        if (animating || e.touches.length > 1) { abandon(); return; }
+        const touch = e.touches[0];
+        const target = touch.target || e.target;
+
+        if (target instanceof Element && target.closest(SWIPE_IGNORE_SELECTOR)) return;
+        if (!canStart()) return;
+
+        // A horizontally scrollable child (thumbnail strips, chip rows) owns
+        // horizontal drags outright; for those panels we never take over.
+        if (axis === 'x') {
+            const inner = swipeFindScrollable(target, el, 'x');
+            if (inner && inner !== el) return;
+        }
+
+        const rect = el.getBoundingClientRect();
+        size = axis === 'y' ? rect.height : rect.width;
+        if (size <= 0) return;
+
+        scroller = swipeResolveEl(options.scrollContainer) || swipeFindScrollable(target, el, axis);
+        if (!swipeAtScrollEdge(scroller, direction)) return;
+
+        tracking = true;
+        dragging = false;
+        liveDrag = wantsLiveDrag && !swipeReducedMotion();
+        axisStart = lastPos = prevPos = axisOf(touch);
+        crossStart = crossOf(touch);
+        startTime = lastTime = prevTime = e.timeStamp || Date.now();
+    }
+
+    function onTouchMove(e) {
+        if (!tracking) return;
+        if (e.touches.length > 1) { snapBack(); return; }
+
+        const touch = e.touches[0];
+        const now = e.timeStamp || Date.now();
+        const along = (axisOf(touch) - axisStart) * sign; // > 0 = towards close
+        const alongAbs = Math.abs(axisOf(touch) - axisStart);
+        const crossAbs = Math.abs(crossOf(touch) - crossStart);
+
+        if (!dragging) {
+            // Direction lock: wait for enough travel, then decide once and for
+            // all whether this touch is a close gesture or a scroll.
+            if (alongAbs < slop && crossAbs < slop) return;
+            if (crossAbs > alongAbs || along <= 0) { abandon(); return; }
+            if (!swipeAtScrollEdge(scroller, direction)) { abandon(); return; }
+
+            dragging = true;
+            backdrop = swipeResolveEl(options.backdrop);
+            if (liveDrag) {
+                el.style.transition = 'none';
+                el.style.willChange = 'transform';
+                if (backdrop) backdrop.style.transition = 'none';
+            }
+        }
+
+        prevPos = lastPos;
+        prevTime = lastTime;
+        lastPos = axisOf(touch);
+        lastTime = now;
+
+        // Committed: the panel owns this touch, so stop the page scrolling
+        // underneath it. Requires the non-passive listener registered below.
+        if (e.cancelable) e.preventDefault();
+
+        if (!liveDrag) return;
+        const distance = Math.min(Math.max(along, 0), size); // never past open
+        el.style.transform = translate(distance * sign);
+        if (backdrop) backdrop.style.opacity = String(Math.max(0, 1 - distance / size));
+    }
+
+    function onTouchEnd(e) {
+        if (!tracking) return;
+        if (!dragging) { abandon(); return; }
+
+        const distance = Math.min(Math.max((lastPos - axisStart) * sign, 0), size);
+        const progress = size > 0 ? distance / size : 0;
+        const dt = lastTime - prevTime;
+        const velocity = dt > 0 ? Math.max(0, ((lastPos - prevPos) * sign) / dt) : 0;
+        const elapsed = ((e && e.timeStamp) || Date.now()) - startTime;
+
+        abandon();
+
+        if (progress >= distanceRatio || (velocity >= flick && elapsed <= maxDuration)) {
+            commitClose();
+        } else {
+            snapBack();
+        }
+    }
+
+    function onTouchCancel() {
+        if (!tracking) return;
+        const wasDragging = dragging;
+        abandon();
+        if (wasDragging) snapBack();
+    }
+
+    // Slide the panel the rest of the way out, THEN run the panel's own close
+    // path. The inline transform is kept until the panel's leave transition has
+    // finished so there is no jump back to the open position.
+    function commitClose() {
+        const finish = () => {
+            options.onClose();
+            timer = window.setTimeout(() => {
+                animating = false;
+                clearStyles();
+                timer = null;
+            }, LEAVE_MS);
+        };
+
+        if (!liveDrag) {
+            clearStyles();
+            options.onClose();
+            return;
+        }
+
+        animating = true;
+        el.style.transition = `transform ${CLOSE_MS}ms ease-out`;
+        el.style.transform = translate(size * sign);
+        if (backdrop) {
+            backdrop.style.transition = `opacity ${CLOSE_MS}ms ease-out`;
+            backdrop.style.opacity = '0';
+        }
+        window.clearTimeout(timer);
+        timer = window.setTimeout(finish, CLOSE_MS + 10);
+    }
+
+    function snapBack() {
+        abandon();
+        if (!liveDrag) { clearStyles(); return; }
+
+        animating = true;
+        el.style.transition = `transform ${SNAP_MS}ms ease-out`;
+        el.style.transform = translate(0);
+        if (backdrop) {
+            backdrop.style.transition = `opacity ${SNAP_MS}ms ease-out`;
+            backdrop.style.opacity = '1';
+        }
+        window.clearTimeout(timer);
+        timer = window.setTimeout(() => {
+            animating = false;
+            clearStyles();
+            timer = null;
+        }, SNAP_MS + 20);
+    }
+
+    // start/end/cancel stay passive; only `touchmove` must be non-passive so a
+    // committed drag can call preventDefault(). Registering it non-passive does
+    // not by itself block scrolling — preventDefault() is only reached after the
+    // direction lock has resolved in favour of the close axis.
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+    el.addEventListener('touchcancel', onTouchCancel, { passive: true });
+
+    return function destroy() {
+        window.clearTimeout(timer);
+        timer = null;
+        animating = false;
+        abandon();
+        clearStyles();
+        el.removeEventListener('touchstart', onTouchStart);
+        el.removeEventListener('touchmove', onTouchMove);
+        el.removeEventListener('touchend', onTouchEnd);
+        el.removeEventListener('touchcancel', onTouchCancel);
+    };
+}
+
+// Vanilla-JS panels (inline @push('scripts') IIFEs) reach the utility here.
+window.enableSwipeToClose = enableSwipeToClose;
+
+// x-swipe-close="{ direction, onClose, … }"
+Alpine.directive('swipe-close', (el, { expression }, { evaluate, cleanup }) => {
+    let destroy = () => {};
+    // Deferred a microtask so teleported / sibling nodes referenced by the
+    // options object are already in the DOM when the gesture is wired up.
+    queueMicrotask(() => {
+        if (!el.isConnected) return;
+        try {
+            const options = expression ? evaluate(expression) : {};
+            if (options && typeof options === 'object') {
+                destroy = enableSwipeToClose(el, options);
+            }
+        } catch (e) {
+            // A malformed expression must never take the whole panel down.
+        }
+    });
+    cleanup(() => destroy());
+});
+
 // ponytail: Alpine.start() one-time app-level, sengaja dibiarkan di sini — TIDAK di `turbo:load`.
 // Aman: Alpine memakai MutationObserver pada document (lifecycle.js, startObservingMutations),
 // sehingga node baru dari Turbo body-swap ter-init otomatis via onElAdded -> initTree.
