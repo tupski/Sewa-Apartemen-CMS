@@ -47,6 +47,9 @@ storage/app/temp
 # Per-environment runtime artifacts
 storage/installed.lock
 
+# Local scratch / throwaway files (may contain session tokens, page snapshots)
+/_scratch
+
 # Security scanner config (may contain credentials)
 cyberstrike.json
 
@@ -75,6 +78,8 @@ Thumbs.db
 # Soft deletes files
 /.delete-*
 
+IDEA.md
+.kiro
 .roo
 .freebuff
 -p
