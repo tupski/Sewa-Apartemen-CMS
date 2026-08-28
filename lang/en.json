@@ -1,4 +1,9 @@
 {
+    "Not a git repository — the .git directory was not found on the server.": "Not a git repository — the .git directory was not found on the server.",
+    "Git reported dubious repository ownership. Add the repo to git safe.directory on the server.": "Git reported dubious repository ownership. Add the repo to git safe.directory on the server.",
+    "Git authentication failed. Check the deploy key or credentials on the server.": "Git authentication failed. Check the deploy key or credentials on the server.",
+    "Could not reach the git remote. Check the server network/DNS connection.": "Could not reach the git remote. Check the server network/DNS connection.",
+    "Git operation failed. Check the application log for details.": "Git operation failed. Check the application log for details.",
     "admin.money_prefix": "Rp",
     "admin.unsaved_warning": "You have unsaved changes. Are you sure you want to leave this page?",
     "nav.find_apartments": "Find Apartments",

@@ -1,4 +1,9 @@
 {
+    "Not a git repository — the .git directory was not found on the server.": "Bukan repositori git — direktori .git tidak ditemukan di server.",
+    "Git reported dubious repository ownership. Add the repo to git safe.directory on the server.": "Git melaporkan kepemilikan repositori yang mencurigakan. Tambahkan repo ke git safe.directory di server.",
+    "Git authentication failed. Check the deploy key or credentials on the server.": "Autentikasi git gagal. Periksa deploy key atau kredensial di server.",
+    "Could not reach the git remote. Check the server network/DNS connection.": "Tidak dapat menjangkau remote git. Periksa koneksi jaringan/DNS server.",
+    "Git operation failed. Check the application log for details.": "Operasi git gagal. Periksa log aplikasi untuk detailnya.",
     "admin.money_prefix": "Rp",
     "admin.unsaved_warning": "Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman ini?",
     "nav.find_apartments": "Cari Apartemen",

@@ -461,7 +461,7 @@ class SettingsController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('gitStatus failed: ' . $e->getMessage());
-            return response()->json(['error' => self::GIT_GENERIC_ERROR], 500);
+            return response()->json(['error' => $this->gitErrorMessage($e)], 500);
         }
     }
 
@@ -481,7 +481,7 @@ class SettingsController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('gitPull failed: ' . $e->getMessage());
-            return response()->json(['success' => false, 'error' => self::GIT_GENERIC_ERROR], 500);
+            return response()->json(['success' => false, 'error' => $this->gitErrorMessage($e)], 500);
         }
     }
 
@@ -498,7 +498,7 @@ class SettingsController extends Controller
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
             Log::error('gitFetch failed: ' . $e->getMessage());
-            return response()->json(['success' => false, 'error' => self::GIT_GENERIC_ERROR], 500);
+            return response()->json(['success' => false, 'error' => $this->gitErrorMessage($e)], 500);
         }
     }
 
@@ -519,7 +519,23 @@ class SettingsController extends Controller
      */
     private function runGit(array $args, string $cwd, bool $throwOnFailure = false, bool $includeStderr = false): string
     {
-        $process = new Process(array_merge(['git'], $args), $cwd);
+        // Fail fast with an actionable message when the deploy directory is not a
+        // git checkout — the common cause of the perpetual "gagal fetch" on the
+        // server. Checked before spawning a process so the error is unambiguous.
+        if (! is_dir(rtrim($cwd, '/\\') . DIRECTORY_SEPARATOR . '.git')) {
+            throw new \RuntimeException('fatal: not a git repository: the .git directory was not found in the deploy path.');
+        }
+
+        // `git -C <path>` makes git resolve the repository from an explicit path
+        // regardless of the launching service account or mount — more reliable
+        // than the process cwd alone (which is still passed as a belt-and-suspenders
+        // fallback). GIT_TERMINAL_PROMPT=0 makes remote operations fail fast instead
+        // of hanging when credentials are unavailable. Args stay an array (SEC-03).
+        $process = new Process(
+            array_merge(['git', '-C', $cwd], $args),
+            $cwd,
+            ['GIT_TERMINAL_PROMPT' => '0']
+        );
         $process->setTimeout(120);
         $process->run();
 
@@ -544,6 +560,73 @@ class SettingsController extends Controller
 
         // Non-fatal for status queries: return whatever stdout was produced.
         return $output;
+    }
+
+    /**
+     * SEC-13: Map a raw git failure (exception message / stderr) to a short,
+     * safe-to-expose category message plus the first sanitized stderr line.
+     * The full, unredacted detail is logged by the caller — never returned here.
+     */
+    private function gitErrorMessage(\Throwable $e): string
+    {
+        $raw = $e->getMessage();
+        $lower = strtolower($raw);
+
+        if (str_contains($lower, 'not a git repository')) {
+            $category = __('Not a git repository — the .git directory was not found on the server.');
+        } elseif (str_contains($lower, 'dubious ownership') || str_contains($lower, 'safe.directory')) {
+            $category = __('Git reported dubious repository ownership. Add the repo to git safe.directory on the server.');
+        } elseif (str_contains($lower, 'authentication failed')
+            || str_contains($lower, 'could not read username')
+            || str_contains($lower, 'permission denied')
+            || str_contains($lower, 'access denied')) {
+            $category = __('Git authentication failed. Check the deploy key or credentials on the server.');
+        } elseif (str_contains($lower, 'could not resolve host')
+            || str_contains($lower, 'failed to connect')
+            || str_contains($lower, 'unable to access')
+            || str_contains($lower, 'network is unreachable')
+            || str_contains($lower, 'connection timed out')) {
+            $category = __('Could not reach the git remote. Check the server network/DNS connection.');
+        } else {
+            $category = __(self::GIT_GENERIC_ERROR);
+        }
+
+        $detail = $this->sanitizeGitStderr($raw);
+
+        return $detail === '' ? $category : $category . ' (' . $detail . ')';
+    }
+
+    /**
+     * SEC-13: Return the first meaningful stderr line with absolute paths,
+     * remote URLs, and credentials redacted so nothing sensitive leaks to the client.
+     */
+    private function sanitizeGitStderr(string $raw): string
+    {
+        $line = '';
+        foreach (preg_split('/\r?\n/', $raw) as $candidate) {
+            $candidate = trim($candidate);
+            // Skip the wrapper lines added by runGit() so we surface the real git message.
+            if ($candidate === ''
+                || str_starts_with($candidate, 'Git command failed')
+                || str_starts_with($candidate, 'Output:')) {
+                continue;
+            }
+            $line = preg_replace('/^Error:\s*/i', '', $candidate);
+            if ($line !== '') {
+                break;
+            }
+        }
+
+        if ($line === '') {
+            return '';
+        }
+
+        // Redact remote URLs (scheme://.., git@host:..), then absolute filesystem paths.
+        $line = preg_replace('#\b[a-z][a-z0-9+.-]*://\S+#i', '[remote]', $line);
+        $line = preg_replace('#\bgit@\S+#i', '[remote]', $line);
+        $line = preg_replace('#(?:[A-Za-z]:\\\\|/)[^\s\'"()]+#', '[path]', $line);
+
+        return trim($line);
     }
 
     /**
