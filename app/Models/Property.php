@@ -220,6 +220,53 @@ class Property extends Model
     }
 
     /**
+     * Lowest applicable "starting from" price for display, weekend-aware.
+     *
+     * Unlike lowestPrice() — which returns the absolute minimum across BOTH
+     * weekday and weekend keys (used for SEO structured data and price
+     * filtering) — this reflects the rate that actually applies TODAY in
+     * Asia/Jakarta, based on the property's weekend-day configuration. This
+     * matches the weekday/weekend logic already used by the detail-page pricing
+     * table (_pricing-table.blade.php), so the card/detail "from" price switches
+     * to the weekend rate on weekend days instead of always showing the weekday
+     * rate. Transit/daily rates use the _we or _wd key for today (falling back to
+     * the opposite value when the applicable one is unset); weekly/monthly are flat.
+     */
+    public function lowestPriceToday(): ?float
+    {
+        $isWeekend   = $this->isWeekendDay(\Carbon\Carbon::now()->setTimezone('Asia/Jakarta')->dayOfWeek);
+        $suffix      = $isWeekend ? '_we' : '_wd';
+        $otherSuffix = $isWeekend ? '_wd' : '_we';
+
+        // Rate keys that split by weekday/weekend, keyed by their base name.
+        $splitBases = ['night', 't3', 't6', 't9', 't12', 't24'];
+        // Flat rates with no weekday/weekend distinction.
+        $flatKeys = ['weekly', 'monthly'];
+
+        $rates = [];
+
+        foreach ($this->unit_types ?? [] as $type) {
+            foreach ($splitBases as $base) {
+                $v = (float) ($this->priceFor($type, $base . $suffix) ?? 0);
+                if ($v <= 0) {
+                    $v = (float) ($this->priceFor($type, $base . $otherSuffix) ?? 0);
+                }
+                if ($v > 0) {
+                    $rates[] = $v;
+                }
+            }
+            foreach ($flatKeys as $key) {
+                $v = $this->priceFor($type, $key);
+                if ($v !== null && $v > 0) {
+                    $rates[] = $v;
+                }
+            }
+        }
+
+        return $rates ? min($rates) : null;
+    }
+
+    /**
      * Whether the booking method key ("transit"|"weekly"|"monthly"|"daily")
      * is available for this property (i.e. any room type has a price set).
      */

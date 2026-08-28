@@ -266,8 +266,9 @@
                                                         {{ $property->city ?: 'Tangerang' }}{{ $property->province ? ', ' . $property->province : '' }}
                                                     </div>
                                                     @php
-                                                        // Use lowestPrice() which includes transit (t3), daily, weekly, monthly
-                                                        $cheapest = $property->lowestPrice();
+                                                        // Weekend-aware "starting from" price: reflects the rate that applies
+                                                        // today (Asia/Jakarta) across transit/daily/weekly/monthly.
+                                                        $cheapest = $property->lowestPriceToday();
                                                     @endphp
                                                     <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
                                                         @if ($cheapest)
@@ -375,8 +376,9 @@
                                         {{ $property->city ?: 'Tangerang' }}{{ $property->province ? ', ' . $property->province : '' }}
                                     </div>
                                     @php
-                                        // Use lowestPrice() which includes transit (t3), daily, weekly, monthly
-                                        $cheapest = $property->lowestPrice();
+                                        // Weekend-aware "starting from" price: reflects the rate that applies
+                                        // today (Asia/Jakarta) across transit/daily/weekly/monthly.
+                                        $cheapest = $property->lowestPriceToday();
                                     @endphp
                                     <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
                                         @if ($cheapest)

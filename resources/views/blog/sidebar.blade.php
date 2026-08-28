@@ -1,7 +1,7 @@
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 space-y-6">
     <!-- Recent Posts -->
     <div>
-        <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">{{ __('blog.recent') }}</h3>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">{{ __('blog.recent') }}</h3>
         <ul class="space-y-3">
             @foreach($recentPosts as $recentPost)
                 <li>
@@ -17,7 +17,7 @@
 
     <!-- Categories -->
     <div>
-        <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">{{ __('blog.categories') }}</h3>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">{{ __('blog.categories') }}</h3>
         <ul class="space-y-2">
             @foreach($categories as $cat)
                 <li>
@@ -33,7 +33,7 @@
 
     <!-- Tags Cloud -->
     <div>
-        <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">{{ __('blog.tags') }}</h3>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">{{ __('blog.tags') }}</h3>
         <div class="flex flex-wrap gap-2">
             @foreach($tags as $t)
                 <a href="{{ route('blog.tag', $t->slug) }}"

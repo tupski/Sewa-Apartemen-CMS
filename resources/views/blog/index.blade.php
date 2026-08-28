@@ -39,7 +39,7 @@
                                             @endif
                                             <span>{{ $post->published_at?->format('M d, Y') }}</span>
                                         </div>
-                                        <h2 class="text-xl font-semibold text-gray-800 mb-2">
+                                        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
                                             <a href="{{ route('blog.show', $post->slug) }}" class="hover:text-blue-600">
                                                 {{ $post->title }}
                                             </a>

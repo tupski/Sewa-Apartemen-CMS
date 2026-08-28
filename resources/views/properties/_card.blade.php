@@ -15,7 +15,7 @@
 @php
     $primaryColor = $primaryColor ?? \App\Services\SettingsService::get('primary_color', '#3b82f6');
 
-    $lowestPx = $property->lowestPrice();
+    $lowestPx = $property->lowestPriceToday();
     $priceLabel = $lowestPx ? 'Rp ' . number_format($lowestPx, 0, ',', '.') : null;
     $topUnitType = $property->unit_types[0] ?? null;
     $unitTypeLabel = $topUnitType ? (\App\Models\Property::UNIT_TYPES[$topUnitType] ?? $topUnitType) : null;

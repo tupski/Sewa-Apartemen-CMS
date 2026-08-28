@@ -117,9 +117,9 @@
                     {{ $property->address ? $property->address . ', ' : '' }}{{ $property->city }}{{ $property->province ? ', ' . $property->province : '' }}
                 </p>
             @endif
-            @if ($property->lowestPrice())
+            @if ($property->lowestPriceToday())
                 <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">
-                    {{ __('prop.from') }} <span class="text-lg font-bold" style="color: {{ $primaryColor }}">Rp {{ number_format($property->lowestPrice(), 0, ',', '.') }}</span>
+                    {{ __('prop.from') }} <span class="text-lg font-bold" style="color: {{ $primaryColor }}">Rp {{ number_format($property->lowestPriceToday(), 0, ',', '.') }}</span>
                 </p>
             @endif
         </div>
@@ -275,8 +275,8 @@
                                 ])));
                             $directionsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($dirDestination);
                             // Engaging Bahasa Indonesia caption for sharing directions.
-                            $dirPrice = $property->lowestPrice()
-                                ? 'mulai dari Rp ' . number_format($property->lowestPrice(), 0, ',', '.')
+                            $dirPrice = $property->lowestPriceToday()
+                                ? 'mulai dari Rp ' . number_format($property->lowestPriceToday(), 0, ',', '.')
                                 : 'lokasi strategis & nyaman';
                             $dirCaption = '✨ Cek ' . $property->name . ' — ' . $dirPrice . '! '
                                 . 'Lihat detail & petunjuk arah di sini: ' . $directionsUrl;
@@ -538,8 +538,8 @@
                 <div>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('prop.from') }}</p>
                     <p class="text-lg font-bold" style="color: {{ $primaryColor }}">
-                        @if ($property->lowestPrice())
-                            Rp {{ number_format($property->lowestPrice(), 0, ',', '.') }}
+                        @if ($property->lowestPriceToday())
+                            Rp {{ number_format($property->lowestPriceToday(), 0, ',', '.') }}
                         @else
                             —
                         @endif
@@ -557,19 +557,20 @@
     {{-- Only shown on mobile when pricing table is present but booking form is NOT --}}
     @if ($showPricingTable && !$showBookingForm)
         @php
-            // Compute minimum price across all durations for the bar label
-            $lowestForBar = $property->lowestPrice();
+            // Weekend-aware minimum price across all durations for the bar label
+            // (matches the pricing table, which shows today's applicable rate).
+            $lowestForBar = $property->lowestPriceToday();
         @endphp
         <div
             x-data="{ open: false }"
             class="lg:hidden"
         >
             {{-- Sticky bar itself: fixed bottom-0, z-40 --}}
-            <div class="fixed bottom-0 inset-x-0 z-40 bg-white shadow-[0_-4px_16px_rgba(0,0,0,0.10)] rounded-t-2xl px-4 py-3">
+            <div class="fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-gray-800 shadow-[0_-4px_16px_rgba(0,0,0,0.10)] rounded-t-2xl px-4 py-3">
                 <div class="flex items-center justify-between gap-3 max-w-lg mx-auto">
                     <div>
-                        <p class="text-xs text-gray-500">Harga mulai dari</p>
-                        <p class="text-lg font-bold text-gray-900">
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Harga mulai dari</p>
+                        <p class="text-lg font-bold text-gray-900 dark:text-white">
                             @if ($lowestForBar)
                                 Rp {{ number_format($lowestForBar, 0, ',', '.') }}
                             @else
@@ -581,7 +582,7 @@
                         type="button"
                         @click="open = true"
                         class="px-6 py-2.5 rounded-full text-white text-sm font-semibold hover:opacity-90 transition shadow-sm"
-                        style="background-color: #16a34a"
+                        style="background-color: {{ $primaryColor }}"
                     >
                         Cek Harga
                     </button>
@@ -621,19 +622,19 @@
                 x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="translate-y-0 opacity-100"
                 x-transition:leave-end="translate-y-full opacity-0"
-                class="fixed bottom-0 inset-x-0 z-50 bg-white rounded-t-2xl shadow-2xl max-h-[80vh] overflow-y-auto"
+                class="fixed bottom-0 inset-x-0 z-50 bg-white dark:bg-gray-800 rounded-t-2xl shadow-2xl max-h-[80vh] overflow-y-auto"
                 x-cloak
                 role="dialog"
                 aria-modal="true"
                 aria-label="Daftar Harga"
             >
                 {{-- Sheet header --}}
-                <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 sticky top-0 bg-white z-10">
-                    <h3 class="text-base font-bold text-gray-900">{{ __('prop.pricing_heading') }}</h3>
+                <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+                    <h3 class="text-base font-bold text-gray-900 dark:text-white">{{ __('prop.pricing_heading') }}</h3>
                     <button
                         type="button"
                         @click="open = false"
-                        class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 transition"
+                        class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition"
                         aria-label="Tutup"
                     >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

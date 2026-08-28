@@ -76,7 +76,7 @@
                     <!-- Related Posts -->
                     @if($relatedPosts->count() > 0)
                         <div class="mt-8">
-                            <h3 class="text-xl font-bold text-gray-800 mb-4">{{ __('blog.related') }}</h3>
+                            <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">{{ __('blog.related') }}</h3>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 @foreach($relatedPosts as $relatedPost)
                                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden hover:shadow-md transition">
@@ -88,7 +88,7 @@
                                             </a>
                                         @endif
                                         <div class="p-4">
-                                            <h4 class="font-semibold text-gray-800 mb-1">
+                                            <h4 class="font-semibold text-gray-800 dark:text-gray-100 mb-1">
                                                 <a href="{{ route('blog.show', $relatedPost->slug) }}" class="hover:text-blue-600">
                                                     {{ $relatedPost->title }}
                                                 </a>
