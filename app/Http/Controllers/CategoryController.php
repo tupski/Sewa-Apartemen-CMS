@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -47,7 +48,7 @@ class CategoryController extends Controller
         } catch (\Exception $e) {
             return back()
                 ->withInput()
-                ->with('error', 'Failed to create category: ' . $e->getMessage());
+                ->with('error', 'Failed to create category: '.$e->getMessage());
         }
     }
 
@@ -56,13 +57,13 @@ class CategoryController extends Controller
      * Accepts a name (optionally a slug/description), persists it and returns JSON
      * so the front-end can insert the new option into the category dropdown.
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function storeAjax(Request $request)
     {
         $validated = $request->validate([
-            'name'        => 'required|string|max:255',
-            'slug'        => 'nullable|string|max:255|unique:categories,slug',
+            'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255|unique:categories,slug',
             'description' => 'nullable|string|max:255',
         ]);
 
@@ -73,8 +74,8 @@ class CategoryController extends Controller
                 // Ensure uniqueness by appending a numeric suffix if needed.
                 $base = $data['slug'];
                 $i = 1;
-                while (\App\Models\Category::where('slug', $data['slug'])->exists()) {
-                    $data['slug'] = $base . '-' . $i++;
+                while (Category::where('slug', $data['slug'])->exists()) {
+                    $data['slug'] = $base.'-'.$i++;
                 }
             }
 
@@ -82,15 +83,15 @@ class CategoryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'id'      => $category->id,
-                'name'    => $category->name,
-                'slug'    => $category->slug,
+                'id' => $category->id,
+                'name' => $category->name,
+                'slug' => $category->slug,
                 'message' => 'Category created successfully.',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create category: ' . $e->getMessage(),
+                'message' => 'Failed to create category: '.$e->getMessage(),
             ], 422);
         }
     }
@@ -112,7 +113,7 @@ class CategoryController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:categories,slug,' . $category->id,
+            'slug' => 'required|string|max:255|unique:categories,slug,'.$category->id,
             'description' => 'nullable|string',
         ]);
 
@@ -126,11 +127,11 @@ class CategoryController extends Controller
 
             return redirect()
                 ->route('admin.categories.index')
-                ->with('success', 'Category updated successfully.');
+                ->with('success', 'Kategori berhasil diperbarui.');
         } catch (\Exception $e) {
             return back()
                 ->withInput()
-                ->with('error', 'Failed to update category: ' . $e->getMessage());
+                ->with('error', 'Failed to update category: '.$e->getMessage());
         }
     }
 
@@ -144,7 +145,7 @@ class CategoryController extends Controller
                 ->with('success', 'Category deleted successfully.');
         } catch (\Exception $e) {
             return back()
-                ->with('error', 'Failed to delete category: ' . $e->getMessage());
+                ->with('error', 'Failed to delete category: '.$e->getMessage());
         }
     }
 }

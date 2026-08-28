@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Amenity;
 use App\Http\Requests\AmenityRequest;
+use App\Models\Amenity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -26,7 +26,7 @@ class AmenityController extends Controller
 
         // Search by name
         if ($request->has('search') && $request->search) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $query->where('name', 'like', '%'.$request->search.'%');
         }
 
         // Filter by category
@@ -40,8 +40,8 @@ class AmenityController extends Controller
         }
 
         $amenities = $query->orderBy('category')
-                           ->orderBy('name')
-                           ->paginate(15);
+            ->orderBy('name')
+            ->paginate(15);
 
         return view('admin.amenities.index', compact('amenities'));
     }
@@ -68,7 +68,7 @@ class AmenityController extends Controller
             }
 
             // Set is_active default
-            if (!isset($data['is_active'])) {
+            if (! isset($data['is_active'])) {
                 $data['is_active'] = true;
             }
 
@@ -80,7 +80,7 @@ class AmenityController extends Controller
         } catch (\Exception $e) {
             return back()
                 ->withInput()
-                ->with('error', 'Failed to create amenity: ' . $e->getMessage());
+                ->with('error', 'Failed to create amenity: '.$e->getMessage());
         }
     }
 
@@ -114,7 +114,7 @@ class AmenityController extends Controller
             }
 
             // Set is_active default
-            if (!isset($data['is_active'])) {
+            if (! isset($data['is_active'])) {
                 $data['is_active'] = false;
             }
 
@@ -122,11 +122,11 @@ class AmenityController extends Controller
 
             return redirect()
                 ->route('admin.amenities.index')
-                ->with('success', 'Amenity updated successfully.');
+                ->with('success', 'Amenitas berhasil diperbarui.');
         } catch (\Exception $e) {
             return back()
                 ->withInput()
-                ->with('error', 'Failed to update amenity: ' . $e->getMessage());
+                ->with('error', 'Failed to update amenity: '.$e->getMessage());
         }
     }
 
@@ -144,13 +144,13 @@ class AmenityController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Amenity status updated successfully.',
+                'message' => 'Status amenitas berhasil diperbarui.',
                 'is_active' => $amenity->is_active,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update amenity status: ' . $e->getMessage(),
+                'message' => 'Failed to update amenity status: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -170,7 +170,7 @@ class AmenityController extends Controller
                 ->with('success', 'Amenity deleted successfully.');
         } catch (\Exception $e) {
             return back()
-                ->with('error', 'Failed to delete amenity: ' . $e->getMessage());
+                ->with('error', 'Failed to delete amenity: '.$e->getMessage());
         }
     }
 }

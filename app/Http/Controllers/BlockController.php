@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Block;
 use App\Http\Requests\BlockRequest;
+use App\Models\Block;
+use App\Models\Page;
+use App\Services\SafeHtmlService;
 use Illuminate\Http\Request;
 
 class BlockController extends Controller
@@ -40,7 +42,7 @@ class BlockController extends Controller
 
         // Search by name
         if ($request->has('search') && $request->search) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $query->where('name', 'like', '%'.$request->search.'%');
         }
 
         $blocks = $query->ordered()->paginate(15);
@@ -53,7 +55,7 @@ class BlockController extends Controller
      */
     public function create()
     {
-        $pages = \App\Models\Page::orderBy('title')->get();
+        $pages = Page::orderBy('title')->get();
 
         return view('admin.blocks.create', compact('pages'));
     }
@@ -67,7 +69,7 @@ class BlockController extends Controller
             $data = $request->validated();
             // FIND-005: sanitize legacy string content (array content is structured data)
             if (is_string($data['content'] ?? null)) {
-                $data['content'] = \App\Services\SafeHtmlService::sanitize($data['content']);
+                $data['content'] = SafeHtmlService::sanitize($data['content']);
             }
 
             $block = Block::create($data);
@@ -78,7 +80,7 @@ class BlockController extends Controller
         } catch (\Exception $e) {
             return back()
                 ->withInput()
-                ->with('error', 'Failed to create block: ' . $e->getMessage());
+                ->with('error', 'Failed to create block: '.$e->getMessage());
         }
     }
 
@@ -95,7 +97,7 @@ class BlockController extends Controller
      */
     public function edit(Block $block)
     {
-        $pages = \App\Models\Page::orderBy('title')->get();
+        $pages = Page::orderBy('title')->get();
 
         return view('admin.blocks.edit', compact('block', 'pages'));
     }
@@ -109,18 +111,18 @@ class BlockController extends Controller
             $data = $request->validated();
             // FIND-005: sanitize legacy string content (array content is structured data)
             if (is_string($data['content'] ?? null)) {
-                $data['content'] = \App\Services\SafeHtmlService::sanitize($data['content']);
+                $data['content'] = SafeHtmlService::sanitize($data['content']);
             }
 
             $block->update($data);
 
             return redirect()
                 ->route('admin.blocks.index')
-                ->with('success', 'Block updated successfully.');
+                ->with('success', 'Blok berhasil diperbarui.');
         } catch (\Exception $e) {
             return back()
                 ->withInput()
-                ->with('error', 'Failed to update block: ' . $e->getMessage());
+                ->with('error', 'Failed to update block: '.$e->getMessage());
         }
     }
 
@@ -137,7 +139,7 @@ class BlockController extends Controller
                 ->with('success', 'Block deleted successfully.');
         } catch (\Exception $e) {
             return back()
-                ->with('error', 'Failed to delete block: ' . $e->getMessage());
+                ->with('error', 'Failed to delete block: '.$e->getMessage());
         }
     }
 
@@ -165,7 +167,7 @@ class BlockController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to reorder blocks: ' . $e->getMessage(),
+                'message' => 'Failed to reorder blocks: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -184,13 +186,13 @@ class BlockController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Block status updated successfully.',
+                'message' => 'Status Block berhasil diperbarui.',
                 'status' => $block->status,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update block status: ' . $e->getMessage(),
+                'message' => 'Failed to update block status: '.$e->getMessage(),
             ], 500);
         }
     }

@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Page;
 use App\Http\Requests\PageRequest;
+use App\Models\Block;
+use App\Models\Page;
+use App\Services\SeoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -26,7 +28,7 @@ class PageController extends Controller
 
         // Search by title
         if ($request->has('search') && $request->search) {
-            $query->where('title', 'like', '%' . $request->search . '%');
+            $query->where('title', 'like', '%'.$request->search.'%');
         }
 
         // Filter by status
@@ -83,7 +85,7 @@ class PageController extends Controller
         } catch (\Exception $e) {
             return back()
                 ->withInput()
-                ->with('error', 'Failed to create page: ' . $e->getMessage());
+                ->with('error', 'Failed to create page: '.$e->getMessage());
         }
     }
 
@@ -94,13 +96,13 @@ class PageController extends Controller
     {
         abort_unless($page->status === 'published', 404);
 
-        $blocks = \App\Models\Block::where('status', 'active')->get()
+        $blocks = Block::where('status', 'active')->get()
             ->filter(fn ($block) => $block->appearsOnPage($page->id))
             ->groupBy('area');
 
         // Build SEO from the page's own metadata (falls back to title/content).
         // Title suffixing (" - {Site Name}") is applied centrally by SeoService.
-        $seo = \App\Services\SeoService::metaTagsArray($page);
+        $seo = SeoService::metaTagsArray($page);
 
         return view('pages.show', compact('page', 'blocks', 'seo'));
     }
@@ -152,11 +154,11 @@ class PageController extends Controller
 
             return redirect()
                 ->route('admin.pages.index')
-                ->with('success', 'Page updated successfully.');
+                ->with('success', 'Halaman berhasil diperbarui.');
         } catch (\Exception $e) {
             return back()
                 ->withInput()
-                ->with('error', 'Failed to update page: ' . $e->getMessage());
+                ->with('error', 'Failed to update page: '.$e->getMessage());
         }
     }
 
@@ -170,10 +172,10 @@ class PageController extends Controller
 
             return redirect()
                 ->route('admin.pages.index')
-                ->with('success', 'Page deleted successfully.');
+                ->with('success', 'Halaman berhasil dihapus.');
         } catch (\Exception $e) {
             return back()
-                ->with('error', 'Failed to delete page: ' . $e->getMessage());
+                ->with('error', 'Gagal menghapus halaman: '.$e->getMessage());
         }
     }
 
@@ -191,13 +193,13 @@ class PageController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Page status updated successfully.',
+                'message' => 'Status halaman berhasil diperbarui.',
                 'status' => $page->status,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update page status: ' . $e->getMessage(),
+                'message' => 'Gagal memperbarui status halaman: '.$e->getMessage(),
             ], 500);
         }
     }

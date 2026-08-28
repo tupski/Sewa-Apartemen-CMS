@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Post;
 use App\Models\Category;
+use App\Models\Post;
 use App\Models\Tag;
+use App\Services\SafeHtmlService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -21,7 +23,7 @@ class PostController extends Controller
         $query = Post::with(['category', 'author']);
 
         if ($request->has('search') && $request->search) {
-            $query->where('title', 'like', '%' . $request->search . '%');
+            $query->where('title', 'like', '%'.$request->search.'%');
         }
 
         if ($request->has('status') && $request->status) {
@@ -49,23 +51,23 @@ class PostController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'title'          => 'required|string|max:255',
+            'title' => 'required|string|max:255',
             // Slug is OPTIONAL: auto-generated from the title when empty.
-            'slug'           => 'nullable|string|max:255|unique:posts,slug',
-            'content'        => 'required|string',
-            'excerpt'        => 'nullable|string',
+            'slug' => 'nullable|string|max:255|unique:posts,slug',
+            'content' => 'required|string',
+            'excerpt' => 'nullable|string',
             // Status now comes from a hidden field (draft/published) — kept
             // nullable so legacy clients/tests that omit it still work (defaults to draft).
-            'status'         => 'nullable|in:draft,published',
-            'category_id'    => 'nullable|exists:categories,id',
+            'status' => 'nullable|in:draft,published',
+            'category_id' => 'nullable|exists:categories,id',
             // Client enforces images only + 5MB, keep server-side rules as the trust boundary.
             'featured_image' => 'nullable|image|mimes:jpeg,png,webp,gif|max:5120',
-            'tags'           => 'nullable|string',
-            'seo'            => 'nullable|array',
+            'tags' => 'nullable|string',
+            'seo' => 'nullable|array',
             // BUG-024 FIX: Validasi field SEO agar tidak ada string tak terbatas
-            'seo.meta_title'       => 'nullable|string|max:255',
+            'seo.meta_title' => 'nullable|string|max:255',
             'seo.meta_description' => 'nullable|string|max:320',
-            'seo.canonical_url'    => 'nullable|url|max:2048',
+            'seo.canonical_url' => 'nullable|url|max:2048',
         ]);
 
         try {
@@ -74,7 +76,7 @@ class PostController extends Controller
             // Status is optional in the request; default to draft.
             $data['status'] = $data['status'] ?? 'draft';
             // FIND-005: sanitize rich content before persistence
-            $data['content'] = \App\Services\SafeHtmlService::sanitize($data['content'] ?? null);
+            $data['content'] = SafeHtmlService::sanitize($data['content'] ?? null);
 
             // Slug is optional — generate from title with a uniqueness suffix.
             if (empty($data['slug'])) {
@@ -83,9 +85,9 @@ class PostController extends Controller
 
             if ($request->hasFile('featured_image')) {
                 $result = upload_file($request->file('featured_image'), [
-                    'base_folder'   => 'Blog',
-                    'sub_folders'   => [$data['title'] ?? 'post'],
-                    'name_prefix'   => 'Blog',
+                    'base_folder' => 'Blog',
+                    'sub_folders' => [$data['title'] ?? 'post'],
+                    'name_prefix' => 'Blog',
                     'name_category' => $data['title'] ?? 'post',
                 ]);
                 $data['featured_image'] = $result['path'];
@@ -112,7 +114,7 @@ class PostController extends Controller
         } catch (\Exception $e) {
             return back()
                 ->withInput()
-                ->with('error', 'Failed to create post: ' . $e->getMessage());
+                ->with('error', 'Failed to create post: '.$e->getMessage());
         }
     }
 
@@ -136,25 +138,25 @@ class PostController extends Controller
     public function update(Request $request, Post $post)
     {
         $validated = $request->validate([
-            'title'          => 'required|string|max:255',
+            'title' => 'required|string|max:255',
             // Slug is OPTIONAL: auto-generated from the title when empty.
-            'slug'           => 'nullable|string|max:255|unique:posts,slug,' . $post->id,
-            'content'        => 'required|string',
-            'excerpt'        => 'nullable|string',
-            'status'         => 'nullable|in:draft,published',
-            'category_id'    => 'nullable|exists:categories,id',
+            'slug' => 'nullable|string|max:255|unique:posts,slug,'.$post->id,
+            'content' => 'required|string',
+            'excerpt' => 'nullable|string',
+            'status' => 'nullable|in:draft,published',
+            'category_id' => 'nullable|exists:categories,id',
             'featured_image' => 'nullable|image|mimes:jpeg,png,webp,gif|max:5120',
-            'tags'           => 'nullable|string',
-            'seo'            => 'nullable|array',
+            'tags' => 'nullable|string',
+            'seo' => 'nullable|array',
             // BUG-024 FIX: Konsisten dengan store() — validasi field SEO pada update juga
-            'seo.meta_title'       => 'nullable|string|max:255',
+            'seo.meta_title' => 'nullable|string|max:255',
             'seo.meta_description' => 'nullable|string|max:320',
-            'seo.canonical_url'    => 'nullable|url|max:2048',
+            'seo.canonical_url' => 'nullable|url|max:2048',
         ]);
 
         try {
             // FIND-005: sanitize rich content before persistence
-            $validated['content'] = \App\Services\SafeHtmlService::sanitize($validated['content'] ?? null);
+            $validated['content'] = SafeHtmlService::sanitize($validated['content'] ?? null);
             $data = $validated;
 
             // Status is optional in the request; default to draft.
@@ -169,9 +171,9 @@ class PostController extends Controller
             // the column when the user actually uploaded or explicitly removed it.
             if ($request->hasFile('featured_image')) {
                 $result = upload_file($request->file('featured_image'), [
-                    'base_folder'   => 'Blog',
-                    'sub_folders'   => [$data['title'] ?? 'post'],
-                    'name_prefix'   => 'Blog',
+                    'base_folder' => 'Blog',
+                    'sub_folders' => [$data['title'] ?? 'post'],
+                    'name_prefix' => 'Blog',
                     'name_category' => $data['title'] ?? 'post',
                 ]);
                 $data['featured_image'] = $result['path'];
@@ -202,11 +204,11 @@ class PostController extends Controller
 
             return redirect()
                 ->route('admin.posts.index')
-                ->with('success', 'Post updated successfully.');
+                ->with('success', 'Postingan berhasil diperbarui.');
         } catch (\Exception $e) {
             return back()
                 ->withInput()
-                ->with('error', 'Failed to update post: ' . $e->getMessage());
+                ->with('error', 'Failed to update post: '.$e->getMessage());
         }
     }
 
@@ -220,7 +222,7 @@ class PostController extends Controller
                 ->with('success', 'Post deleted successfully.');
         } catch (\Exception $e) {
             return back()
-                ->with('error', 'Failed to delete post: ' . $e->getMessage());
+                ->with('error', 'Failed to delete post: '.$e->getMessage());
         }
     }
 
@@ -229,7 +231,7 @@ class PostController extends Controller
      * Stores the file via the shared upload_file() helper and returns the
      * public /storage/... URL so it can be inserted into the editor content.
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function uploadImage(Request $request)
     {
@@ -239,21 +241,21 @@ class PostController extends Controller
 
         try {
             $result = upload_file($request->file('image'), [
-                'base_folder'   => 'Blog',
-                'sub_folders'   => ['content'],
-                'name_prefix'   => 'Blog',
+                'base_folder' => 'Blog',
+                'sub_folders' => ['content'],
+                'name_prefix' => 'Blog',
                 'name_category' => 'content',
             ]);
 
             return response()->json([
                 'success' => true,
-                'url'     => Storage::url($result['path']),
-                'path'    => $result['path'],
+                'url' => Storage::url($result['path']),
+                'path' => $result['path'],
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Image upload failed: ' . $e->getMessage(),
+                'message' => 'Image upload failed: '.$e->getMessage(),
             ], 422);
         }
     }
@@ -264,7 +266,9 @@ class PostController extends Controller
         $tagIds = [];
 
         foreach ($tagNames as $name) {
-            if (empty($name)) continue;
+            if (empty($name)) {
+                continue;
+            }
             $tag = Tag::firstOrCreate(
                 ['slug' => Str::slug($name)],
                 ['name' => $name]

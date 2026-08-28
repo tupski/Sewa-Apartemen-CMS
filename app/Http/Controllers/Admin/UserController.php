@@ -48,9 +48,9 @@ class UserController extends Controller
 
         if ($request->hasFile('avatar')) {
             $result = upload_file($request->file('avatar'), [
-                'base_folder'   => 'Users',
-                'sub_folders'   => [$user->name ?? 'user'],
-                'name_prefix'   => 'Avatar',
+                'base_folder' => 'Users',
+                'sub_folders' => [$user->name ?? 'user'],
+                'name_prefix' => 'Avatar',
                 'name_category' => $user->name ?? 'user',
             ]);
             $user->avatar = $result['path'];
@@ -100,7 +100,7 @@ class UserController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.$user->id],
             'phone' => ['nullable', 'string', 'max:20'],
             'avatar' => ['nullable', 'image', 'max:2048'],
             'role_id' => ['nullable', 'exists:roles,id', Rule::in($this->assignableRoleIds())],
@@ -119,9 +119,9 @@ class UserController extends Controller
 
         if ($request->hasFile('avatar')) {
             $result = upload_file($request->file('avatar'), [
-                'base_folder'   => 'Users',
-                'sub_folders'   => [$user->name ?? 'user'],
-                'name_prefix'   => 'Avatar',
+                'base_folder' => 'Users',
+                'sub_folders' => [$user->name ?? 'user'],
+                'name_prefix' => 'Avatar',
                 'name_category' => $user->name ?? 'user',
             ]);
             $user->avatar = $result['path'];
@@ -145,7 +145,7 @@ class UserController extends Controller
 
         log_activity('user_updated', "User {$user->name} updated");
 
-        return redirect()->route('admin.users.index')->with('success', 'User updated successfully.');
+        return redirect()->route('admin.users.index')->with('success', 'User berhasil diperbarui.');
     }
 
     /**

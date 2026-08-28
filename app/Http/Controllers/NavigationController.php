@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\NavigationRequest;
 use App\Models\Navigation;
+use App\Models\Page;
 use Illuminate\Http\Request;
 
 class NavigationController extends Controller
@@ -44,7 +45,7 @@ class NavigationController extends Controller
             ->ordered()
             ->get();
 
-        $pages = \App\Models\Page::published()->orderBy('title')->get();
+        $pages = Page::published()->orderBy('title')->get();
 
         return view('admin.navigations.create', compact('navigations', 'pages'));
     }
@@ -73,7 +74,7 @@ class NavigationController extends Controller
             ->ordered()
             ->get();
 
-        $pages = \App\Models\Page::published()->orderBy('title')->get();
+        $pages = Page::published()->orderBy('title')->get();
 
         return view('admin.navigations.edit', compact('navigation', 'navigations', 'pages'));
     }
@@ -87,7 +88,7 @@ class NavigationController extends Controller
 
         return redirect()
             ->route('admin.navigations.index')
-            ->with('success', 'Navigation item updated successfully.');
+            ->with('success', 'Item navigasi berhasil diperbarui.');
     }
 
     /**
@@ -99,7 +100,7 @@ class NavigationController extends Controller
 
         return redirect()
             ->route('admin.navigations.index')
-            ->with('success', 'Navigation item deleted successfully.');
+            ->with('success', 'Item navigasi berhasil dihapus.');
     }
 
     /**
@@ -120,7 +121,7 @@ class NavigationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Navigation items reordered successfully.',
+            'message' => 'Item navigasi berhasil diurutkan ulang.',
         ]);
     }
 
@@ -137,7 +138,7 @@ class NavigationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Navigation status updated successfully.',
+            'message' => 'Status navigasi berhasil diperbarui.',
         ]);
     }
 }

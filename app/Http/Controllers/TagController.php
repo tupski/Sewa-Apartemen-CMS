@@ -46,7 +46,7 @@ class TagController extends Controller
         } catch (\Exception $e) {
             return back()
                 ->withInput()
-                ->with('error', 'Failed to create tag: ' . $e->getMessage());
+                ->with('error', 'Failed to create tag: '.$e->getMessage());
         }
     }
 
@@ -67,7 +67,7 @@ class TagController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:tags,slug,' . $tag->id,
+            'slug' => 'required|string|max:255|unique:tags,slug,'.$tag->id,
         ]);
 
         try {
@@ -80,11 +80,11 @@ class TagController extends Controller
 
             return redirect()
                 ->route('admin.tags.index')
-                ->with('success', 'Tag updated successfully.');
+                ->with('success', 'Tag berhasil diperbarui.');
         } catch (\Exception $e) {
             return back()
                 ->withInput()
-                ->with('error', 'Failed to update tag: ' . $e->getMessage());
+                ->with('error', 'Gagal memperbarui Tag: '.$e->getMessage());
         }
     }
 
@@ -95,10 +95,10 @@ class TagController extends Controller
 
             return redirect()
                 ->route('admin.tags.index')
-                ->with('success', 'Tag deleted successfully.');
+                ->with('success', 'Tag berhasil dihapus.');
         } catch (\Exception $e) {
             return back()
-                ->with('error', 'Failed to delete tag: ' . $e->getMessage());
+                ->with('error', 'Gagal menghapus Tag: '.$e->getMessage());
         }
     }
 }
