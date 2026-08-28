@@ -1492,6 +1492,100 @@ Alpine.directive('swipe-close', (el, { expression }, { evaluate, cleanup }) => {
     cleanup(() => destroy());
 });
 
+// ─── Property detail map (Leaflet) ─────────────────────────────────────────
+// Initialises the #property-map element on the public property detail page.
+// Data (center, Geoapify map key, markers) comes from the server-rendered
+// #map-data JSON block — NO API key or marker data is hardcoded here. Safe to
+// run on every page: it returns immediately when #property-map is absent.
+//
+// Turbo Drive swaps the <body> on navigation, so #property-map is a fresh node
+// each visit. We tag the initialised node with a data flag to avoid double-init
+// and to detect a stale Leaflet instance left on a recycled element.
+function initPropertyMap() {
+    var el = document.getElementById('property-map');
+    if (!el) return;                       // not the property page
+    if (el.dataset.mapInit === 'true') return; // already initialised this node
+    if (typeof L === 'undefined') return;  // Leaflet CDN not ready yet
+
+    var dataEl = document.getElementById('map-data');
+    if (!dataEl) return;
+
+    var data;
+    try {
+        data = JSON.parse(dataEl.textContent || '{}');
+    } catch (e) {
+        return; // malformed payload — fail silently, map is non-critical
+    }
+
+    var center = Array.isArray(data.center) ? data.center : null;
+    if (!center || center.length < 2) return;
+
+    var markers = Array.isArray(data.markers) ? data.markers : [];
+    var mapKey  = data.mapKey || '';
+
+    el.dataset.mapInit = 'true';
+
+    // scrollWheelZoom disabled to avoid hijacking page scroll on mobile.
+    var map = L.map(el, { scrollWheelZoom: false }).setView(center, 15);
+
+    // Prefer Geoapify tiles when a key is configured; fall back to OSM otherwise.
+    if (mapKey) {
+        L.tileLayer('https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}.png?apiKey=' + encodeURIComponent(mapKey), {
+            attribution: 'Powered by <a href="https://www.geoapify.com/">Geoapify</a> | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 20
+        }).addTo(map);
+    } else {
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        }).addTo(map);
+    }
+
+    var propertyIcon = L.divIcon({
+        className: '',
+        html: '<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:#ef4444;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);transform:rotate(-45deg)"></div>',
+        iconSize: [28, 28], iconAnchor: [14, 28], popupAnchor: [0, -30]
+    });
+    var poiIcon = L.divIcon({
+        className: '',
+        html: '<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;background:#f97316;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.3);transform:rotate(-45deg)"></div>',
+        iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -24]
+    });
+
+    // escapeHtml() is defined above — reuse it so DB-sourced names are safe in popups.
+    var bounds = [];
+    markers.forEach(function (m) {
+        var lat = parseFloat(m.lat);
+        var lng = parseFloat(m.lng);
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        var isProperty = m.type === 'property';
+        var marker = L.marker([lat, lng], { icon: isProperty ? propertyIcon : poiIcon }).addTo(map);
+
+        var popup = '<strong>' + escapeHtml(String(m.name || '')) + '</strong>';
+        if (!isProperty) {
+            if (m.category) {
+                popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(String(m.category)) + '</span>';
+            }
+            if (m.distance) {
+                popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(String(m.distance)) + '</span>';
+            }
+        }
+        marker.bindPopup(popup);
+        if (isProperty) marker.openPopup();
+
+        bounds.push([lat, lng]);
+    });
+
+    if (bounds.length > 1) {
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+    }
+}
+
+// Run on both Turbo navigations and initial (non-Turbo) page load.
+document.addEventListener('turbo:load', initPropertyMap);
+document.addEventListener('DOMContentLoaded', initPropertyMap);
+
 // ponytail: Alpine.start() one-time app-level, sengaja dibiarkan di sini — TIDAK di `turbo:load`.
 // Aman: Alpine memakai MutationObserver pada document (lifecycle.js, startObservingMutations),
 // sehingga node baru dari Turbo body-swap ter-init otomatis via onElAdded -> initTree.

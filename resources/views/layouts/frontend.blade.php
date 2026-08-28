@@ -99,6 +99,12 @@
     <!-- Lucide Icons (MIT) -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
+    <!-- Leaflet (map library) — CDN, pinned + SRI. Used by the property detail map. -->
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
@@ -522,6 +528,12 @@
 
     {{-- Global Share Modal (opened via `open-share-modal` window event) --}}
     @include('components.share-modal')
+
+    <!-- Leaflet (map library) — CDN, pinned + SRI. Loaded before per-page scripts
+         so the global `L` is available to initPropertyMap() in app.js. -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WLEg="
+            crossorigin=""></script>
 
     @stack('scripts')
 

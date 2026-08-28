@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Booking;
+use Illuminate\Support\Facades\Cache;
 
 class Property extends Model
 {
@@ -110,7 +111,7 @@ class Property extends Model
     public function amenities()
     {
         return $this->belongsToMany(Amenity::class, 'amenity_property')
-                    ->withTimestamps();
+            ->withTimestamps();
     }
 
     /**
@@ -203,9 +204,9 @@ class Property extends Model
     {
         $rates = [];
         $allKeys = ['night_wd', 'night_we', 'weekly', 'monthly',
-                    't3_wd', 't3_we', 't6_wd', 't6_we',
-                    't9_wd', 't9_we', 't12_wd', 't12_we',
-                    't24_wd', 't24_we'];
+            't3_wd', 't3_we', 't6_wd', 't6_we',
+            't9_wd', 't9_we', 't12_wd', 't12_we',
+            't24_wd', 't24_we'];
 
         foreach ($this->unit_types ?? [] as $type) {
             foreach ($allKeys as $key) {
@@ -234,8 +235,8 @@ class Property extends Model
      */
     public function lowestPriceToday(): ?float
     {
-        $isWeekend   = $this->isWeekendDay(\Carbon\Carbon::now()->setTimezone('Asia/Jakarta')->dayOfWeek);
-        $suffix      = $isWeekend ? '_we' : '_wd';
+        $isWeekend = $this->isWeekendDay(Carbon::now()->setTimezone('Asia/Jakarta')->dayOfWeek);
+        $suffix = $isWeekend ? '_we' : '_wd';
         $otherSuffix = $isWeekend ? '_wd' : '_we';
 
         // Rate keys that split by weekday/weekend, keyed by their base name.
@@ -247,9 +248,9 @@ class Property extends Model
 
         foreach ($this->unit_types ?? [] as $type) {
             foreach ($splitBases as $base) {
-                $v = (float) ($this->priceFor($type, $base . $suffix) ?? 0);
+                $v = (float) ($this->priceFor($type, $base.$suffix) ?? 0);
                 if ($v <= 0) {
-                    $v = (float) ($this->priceFor($type, $base . $otherSuffix) ?? 0);
+                    $v = (float) ($this->priceFor($type, $base.$otherSuffix) ?? 0);
                 }
                 if ($v > 0) {
                     $rates[] = $v;
@@ -326,17 +327,17 @@ class Property extends Model
      * Category display order and emoji mapping is defined here.
      */
     public const NEARBY_CATEGORIES = [
-        'Mall/Shopping'            => '🛍️',
-        'Restaurant/Food'          => '🍽️',
-        'Transport'                => '🚆',
-        'Education'                => '🎓',
-        'Hospital/Health'          => '🏥',
-        'Recreation'               => '🎡',
-        'Hotel'                    => '🏨',
-        'Nearby Places'            => '📍',
-        'Transportation'           => '🚌',
+        'Mall/Shopping' => '🛍️',
+        'Restaurant/Food' => '🍽️',
+        'Transport' => '🚆',
+        'Education' => '🎓',
+        'Hospital/Health' => '🏥',
+        'Recreation' => '🎡',
+        'Hotel' => '🏨',
+        'Nearby Places' => '📍',
+        'Transportation' => '🚌',
         'Entertainment/Attraction' => '🎭',
-        'Others'                   => '📌',
+        'Others' => '📌',
     ];
 
     /**
@@ -349,7 +350,7 @@ class Property extends Model
 
         foreach ((array) ($this->nearby_places ?? []) as $place) {
             $cat = $place['category'] ?? 'Others';
-            if (!array_key_exists($cat, $groups)) {
+            if (! array_key_exists($cat, $groups)) {
                 $cat = 'Others';
             }
             $groups[$cat][] = $place;
@@ -370,15 +371,15 @@ class Property extends Model
             $labels = array_map(fn ($t) => $this->typeLabel($t), $types);
             $faqs[] = [
                 'q' => 'Tipe kamar apa saja yang tersedia?',
-                'a' => 'Kamar yang tersedia di apartemen ini: ' . implode(', ', $labels) . '. Pilih tipe kamar saat melakukan pemesanan.',
+                'a' => 'Kamar yang tersedia di apartemen ini: '.implode(', ', $labels).'. Pilih tipe kamar saat melakukan pemesanan.',
             ];
         }
 
         if ($this->checkin_time || $this->checkout_time) {
-            $time = trim(($this->checkin_time ?: '—') . ' s/d ' . ($this->checkout_time ?: '—'), ' —');
+            $time = trim(($this->checkin_time ?: '—').' s/d '.($this->checkout_time ?: '—'), ' —');
             $faqs[] = [
                 'q' => 'Jam berapa check-in dan check-out?',
-                'a' => 'Check-in mulai pukul ' . ($this->checkin_time ?: '-') . ' dan check-out paling lambat pukul ' . ($this->checkout_time ?: '-') . ' WIB.',
+                'a' => 'Check-in mulai pukul '.($this->checkin_time ?: '-').' dan check-out paling lambat pukul '.($this->checkout_time ?: '-').' WIB.',
             ];
         }
 
@@ -392,14 +393,14 @@ class Property extends Model
         if ($docs = $this->required_documents ?? []) {
             $faqs[] = [
                 'q' => 'Dokumen apa saja yang harus disiapkan saat check-in?',
-                'a' => 'Dokumen yang diperlukan: ' . implode(', ', $docs) . '.',
+                'a' => 'Dokumen yang diperlukan: '.implode(', ', $docs).'.',
             ];
         }
 
         if ($max = $this->maxBookingDays()) {
             $faqs[] = [
                 'q' => 'Berapa lama maksimal saya bisa menyewa?',
-                'a' => 'Durasi maksimal pemesanan adalah ' . $max . ' malam.',
+                'a' => 'Durasi maksimal pemesanan adalah '.$max.' malam.',
             ];
         }
 
@@ -451,18 +452,34 @@ class Property extends Model
     }
 
     /**
+     * Get the property_places pivot records for this property.
+     */
+    public function propertyPlaces()
+    {
+        return $this->hasMany(PropertyPlace::class);
+    }
+
+    /**
+     * Get all places associated with this property (through the pivot).
+     */
+    public function places()
+    {
+        return $this->hasManyThrough(Place::class, PropertyPlace::class, 'property_id', 'id', 'id', 'place_id');
+    }
+
+    /**
      * The "booted" method of the model.
      */
     protected static function booted(): void
     {
         static::saved(function () {
-            \Illuminate\Support\Facades\Cache::forget('sitemap.xml');
-            \Illuminate\Support\Facades\Cache::forget('dashboard_stats');
+            Cache::forget('sitemap.xml');
+            Cache::forget('dashboard_stats');
         });
 
         static::deleted(function () {
-            \Illuminate\Support\Facades\Cache::forget('sitemap.xml');
-            \Illuminate\Support\Facades\Cache::forget('dashboard_stats');
+            Cache::forget('sitemap.xml');
+            Cache::forget('dashboard_stats');
         });
     }
 }

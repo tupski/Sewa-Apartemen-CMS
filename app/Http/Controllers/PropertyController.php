@@ -2,9 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Property;
 use App\Http\Requests\PropertyRequest;
+use App\Jobs\FetchNearbyPlacesJob;
+use App\Models\Amenity;
+use App\Models\Media;
+use App\Models\Property;
+use App\Models\PropertyPhoto;
+use App\Services\SafeHtmlService;
+use App\Services\SeoService;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class PropertyController extends Controller
@@ -28,10 +37,10 @@ class PropertyController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
-                  ->orWhere('city', 'like', '%' . $search . '%')
-                  ->orWhere('province', 'like', '%' . $search . '%')
-                  ->orWhere('address', 'like', '%' . $search . '%');
+                $q->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('city', 'like', '%'.$search.'%')
+                    ->orWhere('province', 'like', '%'.$search.'%')
+                    ->orWhere('address', 'like', '%'.$search.'%');
             });
         }
 
@@ -69,7 +78,7 @@ class PropertyController extends Controller
         if (is_string($amenityFilter)) {
             $amenityFilter = array_filter(explode(',', $amenityFilter));
         }
-        if (!empty($amenityFilter)) {
+        if (! empty($amenityFilter)) {
             $query->whereHas('amenities', function ($q) use ($amenityFilter) {
                 $q->whereIn('amenities.id', $amenityFilter);
             }, '>=', count($amenityFilter));
@@ -96,9 +105,16 @@ class PropertyController extends Controller
             $allProperties = $query->get();
             $filtered = $allProperties->filter(function ($p) use ($priceMin, $priceMax) {
                 $lowest = $p->lowestPrice();
-                if ($lowest === null) return false;
-                if ($priceMin && $lowest < (float) $priceMin) return false;
-                if ($priceMax && $lowest > (float) $priceMax) return false;
+                if ($lowest === null) {
+                    return false;
+                }
+                if ($priceMin && $lowest < (float) $priceMin) {
+                    return false;
+                }
+                if ($priceMax && $lowest > (float) $priceMax) {
+                    return false;
+                }
+
                 return true;
             });
             // Gunakan LengthAwarePaginator manual untuk hasil yang sudah difilter
@@ -106,7 +122,7 @@ class PropertyController extends Controller
             $perPage = 12;
             $total = $filtered->count();
             $items = $filtered->slice(($page - 1) * $perPage, $perPage)->values();
-            $properties = new \Illuminate\Pagination\LengthAwarePaginator(
+            $properties = new LengthAwarePaginator(
                 $items, $total, $perPage, $page,
                 ['path' => $request->url(), 'query' => $request->query()]
             );
@@ -122,21 +138,21 @@ class PropertyController extends Controller
             ->orderBy('city')
             ->pluck('city');
 
-        $availableAmenities = \App\Models\Amenity::active()
+        $availableAmenities = Amenity::active()
             ->orderBy('name')
             ->get();
 
         return view('properties.index', [
-            'properties'        => $properties,
-            'typeFilter'        => $typeFilter,
-            'unitTypeFilter'    => $unitTypeFilter,
-            'cityFilter'        => $cityFilter,
-            'priceMin'          => $priceMin,
-            'priceMax'          => $priceMax,
-            'amenityFilter'     => (array) $amenityFilter,
-            'sort'              => $sort,
-            'availableCities'   => $availableCities,
-            'availableAmenities'=> $availableAmenities,
+            'properties' => $properties,
+            'typeFilter' => $typeFilter,
+            'unitTypeFilter' => $unitTypeFilter,
+            'cityFilter' => $cityFilter,
+            'priceMin' => $priceMin,
+            'priceMax' => $priceMax,
+            'amenityFilter' => (array) $amenityFilter,
+            'sort' => $sort,
+            'availableCities' => $availableCities,
+            'availableAmenities' => $availableAmenities,
         ]);
     }
 
@@ -172,26 +188,35 @@ class PropertyController extends Controller
 
             if ($propertyLat !== null && $propertyLng !== null && $placeLat !== null && $placeLng !== null) {
                 $meters = $this->haversineMeters($propertyLat, $propertyLng, $placeLat, $placeLng);
-                $place['distance_m']         = round($meters);
+                $place['distance_m'] = round($meters);
                 $place['distance_formatted'] = $this->formatDistance($meters);
-            } elseif (!empty($place['distance_km'])) {
+            } elseif (! empty($place['distance_km'])) {
                 // Fallback: legacy distance_km field stored in admin
                 $meters = (float) $place['distance_km'] * 1000;
-                $place['distance_m']         = round($meters);
+                $place['distance_m'] = round($meters);
                 $place['distance_formatted'] = $this->formatDistance($meters);
             } else {
-                $place['distance_m']         = null;
+                $place['distance_m'] = null;
                 $place['distance_formatted'] = null;
             }
 
             $nearbyPlacesWithDistance[] = $place;
         }
 
+        // Phase 6: persistent Geoapify POIs (source = 'geoapify'), nearest-first.
+        // These are DISTINCT from the manual `nearby_places` JSON above, which is
+        // preserved as a fallback for properties that have not been synced.
+        $persistentPlaces = $property->propertyPlaces()
+            ->where('source', 'geoapify')
+            ->with('place')
+            ->orderBy('distance_m', 'asc')
+            ->get();
+
         // Build SEO from the property's own metadata (falls back to name/description).
         // Title suffixing (" - {Site Name}") is applied centrally by SeoService.
-        $seo = \App\Services\SeoService::metaTagsArray($property);
+        $seo = SeoService::metaTagsArray($property);
 
-        return view('properties.show', compact('property', 'nearbyProperties', 'seo', 'nearbyPlacesWithDistance'));
+        return view('properties.show', compact('property', 'nearbyProperties', 'seo', 'nearbyPlacesWithDistance', 'persistentPlaces'));
     }
 
     /**
@@ -207,9 +232,9 @@ class PropertyController extends Controller
      *    same-city properties, then latest properties, excluding the current
      *    one and any already selected. Fallback entries have no `distance_km`.
      *
-     * @return \Illuminate\Support\Collection<int, \App\Models\Property>
+     * @return Collection<int, Property>
      */
-    protected function nearbyProperties(Property $property, int $limit = 3): \Illuminate\Support\Collection
+    protected function nearbyProperties(Property $property, int $limit = 3): Collection
     {
         $candidates = Property::published()
             ->where('id', '!=', $property->id)
@@ -230,6 +255,7 @@ class PropertyController extends Controller
                         (float) $c->latitude,
                         (float) $c->longitude
                     );
+
                     return $c;
                 })
                 ->sortBy('distance_km')
@@ -251,6 +277,7 @@ class PropertyController extends Controller
                     if ($aCity !== $bCity) {
                         return $aCity <=> $bCity;
                     }
+
                     return $b->created_at <=> $a->created_at;
                 })
                 ->take($limit - $selected->count())
@@ -290,7 +317,7 @@ class PropertyController extends Controller
 
         // Search by name
         if ($request->has('search') && $request->search) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $query->where('name', 'like', '%'.$request->search.'%');
         }
 
         // Filter by status
@@ -300,12 +327,12 @@ class PropertyController extends Controller
 
         // Filter by city
         if ($request->has('city') && $request->city) {
-            $query->where('city', 'like', '%' . $request->city . '%');
+            $query->where('city', 'like', '%'.$request->city.'%');
         }
 
         $properties = $query->orderBy('order', 'asc')
-                           ->orderBy('created_at', 'desc')
-                           ->paginate(15);
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
 
         return view('admin.properties.index', compact('properties'));
     }
@@ -315,11 +342,11 @@ class PropertyController extends Controller
      */
     public function create()
     {
-        $amenities = \App\Models\Amenity::where('is_active', true)
-                                      ->orderBy('name')
-                                      ->get();
+        $amenities = Amenity::where('is_active', true)
+            ->orderBy('name')
+            ->get();
 
-        $mediaImages = \App\Models\Media::where('type', 'image')->latest()->limit(60)->get();
+        $mediaImages = Media::where('type', 'image')->latest()->limit(60)->get();
 
         return view('admin.properties.create', compact('amenities', 'mediaImages'));
     }
@@ -332,7 +359,7 @@ class PropertyController extends Controller
         try {
             $data = array_merge($request->validated(), $this->normalizeDetailData($request), $this->buildPricingData($request));
             // FIND-005: sanitize rich content before persistence
-            $data['description'] = \App\Services\SafeHtmlService::sanitize($data['description'] ?? null);
+            $data['description'] = SafeHtmlService::sanitize($data['description'] ?? null);
 
             // Auto-generate slug if empty
             if (empty($data['slug'])) {
@@ -364,7 +391,7 @@ class PropertyController extends Controller
         } catch (\Exception $e) {
             return back()
                 ->withInput()
-                ->with('error', 'Failed to create property: ' . $e->getMessage());
+                ->with('error', 'Failed to create property: '.$e->getMessage());
         }
     }
 
@@ -383,13 +410,18 @@ class PropertyController extends Controller
     {
         $property->load(['amenities', 'photos.media']);
 
-        $amenities = \App\Models\Amenity::where('is_active', true)
-                                      ->orderBy('name')
-                                      ->get();
+        // Persistent Geoapify POIs (Phase 5). Eager load the related place and
+        // order nearest-first so the admin _nearby partial renders a clean table.
+        $property->load(['propertyPlaces' => fn ($q) => $q->orderBy('distance_m', 'asc'), 'propertyPlaces.place']);
+        $propertyPlaces = $property->propertyPlaces;
 
-        $mediaImages = \App\Models\Media::where('type', 'image')->latest()->limit(60)->get();
+        $amenities = Amenity::where('is_active', true)
+            ->orderBy('name')
+            ->get();
 
-        return view('admin.properties.edit', compact('property', 'amenities', 'mediaImages'));
+        $mediaImages = Media::where('type', 'image')->latest()->limit(60)->get();
+
+        return view('admin.properties.edit', compact('property', 'amenities', 'mediaImages', 'propertyPlaces'));
     }
 
     /**
@@ -400,7 +432,7 @@ class PropertyController extends Controller
         try {
             $data = array_merge($request->validated(), $this->normalizeDetailData($request), $this->buildPricingData($request));
             // FIND-005: sanitize rich content before persistence
-            $data['description'] = \App\Services\SafeHtmlService::sanitize($data['description'] ?? null);
+            $data['description'] = SafeHtmlService::sanitize($data['description'] ?? null);
 
             // Auto-generate slug if empty
             if (empty($data['slug'])) {
@@ -430,11 +462,11 @@ class PropertyController extends Controller
 
             return redirect()
                 ->route('admin.properties.index')
-                ->with('success', 'Property updated successfully.');
+                ->with('success', 'Properti berhasil diperbarui.');
         } catch (\Exception $e) {
             return back()
                 ->withInput()
-                ->with('error', 'Failed to update property: ' . $e->getMessage());
+                ->with('error', 'Gagal memperbarui properti: '.$e->getMessage());
         }
     }
 
@@ -452,13 +484,13 @@ class PropertyController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Property status updated successfully.',
+                'message' => 'Status properti berhasil diperbarui.',
                 'status' => $property->status,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update property status: ' . $e->getMessage(),
+                'message' => 'Gagal memperbarui status properti: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -482,15 +514,15 @@ class PropertyController extends Controller
         //    Legacy format: gallery_media[categoryIndex][] = mediaId
         foreach ((array) $request->input('gallery_media', []) as $index => $mediaIds) {
             $category = $categories[(int) $index] ?? null;
-            if (!$category) {
+            if (! $category) {
                 continue;
             }
             foreach ((array) $mediaIds as $mediaId) {
-                if (!\App\Models\Media::whereKey($mediaId)->exists()) {
+                if (! Media::whereKey($mediaId)->exists()) {
                     continue;
                 }
                 $exists = $property->photos()->where('media_id', $mediaId)->where('category', $category)->exists();
-                if (!$exists) {
+                if (! $exists) {
                     $property->photos()->create([
                         'media_id' => $mediaId,
                         'category' => $category,
@@ -504,17 +536,17 @@ class PropertyController extends Controller
         //     Format: gallery_media_ids[mediaId] = 'Category Name'
         //     Sent by prepareSubmit() for each item in libraryPhotos[].
         foreach ((array) $request->input('gallery_media_ids', []) as $mediaId => $category) {
-            $mediaId  = (int) $mediaId;
+            $mediaId = (int) $mediaId;
             $category = trim((string) $category) ?: 'Others';
-            if (!$mediaId || !\App\Models\Media::whereKey($mediaId)->exists()) {
+            if (! $mediaId || ! Media::whereKey($mediaId)->exists()) {
                 continue;
             }
             // Skip if this media is already attached to this property
             $alreadyAttached = $property->photos()->where('media_id', $mediaId)->exists();
-            if (!$alreadyAttached) {
+            if (! $alreadyAttached) {
                 $property->photos()->create([
-                    'media_id'   => $mediaId,
-                    'category'   => $category,
+                    'media_id' => $mediaId,
+                    'category' => $category,
                     'sort_order' => $property->photos()->count(),
                 ]);
             }
@@ -523,10 +555,10 @@ class PropertyController extends Controller
         // 3. Direct uploads (stored under properties/{id}/{category-slug}/)
         foreach ((array) $request->file('gallery_uploads', []) as $index => $files) {
             $category = $categories[(int) $index] ?? null;
-            if (!$category) {
+            if (! $category) {
                 continue;
             }
-            $catSlug = \Illuminate\Support\Str::slug($category, '_') ?: 'general';
+            $catSlug = Str::slug($category, '_') ?: 'general';
 
             foreach ((array) $files as $file) {
                 try {
@@ -534,17 +566,17 @@ class PropertyController extends Controller
                     // FIND-007: extension must come from the verified MIME type, never the client filename.
                     // Konvensi penamaan + folder terstruktur Apartment/{Nama}/{Kategori} via helper.
                     $result = upload_file($file, [
-                        'base_folder'   => 'Apartment',
-                        'sub_folders'   => [$property->name, $category],
-                        'name_prefix'   => $property->name,
+                        'base_folder' => 'Apartment',
+                        'sub_folders' => [$property->name, $category],
+                        'name_prefix' => $property->name,
                         'name_category' => $category,
                     ]);
                     $extension = $result['extension'];
-                    $filename  = $result['filename'];
-                    $folder    = $result['folder'];
-                    $path      = $result['path'];
+                    $filename = $result['filename'];
+                    $folder = $result['folder'];
+                    $path = $result['path'];
 
-                    $media = \App\Models\Media::create([
+                    $media = Media::create([
                         'user_id' => auth()->id(),
                         'disk' => 'public',
                         'directory' => $folder,
@@ -576,8 +608,8 @@ class PropertyController extends Controller
             $deletedIds = array_filter(array_map('trim', explode(',', $deletedIds)));
         }
         foreach ((array) $deletedIds as $photoId) {
-            $photo = \App\Models\PropertyPhoto::find($photoId);
-            if (!$photo) {
+            $photo = PropertyPhoto::find($photoId);
+            if (! $photo) {
                 continue;
             }
             $media = $photo->media;
@@ -593,7 +625,7 @@ class PropertyController extends Controller
         //    Submitted as photo_categories_update[{photo_id}] = 'Category Name'
         foreach ((array) $request->input('photo_categories_update', []) as $photoId => $newCategory) {
             $newCategory = trim((string) $newCategory);
-            if (!$newCategory) {
+            if (! $newCategory) {
                 continue;
             }
             $photo = $property->photos()->find($photoId);
@@ -606,12 +638,12 @@ class PropertyController extends Controller
     /**
      * True when a media file is not referenced by any property photo or featured image.
      */
-    protected function mediaIsUnused(\App\Models\Media $media): bool
+    protected function mediaIsUnused(Media $media): bool
     {
-        $asPhoto = \App\Models\PropertyPhoto::where('media_id', $media->id)->exists();
-        $asFeatured = \App\Models\Property::where('featured_image_id', $media->id)->exists();
+        $asPhoto = PropertyPhoto::where('media_id', $media->id)->exists();
+        $asFeatured = Property::where('featured_image_id', $media->id)->exists();
 
-        return !$asPhoto && !$asFeatured;
+        return ! $asPhoto && ! $asFeatured;
     }
 
     /**
@@ -639,17 +671,17 @@ class PropertyController extends Controller
                 : null;
 
             $places[] = [
-                'name'        => $name,
-                'category'    => $place['category'] ?? 'Others',
-                'lat'         => $lat,
-                'lng'         => $lng,
+                'name' => $name,
+                'category' => $place['category'] ?? 'Others',
+                'lat' => $lat,
+                'lng' => $lng,
                 'distance_km' => $distanceKm,
             ];
         }
 
         return [
             'required_documents' => $docs ?: null,
-            'nearby_places'      => $places ?: null,
+            'nearby_places' => $places ?: null,
         ];
     }
 
@@ -677,10 +709,10 @@ class PropertyController extends Controller
     protected function formatDistance(float $meters): string
     {
         if ($meters < 1000) {
-            return round($meters) . ' m';
+            return round($meters).' m';
         }
 
-        return number_format($meters / 1000, 1) . ' km';
+        return number_format($meters / 1000, 1).' km';
     }
 
     /**
@@ -689,7 +721,7 @@ class PropertyController extends Controller
     protected function buildPricingData(Request $request): array
     {
         $types = $request->input('unit_types', []);
-        $types = array_values(array_intersect(array_keys(\App\Models\Property::UNIT_TYPES), (array) $types));
+        $types = array_values(array_intersect(array_keys(Property::UNIT_TYPES), (array) $types));
 
         $weekendDays = $request->input('weekend_days', []);
         $weekendDays = array_values(array_unique(array_map('intval', (array) $weekendDays)));
@@ -719,11 +751,11 @@ class PropertyController extends Controller
      */
     public function toggleFeatured(Property $property)
     {
-        $property->update(['is_featured' => !$property->is_featured]);
+        $property->update(['is_featured' => ! $property->is_featured]);
 
         return response()->json([
             'success' => true,
-            'is_featured' => $property->is_featured
+            'is_featured' => $property->is_featured,
         ]);
     }
 
@@ -734,38 +766,38 @@ class PropertyController extends Controller
     {
         $request->validate([
             'action' => 'required|in:publish,draft,feature,unfeature,delete',
-            'ids'    => 'required|array|min:1',
-            'ids.*'  => 'integer|exists:properties,id',
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:properties,id',
         ]);
 
         $action = $request->input('action');
-        $ids    = $request->input('ids');
-        $count  = count($ids);
+        $ids = $request->input('ids');
+        $count = count($ids);
 
         switch ($action) {
             case 'publish':
                 Property::whereIn('id', $ids)->update(['status' => 'published']);
-                $message = "{$count} " . ($count === 1 ? 'property' : 'properties') . " published.";
+                $message = "{$count} ".($count === 1 ? 'property' : 'properties').' published.';
                 break;
 
             case 'draft':
                 Property::whereIn('id', $ids)->update(['status' => 'draft']);
-                $message = "{$count} " . ($count === 1 ? 'property' : 'properties') . " set to draft.";
+                $message = "{$count} ".($count === 1 ? 'property' : 'properties').' set to draft.';
                 break;
 
             case 'feature':
                 Property::whereIn('id', $ids)->update(['is_featured' => true]);
-                $message = "{$count} " . ($count === 1 ? 'property' : 'properties') . " featured.";
+                $message = "{$count} ".($count === 1 ? 'property' : 'properties').' featured.';
                 break;
 
             case 'unfeature':
                 Property::whereIn('id', $ids)->update(['is_featured' => false]);
-                $message = "{$count} " . ($count === 1 ? 'property' : 'properties') . " unfeatured.";
+                $message = "{$count} ".($count === 1 ? 'property' : 'properties').' unfeatured.';
                 break;
 
             case 'delete':
                 Property::whereIn('id', $ids)->delete();
-                $message = "{$count} " . ($count === 1 ? 'property' : 'properties') . " deleted.";
+                $message = "{$count} ".($count === 1 ? 'property' : 'properties').' deleted.';
                 break;
 
             default:
@@ -773,6 +805,49 @@ class PropertyController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => $message]);
+    }
+
+    /**
+     * Phase 5: Display the persistent Geoapify POIs for a property (admin only).
+     *
+     * Renders the same _nearby partial used inside the edit form, providing a
+     * standalone view of the found POIs ordered nearest-first.
+     */
+    public function nearbyPlaces(Property $property)
+    {
+        $propertyPlaces = $property->propertyPlaces()
+            ->with('place')
+            ->orderBy('distance_m', 'asc')
+            ->get();
+
+        return view('admin.properties._nearby', compact('property', 'propertyPlaces'));
+    }
+
+    /**
+     * Phase 5: Re-sync the persistent Geoapify POIs for a property (admin only).
+     *
+     * Clears the property's cached Geoapify payload and dispatches
+     * FetchNearbyPlacesJob. When the queue driver is `sync` the job runs inline
+     * before the redirect returns; otherwise it is queued for a worker.
+     */
+    public function resyncNearbyPlaces(Property $property)
+    {
+        // Require coordinates before any fetch can be meaningful.
+        if ($property->latitude === null || $property->longitude === null) {
+            return back()->with('error', __('Property must have coordinates set before syncing POI.'));
+        }
+
+        // Require the Geoapify API key to be configured.
+        if (empty(config('services.geoapify.key'))) {
+            return back()->with('error', 'GEOAPIFY_API_KEY belum dikonfigurasi.');
+        }
+
+        // Force a fresh fetch by clearing the cached payload for this property.
+        Cache::forget("geoapify_places_{$property->id}");
+
+        FetchNearbyPlacesJob::dispatch($property);
+
+        return back()->with('success', __('POI sync queued successfully.'));
     }
 
     /**
@@ -788,8 +863,7 @@ class PropertyController extends Controller
                 ->with('success', 'Property deleted successfully.');
         } catch (\Exception $e) {
             return back()
-                ->with('error', 'Failed to delete property: ' . $e->getMessage());
+                ->with('error', 'Failed to delete property: '.$e->getMessage());
         }
     }
 }
-

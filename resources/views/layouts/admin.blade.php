@@ -301,12 +301,12 @@
                         </div>
 
                         <!-- Language Switcher -->
-                        @php
+                        {{-- @php
                             $activeLanguages = \App\Models\Language::active();
                             $currentLocale   = app()->getLocale();
                             $currentLang     = $activeLanguages->firstWhere('code', $currentLocale) ?? $activeLanguages->first();
-                        @endphp
-                        @if($activeLanguages->count() > 1)
+                        @endphp --}}
+                        {{-- @if($activeLanguages->count() > 1)
                         <div x-data="{ langOpen: false }" class="relative">
                             <button @click="langOpen = !langOpen"
                                     class="flex items-center gap-1 px-2 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 text-sm transition"
@@ -332,7 +332,7 @@
                                 @endforeach
                             </div>
                         </div>
-                        @endif
+                        @endif --}}
 
                         <!-- Currency Switcher -->
                         @php

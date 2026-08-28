@@ -7,15 +7,15 @@
     <!-- Header with Actions -->
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h2 class="text-2xl font-bold text-gray-800">Properties</h2>
-            <p class="text-sm text-gray-600 mt-1">Manage your apartment properties</p>
+            <h2 class="text-2xl font-bold text-gray-800">Apartemen</h2>
+            <p class="text-sm text-gray-600 mt-1">Halaman ini untuk mengelola lokasi apartemen</p>
         </div>
         <a href="{{ route('admin.properties.create') }}"
            class="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>
-            Create New Property
+            Lokasi Apartemen Baru
         </a>
     </div>
 
@@ -36,8 +36,8 @@
                 <select name="status"
                         class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                     <option value="">All Status</option>
-                    <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
-                    <option value="published" {{ request('status') == 'published' ? 'selected' : '' }}>Published</option>
+                    <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draf</option>
+                    <option value="published" {{ request('status') == 'published' ? 'selected' : '' }}>Dipublish</option>
                 </select>
             </div>
 
@@ -220,15 +220,15 @@
                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                 </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No properties found</h3>
-                <p class="mt-1 text-sm text-gray-500">Get started by creating a new property.</p>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">Properti tidak ditemukan!</h3>
+                <p class="mt-1 text-sm text-gray-500">Silakan coba buat properti apartemen baru.</p>
                 <div class="mt-6">
                     <a href="{{ route('admin.properties.create') }}"
                        class="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                         </svg>
-                        Create New Property
+                        Buat Apartemen Baru
                     </a>
                 </div>
             </div>

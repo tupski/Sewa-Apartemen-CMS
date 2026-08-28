@@ -39,17 +39,75 @@
     $nearbyGroups = array_filter($nearbyGroups, fn($items) => count($items) > 0);
     $hasMap = $property->latitude && $property->longitude;
     $nearbyWithCoords = array_values(array_filter($nearbyPlacesWithDistance, fn($p) => !empty($p['lat']) && !empty($p['lng'])));
+
+    // Phase 6: persistent Geoapify POIs (source = 'geoapify'), injected by the
+    // controller as $persistentPlaces. When present they take precedence over the
+    // manual `nearby_places` JSON; otherwise we fall back to the manual entries.
+    $persistentPlaces = $persistentPlaces ?? collect();
+    $usePersistent    = $persistentPlaces->isNotEmpty();
+
+    // Group persistent POIs by their place category for the list display.
+    $persistentGroups = [];
+    foreach ($persistentPlaces as $pp) {
+        if (! $pp->place) { continue; }
+        $cat = $pp->place->category ?: 'Others';
+        $persistentGroups[$cat][] = $pp;
+    }
+
+    // Build the map marker set. Property marker first, then POIs (persistent if
+    // available, else manual nearby places that carry coordinates).
+    $mapMarkers = [];
+    if ($hasMap) {
+        $mapMarkers[] = [
+            'lat'  => (float) $property->latitude,
+            'lng'  => (float) $property->longitude,
+            'type' => 'property',
+            'name' => $property->name,
+        ];
+    }
+    if ($usePersistent) {
+        foreach ($persistentPlaces as $pp) {
+            if (! $pp->place || $pp->place->lat === null || $pp->place->lng === null) { continue; }
+            $mapMarkers[] = [
+                'lat'      => (float) $pp->place->lat,
+                'lng'      => (float) $pp->place->lng,
+                'type'     => 'poi',
+                'name'     => $pp->place->name,
+                'category' => $pp->place->category,
+                'distance' => $pp->distance_formatted,
+            ];
+        }
+    } else {
+        foreach ($nearbyWithCoords as $place) {
+            $mapMarkers[] = [
+                'lat'      => (float) $place['lat'],
+                'lng'      => (float) $place['lng'],
+                'type'     => 'poi',
+                'name'     => $place['name'] ?? '',
+                'category' => $place['category'] ?? '',
+                'distance' => $place['distance_formatted'] ?? null,
+            ];
+        }
+    }
+
+    // Show the map whenever we have property coordinates or at least one POI pin.
+    $showDetailMap = $hasMap || count($mapMarkers) > 0;
+
+    // Map payload consumed by the Leaflet initialiser in app.js. Rendered inside a
+    // <script type="application/json"> block (parsed as data, never executed) — the
+    // Geoapify map key is injected here from server config, never hardcoded in JS.
+    $mapData = [
+        'center'  => $hasMap
+            ? [(float) $property->latitude, (float) $property->longitude]
+            : (count($mapMarkers) ? [$mapMarkers[0]['lat'], $mapMarkers[0]['lng']] : [-2.5, 118.0]),
+        'mapKey'  => config('services.geoapify.map_key'),
+        'markers' => $mapMarkers,
+    ];
 @endphp
 
-@if($hasMap ?? false)
-@push('head')
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<style>
-    #property-detail-map { z-index: 1; }
-    .leaflet-container { border-radius: 0; }
-</style>
-@endpush
-@endif
+{{-- Leaflet CSS is loaded globally in layouts/frontend.blade.php. The property
+     map (#property-map) is initialised by initPropertyMap() in resources/js/app.js,
+     which reads the #map-data JSON block rendered in the "What's Around" section. --}}
 
 @section('content')
     <!-- ============ GALLERY HEADER (Traveloka style) ============ -->
@@ -261,7 +319,7 @@
                     @endif
 
                     <!-- ===== What's Around ===== -->
-                    @if ($hasMap || $nearbyGroups)
+                    @if ($hasMap || $usePersistent || $nearbyGroups)
                         @php
                             // Directions destination: prefer precise lat/lng, else the
                             // full postal address, so the universal Google Maps
@@ -284,16 +342,21 @@
                         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 md:p-8">
                             <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{{ __('prop.whats_around', ['name' => $property->name]) }}</h2>
 
+                            {{-- Leaflet map. Marker data is provided via the #map-data
+                                 JSON block below (parsed by the initialiser in app.js);
+                                 the Geoapify map key is injected server-side there — never
+                                 hardcoded in JS. overflow-hidden guards against horizontal
+                                 overflow on mobile. --}}
+                            @if ($showDetailMap)
+                                <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-6">
+                                    <div id="property-map" class="w-full h-64 md:h-80 rounded-lg overflow-hidden"></div>
+                                </div>
+                                <script type="application/json" id="map-data">{!! json_encode($mapData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
+                            @endif
+
                             @if ($dirDestination)
                                 {{-- Directions actions: open Google Maps (app on mobile / web on desktop)
                                      + share the directions link via the global share modal. --}}
-
-
-                                @if ($hasMap || !empty($nearbyWithCoords))
-                                    <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-6 h-64 md:h-80">
-                                        <div id="property-detail-map" style="height:100%;width:100%;"></div>
-                                    </div>
-                                @endif
                                 <div class="flex flex-col sm:flex-row gap-3 mb-6">
                                     <a href="{{ $directionsUrl }}" target="_blank" rel="noopener"
                                        class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold text-white hover:opacity-90 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
@@ -318,13 +381,33 @@
                                 </div>
                             @endif
 
-                            @if ($hasMap || !empty($nearbyWithCoords))
-                                <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-6 h-64 md:h-80">
-                                    <div id="property-detail-map" style="height:100%;width:100%;"></div>
+                            @if ($usePersistent)
+                                {{-- Persistent Geoapify POIs (grouped by place category). --}}
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    @foreach ($persistentGroups as $category => $items)
+                                        @php
+                                            $catEmoji = \App\Models\Property::NEARBY_CATEGORIES[$category] ?? '📌';
+                                        @endphp
+                                        <div>
+                                            <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide mb-3 flex items-center gap-2">
+                                                <span class="text-base leading-none" aria-hidden="true">{{ $catEmoji }}</span>
+                                                {{ $category }}
+                                            </h3>
+                                            <ul class="space-y-2.5">
+                                                @foreach ($items as $pp)
+                                                    <li class="flex items-start justify-between text-sm gap-3">
+                                                        <span class="text-gray-700 dark:text-gray-300">{{ $pp->place->name ?? '' }}</span>
+                                                        @if (!empty($pp->distance_formatted))
+                                                            <span class="text-gray-400 dark:text-gray-500 text-xs shrink-0 tabular-nums">{{ $pp->distance_formatted }}</span>
+                                                        @endif
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        </div>
+                                    @endforeach
                                 </div>
-                            @endif
-
-                            @if ($nearbyGroups)
+                            @elseif ($nearbyGroups)
+                                {{-- Fallback: manually-entered nearby_places JSON (unchanged behaviour). --}}
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     @foreach ($nearbyGroups as $category => $places)
                                         @php
@@ -838,96 +921,10 @@
 @endsection
 
 @push('scripts')
-@if($hasMap)
-@php
-    $popupHtml = '<strong>' . e($property->name) . '</strong>' . ($property->address ? '<br>' . e($property->address) : '');
-@endphp
-<script>
-(function () {
-    var LEAFLET_SRC = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-
-    function initDetailMap() {
-        var mapLat   = {{ $property->latitude ?? 0 }};
-        var mapLng   = {{ $property->longitude ?? 0 }};
-        var hasPropertyPin = {{ $hasMap ? 'true' : 'false' }};
-
-        // Nearby places that have coordinates — passed from the controller
-        var nearbyPins = @json($nearbyWithCoords);
-
-        // Determine initial centre: property coords if available, else first nearby pin
-        var centreLat = mapLat, centreLng = mapLng;
-        if (!hasPropertyPin && nearbyPins.length > 0) {
-            centreLat = parseFloat(nearbyPins[0].lat);
-            centreLng = parseFloat(nearbyPins[0].lng);
-        }
-
-        var map = L.map('property-detail-map', { scrollWheelZoom: false }).setView([centreLat, centreLng], 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19
-        }).addTo(map);
-
-        // Property marker — blue, opened by default
-        if (hasPropertyPin) {
-            var propertyIcon = L.divIcon({
-                className: '',
-                html: '<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:#3b82f6;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);transform:rotate(-45deg)"></div>',
-                iconSize: [28, 28],
-                iconAnchor: [14, 28],
-                popupAnchor: [0, -30]
-            });
-            L.marker([mapLat, mapLng], { icon: propertyIcon })
-                .addTo(map)
-                .bindPopup({!! json_encode($popupHtml) !!})
-                .openPopup();
-        }
-
-        // Nearby place markers — orange
-        var placeIcon = L.divIcon({
-            className: '',
-            html: '<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;background:#f97316;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.3);transform:rotate(-45deg)"></div>',
-            iconSize: [22, 22],
-            iconAnchor: [11, 22],
-            popupAnchor: [0, -24]
-        });
-
-        var bounds = hasPropertyPin ? [[mapLat, mapLng]] : [];
-
-        nearbyPins.forEach(function (place) {
-            var lat = parseFloat(place.lat);
-            var lng = parseFloat(place.lng);
-            if (isNaN(lat) || isNaN(lng)) return;
-
-            var cat  = place.category || '';
-            var dist = place.distance_formatted ? '<br><span style="color:#6b7280;font-size:0.75rem">' + place.distance_formatted + '</span>' : '';
-            var popup = '<strong>' + (place.name || '') + '</strong>'
-                + (cat ? '<br><span style="color:#6b7280;font-size:0.75rem">' + cat + '</span>' : '')
-                + dist;
-
-            L.marker([lat, lng], { icon: placeIcon })
-                .addTo(map)
-                .bindPopup(popup);
-
-            bounds.push([lat, lng]);
-        });
-
-        // Fit map to include all pins (with padding), but not zoom in too tightly
-        if (bounds.length > 1) {
-            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
-        }
-    }
-
-    // Load Leaflet on demand so `L` is defined before use (loadScript from app.js).
-    if (document.getElementById('property-detail-map')) {
-        if (typeof window.loadScript === 'function') {
-            window.loadScript(LEAFLET_SRC).then(initDetailMap).catch(function () {});
-        } else if (typeof L !== 'undefined') {
-            initDetailMap();
-        }
-    }
-})();
-</script>
-@endif
+{{-- The property map (#property-map) is initialised by initPropertyMap() in
+     resources/js/app.js. It reads marker data from the #map-data JSON block and
+     the Geoapify tile key from that same server-rendered payload — no map logic
+     or API key lives here. --}}
 <script>
 (function () {
     var allPhotos     = @json($allPhotoUrls);

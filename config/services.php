@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'geoapify' => [
+        'key' => env('GEOAPIFY_API_KEY', ''),
+        'map_key' => env('GEOAPIFY_MAP_KEY', env('GEOAPIFY_API_KEY', '')),
+        'radius' => env('GEOAPIFY_RADIUS', 2000),
+        'max_results' => env('GEOAPIFY_MAX_RESULTS', 20),
+    ],
+
 ];
