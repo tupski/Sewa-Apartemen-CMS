@@ -198,7 +198,7 @@
                                             @else
                                                 <i data-lucide="{{ $lucideName }}" class="w-6 h-6 text-blue-600 dark:text-blue-400 mb-1"></i>
                                             @endif
-                                            <span class="text-xs text-gray-600 dark:text-gray-300 text-center leading-tight truncate w-full px-1">{{ \Illuminate\Support\Str::limit($amenity->name, 10) }}</span>
+                                            <span class=leading-tight"text-xs text-gray-600 dark:text-gray-300 text-center  truncate w-full px-1">{{ \Illuminate\Support\Str::limit($amenity->name, 10) }}</span>
                                         </div>
                                         {{-- Tooltip (desktop hover) --}}
                                         <div class="amenity-tooltip absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
@@ -287,6 +287,13 @@
                             @if ($dirDestination)
                                 {{-- Directions actions: open Google Maps (app on mobile / web on desktop)
                                      + share the directions link via the global share modal. --}}
+
+
+                                @if ($hasMap || !empty($nearbyWithCoords))
+                                    <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-6 h-64 md:h-80">
+                                        <div id="property-detail-map" style="height:100%;width:100%;"></div>
+                                    </div>
+                                @endif
                                 <div class="flex flex-col sm:flex-row gap-3 mb-6">
                                     <a href="{{ $directionsUrl }}" target="_blank" rel="noopener"
                                        class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold text-white hover:opacity-90 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"

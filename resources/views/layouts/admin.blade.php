@@ -70,11 +70,11 @@
                    :class="sidebarCollapsed ? 'lg:justify-center' : ''">
                     @if($adminSiteLogo)
                         <img src="{{ asset('storage/' . $adminSiteLogo) }}" alt="Logo"
-                             class="h-8 w-auto max-w-[9rem] shrink-0 object-contain" :class="sidebarCollapsed ? 'lg:hidden' : ''">
+                             class="h-8 w-auto max-w-[9rem] shrink-0 object-contain dark:brightness-0 dark:invert" :class="sidebarCollapsed ? 'lg:hidden' : ''">
                     @else
                         <i class="fa-solid fa-building text-blue-400 shrink-0"></i>
                     @endif
-                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''" class="truncate text-white text-lg font-bold">CMS Admin</span>
+                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''" class="truncate text-white text-lg font-bold"></span>
                 </a>
                 <div class="flex items-center gap-1">
                     <!-- Collapse toggle (desktop) -->
