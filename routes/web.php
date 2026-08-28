@@ -101,10 +101,14 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix(slug('admin_prefix', 'a
 
     // Git Version Control (AJAX)
     // NOTE: these must be declared BEFORE settings/{group?} so 'git-status' /
-    // 'git-pull' / 'git-fetch' are not swallowed as a {group} wildcard value.
+    // 'git-pull' / 'git-fetch' / 'post-update' are not swallowed as a {group}
+    // wildcard value.
     Route::get('settings/git-status', [SettingsController::class, 'gitStatus'])->name('settings.git-status');
     Route::post('settings/git-pull', [SettingsController::class, 'gitPull'])->name('settings.git-pull');
     Route::post('settings/git-fetch', [SettingsController::class, 'gitFetch'])->name('settings.git-fetch');
+    // Post-update actions. {action} is only an allowlist KEY — the argv arrays are
+    // hardcoded in PostUpdateActionService; unknown keys are rejected with 422.
+    Route::post('settings/post-update/{action}', [SettingsController::class, 'gitPostUpdate'])->name('settings.post-update');
 
     // Settings Management
     Route::get('settings/{group?}', [SettingsController::class, 'index'])->name('settings.index');

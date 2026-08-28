@@ -5,19 +5,9 @@
     $maxDays = old('max_days', $property->max_days ?? '');
     $documents = old('required_documents', $property->required_documents ?? []);
     $places = old('nearby_places', $property->nearby_places ?? []);
-    $categories = [
-        'Mall/Shopping'       => 'Mall/Shopping',
-        'Restaurant/Food'     => 'Restaurant/Food',
-        'Transport'           => 'Transport',
-        'Education'           => 'Education',
-        'Hospital/Health'     => 'Hospital/Health',
-        'Recreation'          => 'Recreation',
-        'Hotel'               => 'Hotel',
-        'Nearby Places'       => 'Nearby Places',
-        'Transportation'      => 'Transportation',
-        'Entertainment/Attraction' => 'Entertainment/Attraction',
-        'Others'              => 'Others',
-    ];
+    // Single source of truth shared with PropertyRequest validation.
+    $categoryKeys = array_keys(\App\Models\Property::NEARBY_CATEGORIES);
+    $categories = array_combine($categoryKeys, $categoryKeys);
 @endphp
 
 <div class="border-b border-gray-200 pb-6">

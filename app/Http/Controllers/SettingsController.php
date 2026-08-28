@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\PostUpdateActionService;
 use App\Services\SettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -188,8 +189,10 @@ class SettingsController extends Controller
         'version_control',
     ];
 
-    public function __construct(SettingsService $settingsService)
-    {
+    public function __construct(
+        SettingsService $settingsService,
+        protected PostUpdateActionService $postUpdateActions,
+    ) {
         // BUG-007 FIX: only super-admins can access settings
         $this->middleware(['auth', 'admin']);
         $this->settingsService = $settingsService;
@@ -458,6 +461,10 @@ class SettingsController extends Controller
                 'current_message'  => trim($currentMessage),
                 'commits_behind'   => $countBehind,
                 'upcoming_commits' => $upcomingCommits,
+                // Which post-update actions the pending commits would require.
+                'needed_actions'   => $countBehind > 0
+                    ? $this->postUpdateActions->detect($this->changedFiles('HEAD', $remoteBranch, $cwd))
+                    : [],
             ]);
         } catch (\Exception $e) {
             Log::error('gitStatus failed: ' . $e->getMessage());
@@ -473,16 +480,68 @@ class SettingsController extends Controller
     {
         try {
             $cwd = base_path();
+            $before = trim($this->runGit(['rev-parse', 'HEAD'], $cwd));
             $output = $this->runGit(['pull', 'origin', 'main'], $cwd, true, true);
+            $after = trim($this->runGit(['rev-parse', 'HEAD'], $cwd));
 
             return response()->json([
                 'success' => true,
                 'output'  => trim($output),
+                // Derived from the files the pull actually changed, so the UI can
+                // show ONLY the post-update buttons that are required.
+                'needed_actions' => $before === $after
+                    ? []
+                    : $this->postUpdateActions->detect($this->changedFiles($before, $after, $cwd)),
             ]);
         } catch (\Exception $e) {
             Log::error('gitPull failed: ' . $e->getMessage());
             return response()->json(['success' => false, 'error' => $this->gitErrorMessage($e)], 500);
         }
+    }
+
+    /**
+     * POST /admin/settings/post-update/{action}
+     * Runs one allowlisted post-update command set and returns its combined output.
+     *
+     * SEC-03: $action is only a KEY. The argv arrays are hardcoded in
+     * PostUpdateActionService::commands() and executed via Symfony Process with an
+     * argument array, so no request data can reach a shell. Unknown keys => 422.
+     */
+    public function gitPostUpdate(Request $request, string $action)
+    {
+        if (! in_array($action, \App\Services\PostUpdateActionService::allowedKeys(), true)) {
+            return response()->json([
+                'success' => false,
+                'error'   => __('Unknown post-update action.'),
+            ], 422);
+        }
+
+        try {
+            $output = $this->postUpdateActions->run($action);
+            log_activity('post_update', 'Ran post-update action: ' . $action);
+
+            return response()->json(['success' => true, 'output' => $output]);
+        } catch (\Throwable $e) {
+            Log::error('gitPostUpdate failed: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                // Command output only — never .env values or secrets.
+                'error'   => __('The post-update command failed. Check the server log for details.'),
+            ], 500);
+        }
+    }
+
+    /**
+     * Changed file paths between two git revisions (relative to the repo root).
+     *
+     * @return array<int, string>
+     */
+    private function changedFiles(string $from, string $to, string $cwd): array
+    {
+        $raw = $this->runGit(['diff', '--name-only', $from . '..' . $to], $cwd);
+
+        return array_values(array_filter(array_map('trim', explode("\n", $raw))));
     }
 
     /**

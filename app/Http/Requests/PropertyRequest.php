@@ -85,7 +85,10 @@ class PropertyRequest extends FormRequest
             'required_documents.*' => ['nullable', 'string', 'max:255'],
             'nearby_places' => ['nullable', 'array'],
             'nearby_places.*.name' => ['nullable', 'string', 'max:255'],
-            'nearby_places.*.category' => ['nullable', 'string', 'in:Nearby Places,Transportation,Entertainment/Attraction,Others'],
+            // Categories come from Property::NEARBY_CATEGORIES (the single source of
+            // truth also used by the admin form select). The old hardcoded 4-value
+            // list rejected the other 7 form options and failed the whole save.
+            'nearby_places.*.category' => ['nullable', 'string', Rule::in(array_keys(\App\Models\Property::NEARBY_CATEGORIES))],
             'nearby_places.*.distance_km' => ['nullable', 'numeric', 'min:0', 'max:999'],
             'amenities' => ['nullable', 'array'],
             'amenities.*' => ['integer', 'exists:amenities,id'],
