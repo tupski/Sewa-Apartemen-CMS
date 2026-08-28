@@ -313,9 +313,9 @@
                                 Meta Title
                             </label>
                             <input type="text"
-                                   name="meta_title"
+                                   name="seo[meta_title]"
                                    id="meta_title"
-                                   value="{{ old('meta_title', $property->meta_title) }}"
+                                   value="{{ old('seo.meta_title', $property->seo->meta_title ?? '') }}"
                                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
                             <p class="text-xs text-gray-500 mt-1">Recommended: 50–60 characters.</p>
                             @error('meta_title')
@@ -326,10 +326,10 @@
                             <label for="meta_description" class="block text-sm font-medium text-gray-700 mb-1.5">
                                 Meta Description
                             </label>
-                            <textarea name="meta_description"
+                            <textarea name="seo[meta_description]"
                                       id="meta_description"
                                       rows="3"
-                                      class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">{{ old('meta_description', $property->meta_description) }}</textarea>
+                                      class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">{{ old('seo.meta_description', $property->seo->meta_description ?? '') }}</textarea>
                             <p class="text-xs text-gray-500 mt-1">Recommended: 150–160 characters.</p>
                             @error('meta_description')
                                 <p class="text-red-500 text-sm mt-1">{{ $message }}</p>

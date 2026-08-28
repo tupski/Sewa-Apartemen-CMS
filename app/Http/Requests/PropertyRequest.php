@@ -67,8 +67,13 @@ class PropertyRequest extends FormRequest
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'featured_image_id' => ['nullable', 'integer', 'exists:media,id'],
             'status' => ['required', 'string', Rule::in(['draft', 'published'])],
-            'meta_title' => ['nullable', 'string', 'max:255'],
-            'meta_description' => ['nullable', 'string'],
+            'seo' => ['nullable', 'array'],
+            // BUG FIX: SEO fields are persisted to the polymorphic SeoMetadata
+            // morph (nested seo[...] names), mirroring the Post pattern. The old
+            // flat meta_title/meta_description rules never reached the morph.
+            'seo.meta_title' => ['nullable', 'string', 'max:255'],
+            'seo.meta_description' => ['nullable', 'string', 'max:320'],
+            'seo.canonical_url' => ['nullable', 'url', 'max:2048'],
             'is_featured' => ['nullable', 'boolean'],
             'order' => ['nullable', 'integer', 'min:0'],
             'max_days' => ['nullable', 'integer', 'min:1'],
@@ -123,8 +128,8 @@ class PropertyRequest extends FormRequest
             'longitude' => 'longitude',
             'featured_image_id' => 'featured image',
             'status' => 'property status',
-            'meta_title' => 'meta title',
-            'meta_description' => 'meta description',
+            'seo.meta_title' => 'meta title',
+            'seo.meta_description' => 'meta description',
             'is_featured' => 'featured status',
             'order' => 'display order',
             'amenities' => 'amenities',

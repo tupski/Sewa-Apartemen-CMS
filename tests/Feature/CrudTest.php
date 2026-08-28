@@ -75,6 +75,76 @@ class CrudTest extends TestCase
         $this->assertEquals($media->id, $photo->media_id);
     }
 
+    public function test_property_store_persists_seo_to_morph(): void
+    {
+        $this->authenticate();
+
+        $response = $this->post(route('admin.properties.store'), [
+            'name' => 'SEO Property',
+            'slug' => 'seo-property',
+            'status' => 'published',
+            'seo' => [
+                'meta_title' => 'Custom Property Meta Title',
+                'meta_description' => 'Custom property meta description for search engines.',
+            ],
+        ]);
+
+        $response->assertRedirect(route('admin.properties.index'));
+
+        $property = \App\Models\Property::where('slug', 'seo-property')->firstOrFail();
+
+        // Assert values landed on the polymorphic SeoMetadata morph, NOT the columns.
+        $this->assertNotNull($property->seo);
+        $this->assertEquals('Custom Property Meta Title', $property->seo->meta_title);
+        $this->assertEquals('Custom property meta description for search engines.', $property->seo->meta_description);
+    }
+
+    public function test_property_update_persists_seo_to_morph(): void
+    {
+        $this->authenticate();
+
+        $property = \App\Models\Property::factory()->create(['slug' => 'update-seo-property']);
+
+        $response = $this->put(route('admin.properties.update', $property), [
+            'name' => 'Updated SEO Property',
+            'slug' => 'update-seo-property',
+            'status' => 'published',
+            'seo' => [
+                'meta_title' => 'Edited Meta Title',
+                'meta_description' => 'Edited meta description value.',
+            ],
+        ]);
+
+        $response->assertRedirect(route('admin.properties.index'));
+
+        $property->refresh();
+        $this->assertNotNull($property->seo);
+        $this->assertEquals('Edited Meta Title', $property->seo->meta_title);
+        $this->assertEquals('Edited meta description value.', $property->seo->meta_description);
+    }
+
+    public function test_public_property_page_renders_seo_meta_from_morph(): void
+    {
+        $this->authenticate();
+
+        $property = \App\Models\Property::factory()->create([
+            'slug' => 'meta-render-property',
+            'status' => 'published',
+        ]);
+
+        $property->seo()->updateOrCreate([], [
+            'meta_title' => 'Unique Render Meta Title',
+            'meta_description' => 'Unique render meta description text.',
+        ]);
+
+        $response = $this->get(route('properties.public.show', $property->slug));
+
+        $response->assertStatus(200);
+        // SeoService picks up the morph and renders it into the <head> meta.
+        $response->assertSee('Unique Render Meta Title', false);
+        $response->assertSee('Unique render meta description text.', false);
+    }
+
     public function test_admin_amenities_index_returns_200(): void
     {
         $this->authenticate();

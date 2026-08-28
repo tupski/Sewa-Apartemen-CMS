@@ -148,6 +148,7 @@ class PropertyController extends Controller
         abort_unless($property->status === 'published', 404);
 
         $property->load([
+            'seo',
             'featuredImage',
             'amenities',
             'photos.media',
