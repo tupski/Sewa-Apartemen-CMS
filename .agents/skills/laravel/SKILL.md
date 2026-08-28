@@ -39,7 +39,16 @@ existing structure so agents do not invent parallel patterns.
 - UI strings go through `__('...')` with keys in [`lang/en.json`](lang/en.json) and
   [`lang/id.json`](lang/id.json). Primary locale is `id`. Do not hardcode UI copy.
 - Config reads secrets via `env()` inside `config/*` files only; never call `env()`
-  outside config. Third-party keys belong in [`config/services.php`](config/services.php).
+  outside config. Third-party keys belong in [`config/services.php`](config/services.php)
+  (e.g. the `services.geoapify` block: `key`, `map_key`, `radius`, `max_results`).
+- `app/Jobs/` is a real directory containing exactly ONE custom job:
+  [`FetchNearbyPlacesJob`](app/Jobs/FetchNearbyPlacesJob.php). There are still NO
+  events, listeners, observers, or action classes. `.env` sets `QUEUE_CONNECTION=sync`,
+  so that job currently runs inline on the dispatching request.
+- [`GeoapifyService`](app/Services/GeoapifyService.php) is the reference example of the
+  Controller→Service split for an external integration: the controller validates and
+  dispatches, the JOB is the async entry point, and the service is the only class that
+  performs HTTP. Never call an external API from a controller, view, or render path.
 
 # Workflow
 1. Identify the layer: is this HTTP wiring (controller/route), business logic
@@ -60,7 +69,8 @@ existing structure so agents do not invent parallel patterns.
 - Validating admin input inline instead of via a FormRequest.
 - Hardcoding Indonesian/English UI strings instead of using `__()` keys.
 - Adding a frontend framework or admin package — the stack is fixed.
-- Assuming queued jobs/events/listeners/observers exist — they do not.
+- Assuming events/listeners/observers/actions exist — they do not.
+- Assuming `FetchNearbyPlacesJob` runs in the background — with `sync` it runs inline.
 
 # Validation
 - `php artisan test` (or `php artisan test --filter=<TestName>` for a focused run).
@@ -74,5 +84,5 @@ existing structure so agents do not invent parallel patterns.
 - [`bootstrap/app.php`](bootstrap/app.php), [`bootstrap/providers.php`](bootstrap/providers.php)
 - [`app/Http/Controllers/`](app/Http/Controllers), [`app/Http/Controllers/Admin/`](app/Http/Controllers/Admin)
 - [`app/Http/Requests/`](app/Http/Requests), [`app/Http/Middleware/EnsureUserIsAdmin.php`](app/Http/Middleware/EnsureUserIsAdmin.php)
-- [`app/Services/`](app/Services), [`config/services.php`](config/services.php)
+- [`app/Services/`](app/Services), [`app/Jobs/`](app/Jobs), [`config/services.php`](config/services.php)
 - [`lang/en.json`](lang/en.json), [`lang/id.json`](lang/id.json)

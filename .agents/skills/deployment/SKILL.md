@@ -30,9 +30,18 @@ destructive commands against real data.
   `npm install && npm run build` (Vite), `php artisan migrate` (ADDITIVE only),
   `php artisan storage:link` (required for the `public` disk),
   `php artisan config:cache`, `php artisan route:cache`, `php artisan view:cache`.
-- Queue is `sync` (config default `database`); no worker is strictly required
-  today and no custom jobs exist. If real async work is added, provision
-  `php artisan queue:work` deliberately (confirm the driver first).
+- Queue is `sync` in `.env` (config default `database`). Exactly ONE custom job
+  exists — [`FetchNearbyPlacesJob`](app/Jobs/FetchNearbyPlacesJob.php) — and under
+  `sync` it runs INLINE during the admin POI resync request, with no retries. To get
+  it running asynchronously with its configured `$tries`/`$backoff`/`$timeout`, set a
+  real driver (e.g. `database`) and run `php artisan queue:work`. Confirm the driver
+  change with the user first.
+- Geoapify env vars ([`config/services.php`](config/services.php) `services.geoapify`):
+  `GEOAPIFY_API_KEY` is REQUIRED for POI syncing to work at all — while it is blank
+  the job early-returns with a log warning and the public property map falls back to
+  OSM tiles. Optional: `GEOAPIFY_MAP_KEY` (browser-exposed tile key; falls back to
+  `GEOAPIFY_API_KEY`), `GEOAPIFY_RADIUS` (default 2000), `GEOAPIFY_MAX_RESULTS`
+  (default 20). Operator guide: [`docs/geoapify-setup.md`](docs/geoapify-setup.md).
 - Scheduler runs via cron calling `php artisan schedule:run` (see
   [`routes/console.php`](routes/console.php)).
 - The admin Git dashboard ([`resources/views/admin/settings/partials/_git.blade.php`](resources/views/admin/settings/partials/_git.blade.php))
@@ -52,7 +61,9 @@ destructive commands against real data.
 - Assuming a CI/CD pipeline or automated deploy exists.
 - Running `migrate:fresh`/`db:wipe` against real data without approval.
 - Forgetting `storage:link`, breaking the `public` media disk.
-- Relying on a queue worker (queue is `sync`, no jobs exist).
+- Relying on a queue worker for async execution (queue is `sync`, so
+  `FetchNearbyPlacesJob` runs inline in the request).
+- Expecting POI sync to work with a blank `GEOAPIFY_API_KEY`.
 - Building Git-dashboard commands as shell strings.
 
 # Validation
@@ -64,4 +75,5 @@ destructive commands against real data.
 - [`routes/install.php`](routes/install.php), [`config/installer.php`](config/installer.php), [`resources/views/install`](resources/views/install)
 - [`resources/views/admin/settings/partials/_git.blade.php`](resources/views/admin/settings/partials/_git.blade.php)
 - [`config/queue.php`](config/queue.php), [`config/session.php`](config/session.php), [`routes/console.php`](routes/console.php)
+- [`config/services.php`](config/services.php), [`app/Jobs/FetchNearbyPlacesJob.php`](app/Jobs/FetchNearbyPlacesJob.php), [`docs/geoapify-setup.md`](docs/geoapify-setup.md)
 - [`README.md`](README.md)

@@ -52,6 +52,10 @@ Every rule here is grounded in the repository audit at [`docs/_agent-audit/AUDIT
 - [`app/Services/BookingPricingService.php`](app/Services/BookingPricingService.php) — canonical pricing calculator
 - [`app/Services/BookingService.php`](app/Services/BookingService.php) — canonical booking creator
 - [`app/Services/MapEmbedService.php`](app/Services/MapEmbedService.php) — sanitized contact map embeds (never raw iframes)
+- [`app/Services/GeoapifyService.php`](app/Services/GeoapifyService.php) — Geoapify Places API client; normalizes POIs and maps provider categories to `Property::NEARBY_CATEGORIES` labels. Called ONLY from `FetchNearbyPlacesJob` (see [Performance Rules](#14-performance-rules))
+
+### Jobs
+- [`app/Jobs/FetchNearbyPlacesJob.php`](app/Jobs/FetchNearbyPlacesJob.php) — the sole caller of `GeoapifyService`; upserts `places` + `property_places`, 24h-cached per property, dispatched only by the admin POI resync action
 
 ### Key Providers
 - [`bootstrap/providers.php`](bootstrap/providers.php)
@@ -65,10 +69,10 @@ Every rule here is grounded in the repository audit at [`docs/_agent-audit/AUDIT
 
 ## 4. Domain Model
 
-### Confirmed Models (21)
+### Confirmed Models (23)
 All live in [`app/Models/`](app/Models):
 
-`Property`, `PropertyPhoto`, `Amenity`, `Booking`, `Voucher`, `PromoRate`, `Media`, `Page`, `Block`, `Navigation`, `Post`, `Category`, `Tag`, `User`, `Role`, `SeoMetadata`, `Redirect`, `Setting`, `Language`, `CurrencyRate`, `ActivityLog`.
+`Property`, `PropertyPhoto`, `Amenity`, `Booking`, `Voucher`, `PromoRate`, `Media`, `Page`, `Block`, `Navigation`, `Post`, `Category`, `Tag`, `User`, `Role`, `SeoMetadata`, `Redirect`, `Setting`, `Language`, `CurrencyRate`, `ActivityLog`, `Place`, `PropertyPlace`.
 
 Key relationships/fields to know:
 - `Property` stores prices as a JSON `prices` column and nearby places as JSON `nearby_places` (see [Pricing Rules](#11-pricing-rules))
@@ -79,14 +83,17 @@ Key relationships/fields to know:
 - `Voucher` and `PromoRate` back the pricing/discount logic
 - `Role` uses the `model_has_roles` pivot (Spatie-style, custom role middleware)
 - `ActivityLog` backs user activity logging (`user_activity_logs` table)
+- `Place` ([`app/Models/Place.php`](app/Models/Place.php)) is a persisted Geoapify POI on the `places` table — deduped on the nullable-unique `geoapify_place_id`, with `name`, `category` (a `Property::NEARBY_CATEGORIES` display label), `lat`/`lng` (cast to float), `address`, `website`, `phone`, `raw_category`, and `fetched_at`. Migration: [`2026_08_28_000001_create_places_table.php`](database/migrations/2026_08_28_000001_create_places_table.php)
+- `PropertyPlace` ([`app/Models/PropertyPlace.php`](app/Models/PropertyPlace.php)) is the `property_places` pivot: `property_id` + `place_id` (both FK cascade, unique composite), a `source` enum `manual|geoapify` (default `geoapify`), `distance_m`, and `sort_order`. `getDistanceFormattedAttribute()` renders `"850m"` / `"1.2km"` / `null`. Migration: [`2026_08_28_000002_create_property_places_table.php`](database/migrations/2026_08_28_000002_create_property_places_table.php)
+- `Property` exposes `propertyPlaces()` (hasMany) and `places()` (hasManyThrough). Because `Property` uses `SoftDeletes`, the `property_places` FK cascade only fires on `forceDelete()`
 
 ### Notable Absences (do NOT assume these exist)
 - **No `Room` / `Unit` model** — Units were refactored out into property types (see [`2026_08_12_000000_refactor_units_to_property_types.php`](database/migrations/2026_08_12_000000_refactor_units_to_property_types.php)). Dead `Unit`/`UnitFactory` references may linger — ignore them.
 - **No `Availability` table** — there is no server-side availability/conflict-checking system.
 - **No `Payment` model** — no payment system.
-- **No `NearbyPlace` / `Place` model** — nearby places are manually entered JSON on `properties.nearby_places`.
+- **`Place` / `PropertyPlace` DO exist** — they back the implemented Geoapify POI pipeline (`places` + `property_places`). Nearby places may ALSO be entered manually as JSON on `properties.nearby_places`, which remains the fallback on the property page. There is no `NearbyPlace` model and no `NearbyPlacesService` — the service is [`GeoapifyService`](app/Services/GeoapifyService.php).
 - No `Policies/` directory — use `authorize()` in controllers or admin middleware.
-- No custom queued jobs, no events/listeners/observers/actions.
+- **One custom queued job exists** — [`app/Jobs/FetchNearbyPlacesJob.php`](app/Jobs/FetchNearbyPlacesJob.php). There are still no events/listeners/observers/actions.
 
 ---
 
@@ -159,7 +166,7 @@ Key relationships/fields to know:
   All OTHER admin resources are served by **root-namespace** controllers in [`app/Http/Controllers/`](app/Http/Controllers) that handle BOTH admin and public actions, routed under the `/admin` group in [`routes/web.php`](routes/web.php): [`PropertyController`](app/Http/Controllers/PropertyController.php), [`BookingController`](app/Http/Controllers/BookingController.php), [`MediaController`](app/Http/Controllers/MediaController.php), [`PageController`](app/Http/Controllers/PageController.php), [`BlockController`](app/Http/Controllers/BlockController.php), [`NavigationController`](app/Http/Controllers/NavigationController.php), [`PostController`](app/Http/Controllers/PostController.php), [`CategoryController`](app/Http/Controllers/CategoryController.php), [`TagController`](app/Http/Controllers/TagController.php), [`VoucherController`](app/Http/Controllers/VoucherController.php), [`PromoRateController`](app/Http/Controllers/PromoRateController.php), [`RedirectController`](app/Http/Controllers/RedirectController.php), [`AmenityController`](app/Http/Controllers/AmenityController.php), and [`SettingsController`](app/Http/Controllers/SettingsController.php). Read [`routes/web.php`](routes/web.php) to confirm which action is admin vs public before editing.
 - **Listing views**: `index.blade.php` for each admin resource (table of records).
 - **Form views**: `_form.blade.php` partials reused by `create.blade.php` / `edit.blade.php` (see e.g. [`resources/views/admin/categories/_form.blade.php`](resources/views/admin/categories/_form.blade.php)).
-- **Property admin uses partials** `_photos.blade.php`, `_pricing.blade.php`, `_policy.blade.php` ([`resources/views/admin/properties/`](resources/views/admin/properties)).
+- **Property admin uses partials** `_photos.blade.php`, `_pricing.blade.php`, `_policy.blade.php`, `_nearby.blade.php` (the Geoapify POI table + resync button) ([`resources/views/admin/properties/`](resources/views/admin/properties)).
 - **Preserve existing admin workflows** — do not restructure admin UX or routing without explicit instruction.
 
 ---
@@ -222,10 +229,10 @@ Key relationships/fields to know:
 ## 14. Performance Rules
 
 - **Avoid N+1 queries** — eager load with `with()` / `load()` for the common relationships: `property -> photos`, `property -> amenities`, `booking -> property`, `post -> category` / `post -> tags`.
-- **No custom queued jobs exist yet** — queue config defaults to `database` but `.env` overrides to `sync`. If a task needs background processing, introduce it deliberately (and confirm the queue driver choice) rather than blocking page render.
+- **One custom queued job exists** — [`FetchNearbyPlacesJob`](app/Jobs/FetchNearbyPlacesJob.php). Queue config defaults to `database` but `.env` overrides to `sync`, so that job currently runs **inline during the admin resync request**; its `$tries`/`$backoff`/`$timeout` only take effect with a real driver plus `php artisan queue:work`. If a task needs background processing, introduce it deliberately (and confirm the queue driver choice) rather than blocking page render.
 - **Cache**: `file` driver by default (config default `database`, `.env` override `file`) — cache aggressively only where it is clearly safe (read-only data). Invalidate on writes.
 - **Lazy-load below-the-fold media** (images, galleries) so page render is not blocked.
-- **No blocking external API calls on page render** — the Geoapify nearby-places integration is a design spec only and is NOT implemented; do not add external API calls to request paths.
+- **No blocking external API calls on page render** — the Geoapify nearby-places integration IS implemented, but Geoapify is called ONLY from [`FetchNearbyPlacesJob`](app/Jobs/FetchNearbyPlacesJob.php) (queued, 24h-cached per property under `geoapify_places_{id}`, triggered only by the admin resync action). The property page reads persisted `places`/`property_places` rows. Never call `GeoapifyService` — or any external API — from a controller, view, or other render path; a feature test pins that the public property page issues zero outbound HTTP requests.
 - **Production caching**: `php artisan route:cache` and `php artisan config:cache` (see [Deployment Rules](#18-deployment-rules)). Remember `php artisan optimize:clear` after changes during development.
 
 ---
@@ -250,7 +257,7 @@ Key relationships/fields to know:
 
 - **PHPUnit** feature tests live in [`tests/Feature/`](tests/Feature). PHPUnit `^12.5` is used (not Pest).
 - **Test database**: SQLite in-memory ([`phpunit.xml`](phpunit.xml)) — tests must not depend on MySQL-specific behavior.
-- **Existing test areas** (from the audit): `BookingFlowTest`, `CrudTest`, `BlogTest`, `AnalyticsTest`, `AccessibilityTest`, `BackupRestoreValidationTest`, `ContactMapEmbedTest`, `DashboardTest`, `ForceHttpsTest`, `InstallerTest`, `MediaUrlImportSsrfTest`, and Breeze auth tests.
+- **Existing test areas**: `BookingFlowTest`, `CrudTest`, `BlogTest`, `AnalyticsTest`, `AccessibilityTest`, `BackupRestoreValidationTest`, `ContactMapEmbedTest`, `DashboardTest`, `ForceHttpsTest`, `InstallerTest`, `MediaUrlImportSsrfTest`, `PropertyNearbyPlacesTest` (manual `nearby_places` JSON), `GeoapifyNearbyPlacesTest` (persistent POI pipeline — uses `Http::preventStrayRequests()` + `Http::fake()`, and pins that the public property page makes zero outbound HTTP requests), and Breeze auth tests.
 - **Bug fixes should include a regression test when practical** — write the failing test first, then fix.
 - **Business-critical changes require tests** — pricing, booking creation, voucher application, and auth are business-critical. Never change canonical services without covering tests.
 - **Do not delete or weaken tests to make CI green** — if a test fails, fix the code or the test's intent, not by removing coverage.
@@ -272,7 +279,8 @@ Key relationships/fields to know:
 
 - **No CI/CD pipeline exists** (no `.github/` found) — deployments are manual.
 - **Installer**: [`routes/install.php`](routes/install.php) + [`resources/views/install/*`](resources/views/install) + [`config/installer.php`](config/installer.php) — the app bootstraps setup through it. Do not bypass it silently.
-- **Queue worker**: `php artisan queue:work` (queue is `sync` in `.env`, `database` config default — confirm before relying on background jobs).
+- **Queue worker**: `php artisan queue:work` (queue is `sync` in `.env`, `database` config default — confirm before relying on background jobs). With `sync`, [`FetchNearbyPlacesJob`](app/Jobs/FetchNearbyPlacesJob.php) runs inline in the admin resync request with no retries; set a real driver (e.g. `database`) and run a worker for it to execute asynchronously with its configured retry/backoff.
+- **Geoapify env vars**: `GEOAPIFY_API_KEY` must be set in `.env` for POI syncing to work at all (it is currently blank — the job early-returns and the map falls back to OSM tiles). Optional: `GEOAPIFY_MAP_KEY` (browser-exposed map tiles; falls back to `GEOAPIFY_API_KEY`), `GEOAPIFY_RADIUS` (default 2000), `GEOAPIFY_MAX_RESULTS` (default 20). See [`docs/geoapify-setup.md`](docs/geoapify-setup.md).
 - **Scheduler**: `php artisan schedule:run` via cron (see [`routes/console.php`](routes/console.php)).
 - **Production caching**: `php artisan route:cache` and `php artisan config:cache`.
 - **Storage link**: `php artisan storage:link` (required for the `public` disk used by `Media`).
@@ -346,7 +354,7 @@ When rules conflict, resolve in this order:
 
 1. **Actual production-safe code and database structure** (migrations, models, services, routes) — the code wins.
 2. **Tests** — they pin the intended behavior.
-3. **Existing project documentation** — e.g. `docs/` (note: [`docs/GEOAPIFY-Nearby-Places-Integration.md`](docs/GEOAPIFY-Nearby-Places-Integration.md) is a **design spec only**, not an implemented feature).
+3. **Existing project documentation** — e.g. `docs/` (note: [`docs/GEOAPIFY-Nearby-Places-Integration.md`](docs/GEOAPIFY-Nearby-Places-Integration.md) is the original design spec and **has now been implemented** — see its Implementation Status section for the shipped file list and the deliberate divergences; where the spec and the code differ, the code is authoritative).
 4. **AGENTS.md** — this file.
 5. **Skill files** — if loaded.
 6. **AI assumptions** — last resort; if you must rely on an assumption, say so explicitly and verify.
@@ -356,3 +364,173 @@ If AGENTS.md conflicts with real code, report the discrepancy rather than silent
 ---
 
 _End of AGENTS.md. Grounded in [`docs/_agent-audit/AUDIT-FINDINGS.md`](docs/_agent-audit/AUDIT-FINDINGS.md). If a new audit changes verified facts, update this file accordingly._
+
+===
+
+<laravel-boost-guidelines>
+=== foundation rules ===
+
+# Laravel Boost Guidelines
+
+The Laravel Boost guidelines are specifically curated by Laravel maintainers for this application. These guidelines should be followed closely to ensure the best experience when building Laravel applications.
+
+## Foundational Context
+
+This application is a Laravel application running on PHP 8.4. You are an expert with the Laravel ecosystem. Always use the APIs that match the installed major version of each package — do not assume a version.
+
+Before relying on a package's API, confirm its installed version:
+- PHP packages: run `composer show --direct` to list direct dependencies with versions, or `composer show <vendor/package>` for a single package.
+- JS packages: check `package.json` for the installed versions.
+
+## Skills Activation
+
+This project has domain-specific skills available in `**/skills/**`. You MUST activate the relevant skill whenever you work in that domain—don't wait until you're stuck.
+
+## Conventions
+
+- You must follow all existing code conventions used in this application. When creating or editing a file, check sibling files for the correct structure, approach, and naming.
+- Use descriptive names for variables and methods. For example, `isRegisteredForDiscounts`, not `discount()`.
+- Check for existing components to reuse before writing a new one.
+
+## Verification Scripts
+
+- Do not create verification scripts or tinker when tests cover that functionality and prove they work. Unit and feature tests are more important.
+
+## Application Structure & Architecture
+
+- Stick to existing directory structure; don't create new base folders without approval.
+- Do not change the application's dependencies without approval.
+
+## Frontend Bundling
+
+- If the user doesn't see a frontend change reflected in the UI, it could mean they need to run `npm run build`, `npm run dev`, or `composer run dev`. Ask them.
+
+## Documentation Files
+
+- You must only create documentation files if explicitly requested by the user.
+
+## Replies
+
+- Be concise in your explanations - focus on what's important rather than explaining obvious details.
+
+=== boost rules ===
+
+# Laravel Boost
+
+## Tools
+
+- Laravel Boost is an MCP server with tools designed specifically for this application. Prefer Boost tools over manual alternatives like shell commands or file reads.
+- Use `database-query` to run read-only queries against the database instead of writing raw SQL in tinker.
+- Use `database-schema` to inspect table structure before writing migrations or models.
+- Use `get-absolute-url` to resolve the correct scheme, domain, and port for project URLs. Always use this before sharing a URL with the user.
+- Use `browser-logs` to read browser logs, errors, and exceptions. Only recent logs are useful, ignore old entries.
+
+## Searching Documentation (IMPORTANT)
+
+- Use `search-docs` before changes that depend on Laravel ecosystem APIs, behavior, configuration, or version-specific syntax. Skip it for copy-only edits and other changes where package documentation is irrelevant. Reuse sufficient results already in context instead of searching again.
+- Pass a `packages` array to scope results when you know which packages are relevant.
+- Use multiple broad, topic-based queries: `['rate limiting', 'routing rate limiting', 'routing']`. Expect the most relevant results first.
+- Do not add package names to queries because package info is already shared. Use `test resource table`, not `filament 4 test resource table`.
+
+### Search Syntax
+
+1. Use words for auto-stemmed AND logic: `rate limit` matches both "rate" AND "limit".
+2. Use `"quoted phrases"` for exact position matching: `"infinite scroll"` requires adjacent words in order.
+3. Combine words and phrases for mixed queries: `middleware "rate limit"`.
+4. Use multiple queries for OR logic: `queries=["authentication", "middleware"]`.
+
+## Project Rules
+
+- This project contains committed, area-grouped rules in `.ai/rules` when that directory exists (settled decisions, non-obvious traps, standing constraints). Framework and package guidelines that only apply to specific paths (testing, frontend, components) also live there, under `.ai/rules/boost` — this is not just recorded decisions, it is load-bearing guidance you have not seen inline. Before you enter plan mode or create/edit any file, you MUST first: open @.ai/rules/index.md (it maps file globs to rule files), read every rule file whose globs cover the path(s) in scope, and run `grep -rin 'keyword' .ai/rules` to catch what a path match alone misses. Do not write code until you have read and are following every matching rule. If `.ai/rules` does not exist, continue without it.
+- Record durable rules with `record-rule` so the next agent or teammate inherits them instead of working them out again. Pass a `glob` (e.g. `app/Http/Controllers/**`), a short `title`, and a few-line `note`. Always use `record-rule`, never your native memory or notes tool — native memory is personal and session-scoped; only `.ai/rules` is shared with the team and persists in the repo.
+
+## Artisan
+
+- Run Artisan commands directly via the command line (e.g., `php artisan route:list`). Use `php artisan list` to discover available commands and `php artisan [command] --help` to check parameters.
+- Inspect routes with `php artisan route:list`. Filter with: `--method=GET`, `--name=users`, `--path=api`, `--except-vendor`, `--only-vendor`.
+- Read configuration values using dot notation: `php artisan config:show app.name`, `php artisan config:show database.default`. Or read config files directly from the `config/` directory.
+
+## Tinker
+
+- Execute PHP in app context for debugging and testing code. Do not create models without user approval, prefer tests with factories instead. Prefer existing Artisan commands over custom tinker code.
+- Always use single quotes to prevent shell expansion: `php artisan tinker --execute 'Your::code();'`
+  - Double quotes for PHP strings inside: `php artisan tinker --execute 'User::where("active", true)->count();'`
+
+=== php rules ===
+
+# PHP
+
+- Always use curly braces for control structures, even for single-line bodies.
+- Use PHP 8 constructor property promotion: `public function __construct(public GitHub $github) { }`. Do not leave empty zero-parameter `__construct()` methods unless the constructor is private.
+- Use explicit return type declarations and type hints for all method parameters: `function isAccessible(User $user, ?string $path = null): bool`
+- Use TitleCase for Enum keys: `FavoritePerson`, `BestLake`, `Monthly`.
+- Prefer PHPDoc blocks over inline comments. Only add inline comments for exceptionally complex logic.
+- Use array shape type definitions in PHPDoc blocks.
+
+=== deployments rules ===
+
+# Deployment
+
+- Laravel can be deployed using [Laravel Cloud](https://cloud.laravel.com/), which is the fastest way to deploy and scale production Laravel applications.
+
+=== tests rules ===
+
+# Test Enforcement
+
+- Test every code change by adding or updating a test.
+- Run the affected tests and ensure they pass.
+- Test the changed behavior and its important failure modes, but do not add tests beyond them.
+- Read the `testing-best-practices` skill before writing tests.
+
+=== laravel/core rules ===
+
+# Do Things the Laravel Way
+
+- Use `php artisan make:` commands to create new files (i.e. migrations, controllers, models, etc.). You can list available Artisan commands using `php artisan list` and check their parameters with `php artisan [command] --help`.
+- If you're creating a generic PHP class, use `php artisan make:class`.
+- Pass `--no-interaction` to all Artisan commands to ensure they work without user input. You should also pass the correct `--options` to ensure correct behavior.
+
+### Model Creation
+
+- When creating new models, create useful factories and seeders for them too. Ask the user if they need any other things, using `php artisan make:model --help` to check the available options.
+
+## APIs & Eloquent Resources
+
+- For APIs, default to using Eloquent API Resources and API versioning unless existing API routes do not, then you should follow existing application convention.
+
+## URL Generation
+
+- When generating links to other pages, prefer named routes and the `route()` function.
+
+## Testing
+
+- When creating models for tests, use the factories for the models. Check if the factory has custom states that can be used before manually setting up the model.
+- Faker: Use methods such as `$this->faker->word()` or `fake()->randomDigit()`. Follow existing conventions whether to use `$this->faker` or `fake()`.
+- When creating tests, make use of `php artisan make:test [options] {name}` to create a feature test, and pass `--unit` to create a unit test. Most tests should be feature tests.
+
+## Vite Error
+
+- If you receive an "Illuminate\Foundation\ViteException: Unable to locate file in Vite manifest" error, you can run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.
+
+=== pint/core rules ===
+
+# Laravel Pint Code Formatter
+
+- If you have modified any PHP files, you must run `vendor/bin/pint --dirty --format agent` before finalizing changes to ensure your code matches the project's expected style.
+- Do not run `vendor/bin/pint --test --format agent`, simply run `vendor/bin/pint --format agent` to fix any formatting issues.
+
+=== phpunit/core rules ===
+
+# PHPUnit
+
+- This project uses PHPUnit. Create tests with `php artisan make:test --phpunit {name}`.
+- Do not include the test suite directory in `{name}`. Use `SomeFeatureTest`, not `Feature/SomeFeatureTest`.
+- Read the `testing-best-practices` skill for guidance on coverage, naming, structure, dependency isolation, and review.
+
+## Running Tests
+
+- Run the narrowest set of tests that covers the change. Pass a file path or `--filter=testName` to `php artisan test --compact`.
+- Rerun a test after each change to it.
+- Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
+
+</laravel-boost-guidelines>

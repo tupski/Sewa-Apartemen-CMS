@@ -32,7 +32,7 @@ conventions every migration/model must follow.
   `amenity_property`, `post_tag`, `model_has_roles`. Soft deletes via `deleted_at`
   where used (`Property`, `Booking`, `Voucher`).
 - Eager load common relations to avoid N+1: `property.photos`, `property.amenities`,
-  `booking.property`, `post.category`, `post.tags`.
+  `booking.property`, `post.category`, `post.tags`, `property.propertyPlaces.place`.
 - Wrap critical multi-row operations in `DB::transaction`. Use `lockForUpdate` when
   reserving a voucher code or generating a booking code (see the booking skill).
 - Tests run on SQLite in-memory — do not rely on MySQL-specific SQL, JSON functions,
@@ -45,16 +45,36 @@ conventions every migration/model must follow.
 `media`, `pages`, `blocks`, `navigations`, `properties`, `amenities`,
 `amenity_property` (pivot), `bookings`, `seo_metadata`, `redirects`, `categories`,
 `tags`, `posts`, `post_tag` (pivot), `user_activity_logs`, `property_photos`,
-`promo_rates`, `vouchers`, `languages`, `currency_rates`.
+`promo_rates`, `vouchers`, `languages`, `currency_rates`, `places`,
+`property_places` (pivot).
 
 Notable unique/indexes: `properties.slug`, `bookings.code`, `bookings.access_token`,
 `users.email`, `roles.slug`, `redirects.from_url`, `settings.key`,
 `currency_rates.unique(from_currency,to_currency)`, `property_photos.index(property_id,category)`.
 
+## Geoapify POI tables
+- `places` ([`2026_08_28_000001_create_places_table.php`](database/migrations/2026_08_28_000001_create_places_table.php)):
+  `geoapify_place_id` (nullable, UNIQUE — the dedupe key used by
+  `Place::updateOrCreate()`), `name`, `category` (a `Property::NEARBY_CATEGORIES`
+  display label), `lat`/`lng` `decimal(10,7)` cast to float, `address`, `website`,
+  `phone`, `raw_category`, `fetched_at`. Indexed on `category` and composite
+  `(lat, lng)`.
+- `property_places` ([`2026_08_28_000002_create_property_places_table.php`](database/migrations/2026_08_28_000002_create_property_places_table.php)):
+  `property_id` (FK→`properties`, cascade), `place_id` (FK→`places`, cascade),
+  `source` enum(`manual`,`geoapify`) default `geoapify`, `distance_m`
+  unsignedInteger nullable, `sort_order`. UNIQUE composite `(property_id, place_id)`;
+  indexed on `property_id` and `source`.
+- CAVEAT: `Property` uses `SoftDeletes`, so the `property_places` FK cascade only
+  fires on `forceDelete()` — a soft-deleted property keeps its pivot rows.
+- Sync writes are transactional and only ever prune `source='geoapify'` rows;
+  `source='manual'` pivot rows are never deleted (see the `nearby-places` skill).
+
 # Do NOT invent these
 - No `units` table (dropped by [`2026_08_12_000000_refactor_units_to_property_types.php`](database/migrations/2026_08_12_000000_refactor_units_to_property_types.php); room types live as `unit_types` JSON on `properties`).
-- No `availability`, `places`/`property_places`, `payments`, `reviews` tables.
-- Nearby places are JSON `nearby_places` on `properties`, not a table.
+- No `availability`, `payments`, `reviews` tables.
+- Nearby places live in BOTH places: the manual JSON `nearby_places` column on
+  `properties` AND the relational `places` / `property_places` tables. Neither
+  replaces the other.
 
 # Workflow
 1. Read the existing migration(s) for the table you are changing.
@@ -79,4 +99,5 @@ Notable unique/indexes: `properties.slug`, `bookings.code`, `bookings.access_tok
 - [`database/migrations/`](database/migrations)
 - [`database/seeders/`](database/seeders)
 - [`app/Models/Property.php`](app/Models/Property.php), [`app/Models/Booking.php`](app/Models/Booking.php), [`app/Models/Voucher.php`](app/Models/Voucher.php)
+- [`app/Models/Place.php`](app/Models/Place.php), [`app/Models/PropertyPlace.php`](app/Models/PropertyPlace.php)
 - [`phpunit.xml`](phpunit.xml) (SQLite in-memory test DB)
