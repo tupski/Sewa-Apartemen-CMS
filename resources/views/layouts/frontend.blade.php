@@ -477,9 +477,13 @@
                 </div>
             </div>
 
-            <div class="border-t border-gray-800 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500">
+            <div class="border-t border-gray-800 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-500">
                 <p>&copy; {{ date('Y') }} {{ $siteName }}. {{ __('footer.rights') }}</p>
-                <p>{{ __('footer.tagline') }}</p>
+                <div class="flex flex-col sm:flex-row items-center gap-x-4 gap-y-2">
+                    <p>{{ __('footer.tagline') }}</p>
+                    <x-powered-by class="inline-flex flex-wrap items-center gap-1 text-gray-500"
+                                  link-class="font-medium text-gray-400 underline underline-offset-2 hover:text-white transition" />
+                </div>
             </div>
         </div>
     </footer>
