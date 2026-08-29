@@ -1,119 +1,115 @@
-# Deployment Guide — Sewa Apartemen CMS
+# Deployment & Operasional
 
-## Server Requirements
+_Deployment & Operations_
 
-| Component | Minimum |
-|-----------|---------|
-| PHP | 8.3+ |
-| MySQL | 8.0+ / MariaDB 10.6+ |
-| Web Server | Nginx 1.20+ or Apache 2.4+ |
-| Composer | 2.x |
-| Node.js | 18+ (for Vite build) |
-| PHP Extensions | BCMath, Ctype, cURL, DOM, Fileinfo, JSON, Mbstring, OpenSSL, PDO, MySQL, Tokenizer, XML, GD/Imagick |
+**Tidak ada CI/CD** — deployment **manual**. Dokumen ini menjelaskan cara deploy ke produksi, web installer, scheduler/cron, realitas queue, dan variabel lingkungan yang dibutuhkan.
 
-## Deployment Steps
+_There is **no CI/CD** — deployment is **manual**. This document explains how to deploy to production, the web installer, the scheduler/cron, queue reality, and required environment variables._
 
-### 1. Clone Repository
+---
 
-```bash
-git clone <repo-url> /path/to/project
-cd /path/to/project
-```
+## Persyaratan Server / _Server Requirements_
 
-### 2. Install PHP Dependencies
+- PHP `^8.3`
+- MySQL 8+ / MariaDB 10.6+ (produksi); SQLite in-memory hanya untuk test
+- Composer 2.x
+- Node.js (untuk build Vite) — hanya saat deploy, tidak perlu di runtime
+
+## Langkah Deploy Manual / _Manual Deploy Steps_
 
 ```bash
+# 1. Ambil kode terbaru
+git pull
+
+# 2. Install dependency PHP (produksi: tanpa dev)
 composer install --no-dev --optimize-autoloader
-```
 
-### 3. Install & Build Frontend Assets
-
-```bash
-npm install
-npm run build
-```
-
-### 4. Environment Configuration
-
-```bash
+# 3. Siapkan .env (jika belum)
 cp .env.example .env
-php artisan key:generate
-```
+php artisan key:generate   # sekali saja
 
-Edit `.env` and set:
-- `APP_URL=https://yourdomain.com`
-- `APP_ENV=production`
-- `APP_DEBUG=false`
-- Database credentials (`DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`)
+# 4. Migrasi — HANYA aditif (jangan migrate:fresh pada produksi!)
+php artisan migrate --force
 
-### 5. Database Setup
+# 5. Build aset frontend
+npm install --ignore-scripts
+npm run build
 
-```bash
-php artisan migrate --seed
-```
-
-This creates all tables and seeds initial data (roles, default settings).
-
-### 6. Storage Link
-
-```bash
+# 6. Symlink storage (dibutuhkan disk public untuk Media)
 php artisan storage:link
+
+# 7. Cache produksi
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
 ```
 
-Creates `public/storage` → `storage/app/public` symlink for uploaded files.
+Setelah perubahan selama pengembangan, ingat `php artisan optimize:clear`.
 
-### 7. Set Permissions
+### Deploy tambahan (skrip yang tersedia)
 
-```bash
-chmod -R 755 storage bootstrap/cache
-chmod -R 775 storage/logs storage/framework
+- `composer setup` — install + .env + key + migrate + npm + build (untuk install baru).
+- `composer dev` — menjalankan `php artisan serve` + `queue:listen --tries=1 --timeout=0` + `pail` + `vite dev` sekaligus (untuk pengembangan lokal).
+
+## Web Installer / _Web Installer_
+
+- Route installer: [`routes/install.php`](../routes/install.php), dipasang di `/install` di [`bootstrap/app.php`](../bootstrap/app.php:15).
+- **Proteksi**: middleware [`ProtectInstaller`](../app/Http/Middleware/ProtectInstaller.php) (`protect.installer`) — hanya localhost / IP whitelist / token.
+- Langkah: Requirements → Application → Database → Admin → Website → Finish (`InstallerController::step1..step6`).
+- Ada endpoint `POST /install/fresh` untuk reset database.
+- View: [`resources/views/install/`](../resources/views/install).
+- Lihat juga [`docs/INSTALLER.md`](INSTALLER.md).
+
+## Scheduler & Cron / _Scheduler & Cron_
+
+Jadwal didefinisikan di [`routes/console.php`](../routes/console.php):
+
+| Command | Jadwal | Catatan |
+|---------|--------|---------|
+| `currency:fetch` | Setiap 6 jam | `withoutOverlapping()` + `runInBackground()` |
+| `git:check-updates` | Harian **01:00 Asia/Jakarta** | Timezone di-pin eksplisit karena `app.timezone` UTC; `withoutOverlapping()` + `runInBackground()` |
+
+Tambahkan ke cron pengguna (biasanya `crontab -e`):
+
+```cron
+* * * * * cd /path/to/project && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-Web server user (e.g., `www-data`, `nginx`) needs write access to `storage/`.
+## Realitas Queue / _Queue Reality_
 
-### 8. Web Server Configuration
+- Config default: `database` ([`config/queue.php`](../config/queue.php)); **`.env` saat ini `QUEUE_CONNECTION=sync`** (lihat `.env.example` line 38).
+- Dengan `sync`, satu-satunya job custom — [`FetchNearbyPlacesJob`](../app/Jobs/FetchNearbyPlacesJob.php) — berjalan **inline** saat request admin resync, tanpa retry. `$tries`/`$backoff`/`$timeout` hanya efektif dengan driver asli + `php artisan queue:work`.
+- Jika butuh job berjalan asinkron, set driver nyata (mis. `database`) dan jalankan worker: `php artisan queue:work`.
+- `composer dev` menjalankan `queue:listen --tries=1 --timeout=0` untuk pengembangan.
 
-#### Nginx
+## Variabel Lingkungan Wajib / _Required Environment Variables_
 
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
-    root /path/to/project/public;
+Dari [`.env.example`](../.env.example):
 
-    add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-Content-Type-Options "nosniff";
+| Variabel | Keterangan |
+|----------|-----------|
+| `APP_NAME`, `APP_ENV`, `APP_KEY`, `APP_DEBUG`, `APP_URL` | Konfigurasi dasar app |
+| `APP_LOCALE` / `APP_FALLBACK_LOCALE` | Bahasa default |
+| `DB_*` | Koneksi database (produksi: MySQL) |
+| `SESSION_DRIVER` | `database` (default) |
+| `QUEUE_CONNECTION` | `database` config default, `.env` = `sync` |
+| `CACHE_STORE` | `database` config default, `.env` = `file` |
+| `MAIL_*` | Mail (juga bisa di-set dari Settings → Mail) |
+| `GEOAPIFY_API_KEY` | **Wajib** untuk POI syncing — kosong di `.env` = job early-return, peta fallback ke OSM tiles |
+| `GEOAPIFY_MAP_KEY` | Kunci browser untuk tile peta (optional; fallback `GEOAPIFY_API_KEY`) |
+| `GEOAPIFY_RADIUS` | Radius POI, default 2000 |
+| `GEOAPIFY_MAX_RESULTS` | Maksimal hasil, default 20 |
 
-    index index.php;
+> ⚠️ `GEOAPIFY_API_KEY` saat ini **kosong** di `.env` — fitur Nearby Places tidak akan berjalan sampai diisi. Lihat [`docs/geoapify-setup.md`](geoapify-setup.md).
 
-    charset utf-8;
+## Backup & Restore / _Backup & Restore_
 
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
+- Admin: **System → Backup & Restore** → [`Admin\BackupController`](../app/Http/Controllers/Admin/BackupController.php).
+- Service: [`BackupService`](../app/Services/BackupService.php).
+- Alur: buat backup → download → restore (dengan konfirmasi).
+- **Backup database WAJIB dilakukan sebelum operasi rollback git** — lihat [`docs/VERSION-CONTROL.md`](VERSION-CONTROL.md).
 
-    location = /favicon.ico { access_log off; log_not_found off; }
-    location = /robots.txt  { access_log off; log_not_found off; }
-
-    error_page 404 /index.php;
-
-    location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        include fastcgi_params;
-    }
-
-    location ~ /\.(?!well-known).* {
-        deny all;
-    }
-}
-```
-
-#### Apache (.htaccess)
-
-Laravel includes a default `.htaccess` in `public/`. Ensure `mod_rewrite` is enabled.
-
-### 9. Optimize for Production
+## Production Caching / _Production Caching_
 
 ```bash
 php artisan config:cache
@@ -121,70 +117,18 @@ php artisan route:cache
 php artisan view:cache
 ```
 
-### 10. Run the Web Installer
+Jangan lupa `php artisan optimize:clear` setelah deploy perubahan saat pengembangan.
 
-Navigate to `https://yourdomain.com/install` and follow the 5-step wizard.
+## Catatan Penting / _Important Notes_
 
----
+- **Jangan jalankan perintah destruktif** tanpa persetujuan eksplisit: `migrate:fresh`, `db:wipe`, `rm -rf`, force-push. Prefer migrasi aditif.
+- `APP_DEBUG=true` ter-set di produksi (temuan audit) — sebaiknya **`false`** di produksi. Lihat [`docs/SECURITY.md`](SECURITY.md).
+- Tidak ada `.github/` — tidak ada pipeline CI/CD.
 
-## Cron Job for Scheduled Tasks
+## Lihat Juga / _See Also_
 
-Add to crontab:
-
-```cron
-* * * * * cd /path/to/project && php artisan schedule:run >> /dev/null 2>&1
-```
-
-## Backup Strategy
-
-### Database Backups
-
-```bash
-# Manual backup
-mysqldump -u user -p database_name > backup_$(date +%Y%m%d).sql
-
-# Using Laravel (if spatie/laravel-backup is installed)
-php artisan backup:run
-```
-
-### File Backups
-
-Back up these directories:
-- `storage/app/public/` — uploaded media
-- `.env` — environment configuration
-- `storage/logs/` — optional, for debugging
-
-### Backup Schedule (Recommended)
-
-- **Database**: Daily automated backup, retain last 30 days
-- **Files**: Weekly backup, retain last 4 weeks
-- **Off-site**: Sync backups to cloud storage (S3, Dropbox, etc.)
-
-## Post-Deployment Checklist
-
-- [ ] `APP_DEBUG=false` in production
-- [ ] `APP_ENV=production`
-- [ ] SSL certificate installed (HTTPS enforced)
-- [ ] `APP_URL` matches actual domain with `https://`
-- [ ] Storage symlink working (uploaded images display correctly)
-- [ ] Database migrations run successfully
-- [ ] Cron job configured
-- [ ] Backups configured and tested
-- [ ] Web installer completed (or `.installed` file exists)
-- [ ] Admin account created and logged in successfully
-- [ ] All tests pass: `php artisan test`
-
-## Rollback
-
-If deployment fails:
-
-```bash
-# Rollback migrations
-php artisan migrate:rollback
-
-# Restore from backup
-mysql -u user -p database_name < backup.sql
-
-# Revert code
-git checkout <previous-commit-hash>
-```
+- [`docs/INSTALLER.md`](INSTALLER.md) — detail installer
+- [`docs/VERSION-CONTROL.md`](VERSION-CONTROL.md) — update & rollback git dari admin
+- [`docs/geoapify-setup.md`](geoapify-setup.md) — setup Geoapify
+- [`docs/DEPLOY-CPANEL-ID.md`](DEPLOY-CPANEL-ID.md), [`docs/DEPLOYMENT-CPANEL.md`](DEPLOYMENT-CPANEL.md) — panduan deploy cPanel (dokumen lama)
+- [`docs/TROUBLESHOOTING.md`](TROUBLESHOOTING.md) — pemecahan masalah
