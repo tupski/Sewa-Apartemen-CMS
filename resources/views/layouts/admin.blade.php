@@ -260,6 +260,14 @@
                         @yield('page-title', 'Admin Panel')
                     </h1>
 
+                    @php
+                        $gitUpdateState = \Illuminate\Support\Facades\Cache::get(
+                            \App\Console\Commands\CheckForGitUpdates::CACHE_KEY
+                        );
+                        $gitUpdateAvailable = ($gitUpdateState['available'] ?? false) === true;
+                        $gitUpdateCount     = (int) ($gitUpdateState['commits_behind'] ?? 0);
+                    @endphp
+
                     <div class="flex items-center space-x-3">
                         <!-- View Website button -->
                         <a href="{{ url('/') }}" target="_blank" rel="noopener"
@@ -269,6 +277,28 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                             </svg>
                         </a>
+
+                        {{-- ===== Git Update Badge =====
+                             Shown ONLY when the cached check reports updates available.
+                             Read path: one Cache::get() per page render — no git, no network.
+                             Turbo Drive: server-rendered, so it refreshes on every navigation.
+                             Accessibility: text label + aria-label + focus ring + reduced-motion guard.
+                        --}}
+                        @if($gitUpdateAvailable)
+                            <a href="{{ route('admin.settings.index', ['group' => 'version_control']) }}"
+                               data-testid="git-update-badge"
+                               class="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500 hover:bg-amber-400 dark:bg-amber-600 dark:hover:bg-amber-500 text-white text-xs font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 transition"
+                               aria-label="{{ __('git.update_badge_aria', ['count' => $gitUpdateCount]) }}"
+                               title="{{ __('git.update_badge_aria', ['count' => $gitUpdateCount]) }}">
+                                {{-- Animated ping dot — gated behind motion-safe: so
+                                     prefers-reduced-motion users get no animation. --}}
+                                <span class="relative flex h-2 w-2 shrink-0" aria-hidden="true">
+                                    <span class="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                                </span>
+                                <span>{{ __('git.update_badge_label', ['count' => $gitUpdateCount]) }}</span>
+                            </a>
+                        @endif
 
                         <!-- Clear Cache button (Task 4) -->
                         <div x-data="{ cacheClearing: false }" class="relative">
@@ -532,9 +562,10 @@
 
             <!-- Footer -->
             <footer class="bg-white border-t border-gray-200 py-4 px-4 sm:px-6 lg:px-8 dark:bg-gray-900 dark:border-gray-800">
-                <div class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-gray-600 dark:text-gray-400">
                     <p>&copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
-                    <p>Version 1.0.0</p>
+                    <x-powered-by class="inline-flex flex-wrap items-center gap-1 text-gray-600 dark:text-gray-400"
+                                  link-class="font-medium text-gray-700 underline underline-offset-2 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition" />
                 </div>
             </footer>
         </div>
