@@ -108,14 +108,27 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix(slug('admin_prefix', 'a
 
     // Git Version Control (AJAX)
     // NOTE: these must be declared BEFORE settings/{group?} so 'git-status' /
-    // 'git-pull' / 'git-fetch' / 'post-update' are not swallowed as a {group}
+    // 'git-pull' / 'git-fetch' / 'post-update' / 'git-commit-history' /
+    // 'git-rollback' / 'git-backup-database' are not swallowed as a {group}
     // wildcard value.
     Route::get('settings/git-status', [SettingsController::class, 'gitStatus'])->name('settings.git-status');
+    // On-demand update check — runs git:check-updates inline and refreshes the cached state.
+    Route::post('settings/git-check-updates', [SettingsController::class, 'gitCheckUpdates'])->name('settings.git-check-updates');
     Route::post('settings/git-pull', [SettingsController::class, 'gitPull'])->name('settings.git-pull');
     Route::post('settings/git-fetch', [SettingsController::class, 'gitFetch'])->name('settings.git-fetch');
     // Post-update actions. {action} is only an allowlist KEY — the argv arrays are
     // hardcoded in PostUpdateActionService; unknown keys are rejected with 422.
     Route::post('settings/post-update/{action}', [SettingsController::class, 'gitPostUpdate'])->name('settings.post-update');
+
+    // Version Control — remote info, commit history, rollback, return-to-branch,
+    // DB backup. All state-changing routes are POST; the SHA is validated
+    // server-side (regex + cat-file existence) in the controller.
+    Route::get('settings/git-remote-info', [SettingsController::class, 'gitRemoteInfo'])->name('settings.git-remote-info');
+    Route::get('settings/git-commit-history', [SettingsController::class, 'gitCommitHistory'])->name('settings.git-commit-history');
+    Route::post('settings/git-rollback', [SettingsController::class, 'gitRollback'])->name('settings.git-rollback');
+    Route::post('settings/git-return-to-branch', [SettingsController::class, 'gitReturnToBranch'])->name('settings.git-return-to-branch');
+    Route::post('settings/git-backup-database', [SettingsController::class, 'gitBackupDatabase'])->name('settings.git-backup-database');
+    Route::get('settings/git-backup-download/{filename}', [SettingsController::class, 'gitBackupDownload'])->name('settings.git-backup-download');
 
     // Settings Management
     Route::get('settings/{group?}', [SettingsController::class, 'index'])->name('settings.index');

@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Symfony\Component\Process\Process;
 
 class BackupService
 {
@@ -13,15 +14,15 @@ class BackupService
      * Tables that don't exist are silently skipped during export/restore.
      */
     protected const TABLE_MAP = [
-        'settings'   => ['settings', 'languages', 'currency_rates'],
-        'blog'       => ['posts', 'categories', 'tags', 'post_tag'],
+        'settings' => ['settings', 'languages', 'currency_rates'],
+        'blog' => ['posts', 'categories', 'tags', 'post_tag'],
         'properties' => ['properties', 'amenities', 'property_photos', 'promo_rates', 'units'],
-        'bookings'   => ['bookings'],
-        'vouchers'   => ['vouchers'],
-        'pages'      => ['pages', 'blocks', 'navigations'],
-        'users'      => ['users', 'roles', 'model_has_roles'],
-        'media'      => ['media'],
-        'seo'        => ['seo_metadata', 'redirects'],
+        'bookings' => ['bookings'],
+        'vouchers' => ['vouchers'],
+        'pages' => ['pages', 'blocks', 'navigations'],
+        'users' => ['users', 'roles', 'model_has_roles'],
+        'media' => ['media'],
+        'seo' => ['seo_metadata', 'redirects'],
     ];
 
     /**
@@ -59,10 +60,10 @@ class BackupService
         }
 
         return [
-            'version'    => '1.0',
+            'version' => '1.0',
             'created_at' => now()->toIso8601String(),
-            'app_name'   => config('app.name', 'Laravel'),
-            'groups'     => $exported,
+            'app_name' => config('app.name', 'Laravel'),
+            'groups' => $exported,
         ];
     }
 
@@ -72,7 +73,7 @@ class BackupService
      * dialog is needed before overwriting.
      *
      * @param  array{groups: array<string, array<string, list<array<string, mixed>>>>}  $data
-     * @return bool  true if at least one target table has at least one row
+     * @return bool true if at least one target table has at least one row
      */
     public function hasExistingData(array $data): bool
     {
@@ -111,6 +112,7 @@ class BackupService
      * not well-formed key/value maps are skipped entirely.
      *
      * @param  array{groups: array<string, array<string, list<array<string, mixed>>>>}  $data
+     *
      * @throws \Throwable
      */
     public function restore(array $data): void
@@ -143,6 +145,7 @@ class BackupService
                                 'group' => $groupKey,
                                 'table' => $table,
                             ]);
+
                             continue;
                         }
 
@@ -183,8 +186,8 @@ class BackupService
         $driver = DB::connection()->getDriverName();
 
         match ($driver) {
-            'mysql', 'mariadb' => DB::statement('SET FOREIGN_KEY_CHECKS=' . ($enabled ? '1' : '0')),
-            'sqlite' => DB::statement('PRAGMA foreign_keys=' . ($enabled ? 'ON' : 'OFF')),
+            'mysql', 'mariadb' => DB::statement('SET FOREIGN_KEY_CHECKS='.($enabled ? '1' : '0')),
+            'sqlite' => DB::statement('PRAGMA foreign_keys='.($enabled ? 'ON' : 'OFF')),
             'pgsql' => null, // no session-level equivalent; deferred FKs handle this
             default => null,
         };
@@ -220,6 +223,7 @@ class BackupService
 
             if (! is_array($row) || $row === []) {
                 $skippedRows++;
+
                 continue;
             }
 
@@ -228,12 +232,14 @@ class BackupService
             foreach ($row as $key => $value) {
                 if (! is_string($key) || ! isset($allowed[$key])) {
                     $droppedKeys[is_scalar($key) ? (string) $key : '(non-scalar)'] = true;
+
                     continue;
                 }
 
                 // Nested structures are never valid column values here.
                 if (is_array($value) || is_object($value)) {
                     $droppedKeys[$key] = true;
+
                     continue;
                 }
 
@@ -242,6 +248,7 @@ class BackupService
 
             if ($clean === []) {
                 $skippedRows++;
+
                 continue;
             }
 
@@ -250,7 +257,7 @@ class BackupService
 
         if ($droppedKeys !== []) {
             Log::warning('Backup restore: dropped unknown/invalid columns.', [
-                'table'   => $table,
+                'table' => $table,
                 'columns' => array_keys($droppedKeys),
             ]);
         }
@@ -263,5 +270,96 @@ class BackupService
         }
 
         return $sanitized;
+    }
+
+    /**
+     * Produce a complete MySQL `.sql` dump via mysqldump.
+     *
+     * This is the database-backup path for the Git rollback flow: rolling back
+     * code does NOT roll back the schema, so a full dump is strongly advised
+     * before any rollback. It is a deliberately separate, minimal addition on
+     * top of the existing JSON export — no competing backup implementation.
+     *
+     * SECURITY: mysqldump is invoked via Symfony Process with an argument
+     * ARRAY (never a shell string); DB credentials are never echoed to output
+     * or logs.
+     *
+     * @return array{path: string, filename: string}
+     *
+     * @throws \RuntimeException when the connection is not MySQL, mysqldump is
+     *                           missing from PATH, or the dump fails.
+     */
+    public function dumpSql(): array
+    {
+        $driver = DB::connection()->getDriverName();
+
+        if (! in_array($driver, ['mysql', 'mariadb'], true)) {
+            throw new \RuntimeException(__('git.backup_db_not_mysql'));
+        }
+
+        $host = config('database.connections.'.$driver.'.host', '127.0.0.1');
+        $port = config('database.connections.'.$driver.'.port', '3306');
+        $database = config('database.connections.'.$driver.'.database', '');
+        $username = config('database.connections.'.$driver.'.username', '');
+        $password = config('database.connections.'.$driver.'.password', '');
+        $charset = config('database.connections.'.$driver.'.charset', 'utf8mb4');
+
+        if ($database === '' || $username === '') {
+            throw new \RuntimeException(__('git.backup_db_missing_config'));
+        }
+
+        // Fail fast with an actionable message when mysqldump is not on PATH.
+        $probe = new Process(PHP_OS_FAMILY === 'Windows' ? ['where', 'mysqldump'] : ['which', 'mysqldump']);
+        $probe->run();
+
+        if (! $probe->isSuccessful()) {
+            throw new \RuntimeException(__('git.backup_db_mysqldump_missing'));
+        }
+
+        $filename = 'rollback-backup-'.$database.'-'.now()->format('Ymd-His').'.sql';
+        $dumpPath = storage_path('app/private/'.$filename);
+
+        $argv = [
+            'mysqldump',
+            '--host='.$host,
+            '--port='.(string) $port,
+            '--user='.$username,
+            '--password='.$password,
+            '--single-transaction',
+            '--quick',
+            '--routines',
+            '--triggers',
+            '--default-character-set='.$charset,
+            $database,
+        ];
+
+        $process = new Process($argv, null, null, null, 900);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            // Never leak stderr (may embed DB errors/paths) to the caller —
+            // keep the failure generic and log the real detail server-side.
+            Log::error('mysqldump failed', ['exit' => $process->getExitCode(), 'stderr' => $process->getErrorOutput()]);
+
+            throw new \RuntimeException(__('git.backup_db_dump_failed'));
+        }
+
+        $sql = $process->getOutput();
+
+        if (trim($sql) === '') {
+            throw new \RuntimeException(__('git.backup_db_dump_empty'));
+        }
+
+        // Store under app/private so the dump never lands on the public disk.
+        if (! is_dir(dirname($dumpPath))) {
+            mkdir(dirname($dumpPath), 0775, true);
+        }
+
+        file_put_contents($dumpPath, $sql);
+
+        return [
+            'path' => $dumpPath,
+            'filename' => $filename,
+        ];
     }
 }
