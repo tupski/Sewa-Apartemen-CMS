@@ -281,6 +281,20 @@
                     </div>
                 </div>
 
+                {{-- ── 5b. Nearby Places (Geoapify persistent POIs) ──
+                     Rendered here so the section is not a surprise after the
+                     first save. Syncing needs a saved property id + coordinates,
+                     so the partial disables the button and explains why. --}}
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+                        <div class="w-1 h-6 bg-blue-600 rounded-full"></div>
+                        <h3 class="text-base font-semibold text-gray-900">Tempat Terdekat (Geoapify)</h3>
+                    </div>
+                    <div class="p-6">
+                        @include('admin.properties._nearby', ['property' => $property ?? null, 'propertyPlaces' => collect()])
+                    </div>
+                </div>
+
                 {{-- ── 6. SEO ── --}}
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100">
                     <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-3">

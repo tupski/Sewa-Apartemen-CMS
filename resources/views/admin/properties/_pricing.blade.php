@@ -76,8 +76,15 @@
         </div>
     </div>
 
-    {{-- ===== PRICE TABLES ===== --}}
-    @if(!empty($selectedTypes))
+    {{-- ===== PRICE TABLES =====
+
+         The tables are ALWAYS rendered (one row per room type, unselected rows
+         carrying `.is-hidden`) so ticking a room type can reveal its price
+         fields client-side. Previously the whole block was wrapped in a
+         server-side "has selected types" conditional, so on the Create screen —
+         where nothing is selected yet — no rows existed at all and ticking a
+         type revealed nothing until the property had been saved once. --}}
+    <div id="price-tables" class="{{ empty($selectedTypes) ? 'hidden' : '' }}">
 
     {{-- ---- TRANSIT JAM ---- --}}
     <div class="mb-7">
@@ -269,11 +276,12 @@
         </div>
     </div>
 
-    @else
-        <div class="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700">
-            Centang minimal satu tipe kamar di atas untuk mengisi harga.
-        </div>
-    @endif
+    </div>{{-- /#price-tables --}}
+
+    <div id="price-empty"
+         class="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700 {{ empty($selectedTypes) ? '' : 'hidden' }}">
+        Centang minimal satu tipe kamar di atas untuk mengisi harga.
+    </div>
 </div>
 
 {{-- ===== PROMO RATES SECTION ===== --}}
@@ -474,13 +482,30 @@
 
 @push('scripts')
 <script>
-    document.querySelectorAll('.type-check').forEach(function (checkbox) {
-        checkbox.addEventListener('change', function () {
-            document.querySelectorAll('.price-row[data-type="' + this.dataset.type + '"]').forEach(function (row) {
-                row.classList.toggle('is-hidden', !checkbox.checked);
+    (function () {
+        var checks = document.querySelectorAll('.type-check');
+        var tables = document.getElementById('price-tables');
+        var empty  = document.getElementById('price-empty');
+
+        // Show the price tables only while at least one room type is ticked, and
+        // show the "tick a room type" hint otherwise.
+        function syncVisibility() {
+            var anyChecked = Array.prototype.some.call(checks, function (c) { return c.checked; });
+            if (tables) tables.classList.toggle('hidden', !anyChecked);
+            if (empty)  empty.classList.toggle('hidden', anyChecked);
+        }
+
+        checks.forEach(function (checkbox) {
+            checkbox.addEventListener('change', function () {
+                document.querySelectorAll('.price-row[data-type="' + checkbox.dataset.type + '"]').forEach(function (row) {
+                    row.classList.toggle('is-hidden', !checkbox.checked);
+                });
+                syncVisibility();
             });
         });
-    });
+
+        syncVisibility();
+    })();
 
     // ===== PROMO RATES JS =====
     (function () {

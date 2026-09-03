@@ -837,18 +837,32 @@ class PropertyController extends Controller
      *
      * Clears the property's cached Geoapify payload and dispatches
      * FetchNearbyPlacesJob. When the queue driver is `sync` the job runs inline
-     * before the redirect returns; otherwise it is queued for a worker.
+     * before the response returns; otherwise it is queued for a worker.
+     *
+     * Responds with JSON (message + freshly rendered POI table) when the admin
+     * form calls it via fetch(), so the edit page updates in place instead of
+     * navigating away. Plain requests still get the redirect-back + flash.
      */
-    public function resyncNearbyPlaces(Property $property)
+    public function resyncNearbyPlaces(Request $request, Property $property)
     {
         // Require coordinates before any fetch can be meaningful.
         if ($property->latitude === null || $property->longitude === null) {
-            return back()->with('error', __('Property must have coordinates set before syncing POI.'));
+            return $this->resyncResponse(
+                $request,
+                $property,
+                false,
+                __('Property must have coordinates set before syncing POI.')
+            );
         }
 
         // Require the Geoapify API key to be configured.
         if (empty(config('services.geoapify.key'))) {
-            return back()->with('error', 'GEOAPIFY_API_KEY belum dikonfigurasi.');
+            return $this->resyncResponse(
+                $request,
+                $property,
+                false,
+                'GEOAPIFY_API_KEY belum dikonfigurasi.'
+            );
         }
 
         // Force a fresh fetch by clearing the cached payload for this property.
@@ -856,7 +870,46 @@ class PropertyController extends Controller
 
         FetchNearbyPlacesJob::dispatch($property);
 
-        return back()->with('success', __('POI sync queued successfully.'));
+        return $this->resyncResponse(
+            $request,
+            $property,
+            true,
+            __('POI sync queued successfully.')
+        );
+    }
+
+    /**
+     * Build the resync response: JSON for fetch()/XHR callers, redirect-back otherwise.
+     *
+     * The JSON payload carries the re-rendered POI table so the caller can swap
+     * it into the edit form without a page navigation. Under the `sync` queue
+     * driver the job has already finished by the time this runs, so the table is
+     * up to date; with a real worker it renders the pre-sync rows and the admin
+     * reloads to see the result.
+     */
+    protected function resyncResponse(Request $request, Property $property, bool $success, string $message)
+    {
+        if (! $request->expectsJson() && ! $request->ajax()) {
+            return back()->with($success ? 'success' : 'error', $message);
+        }
+
+        $propertyPlaces = collect();
+
+        if (Schema::hasTable('property_places')) {
+            $propertyPlaces = $property->propertyPlaces()
+                ->with('place')
+                ->orderBy('distance_m', 'asc')
+                ->get();
+        }
+
+        return response()->json([
+            'success' => $success,
+            'message' => $message,
+            'count' => $propertyPlaces->count(),
+            'html' => view('admin.properties._nearby-table', [
+                'propertyPlaces' => $propertyPlaces,
+            ])->render(),
+        ], $success ? 200 : 422);
     }
 
     /**

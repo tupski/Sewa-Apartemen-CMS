@@ -500,11 +500,18 @@
                          }"
                          class="pointer-events-auto flex items-start gap-3 min-w-[280px] max-w-sm px-4 py-3 rounded-lg shadow-xl">
                         <!-- Icon -->
+                        {{-- Alpine's x-if/x-for clone `template.content.firstElementChild`.
+                             A bare text node (a raw emoji) has NO element child, so the
+                             clone was `null` and Alpine threw
+                             "Cannot set properties of null (setting '_x_dataStack')"
+                             the first time any toast rendered — which killed every
+                             Alpine component on the page. Each template must wrap its
+                             content in a single root ELEMENT. --}}
                         <span class="shrink-0 mt-0.5 text-lg leading-none">
-                            <template x-if="toast.type === 'success'">✅</template>
-                            <template x-if="toast.type === 'error'">❌</template>
-                            <template x-if="toast.type === 'warning'">⚠️</template>
-                            <template x-if="toast.type === 'info'">ℹ️</template>
+                            <template x-if="toast.type === 'success'"><span>✅</span></template>
+                            <template x-if="toast.type === 'error'"><span>❌</span></template>
+                            <template x-if="toast.type === 'warning'"><span>⚠️</span></template>
+                            <template x-if="toast.type === 'info'"><span>ℹ️</span></template>
                         </span>
                         <span class="flex-1 text-sm font-medium leading-snug" x-text="toast.message"></span>
                         <button @click="remove(toast.id)"
