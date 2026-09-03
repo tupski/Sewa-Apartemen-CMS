@@ -159,7 +159,9 @@ class Property extends Model
      */
     public function weekendDays(): array
     {
-        return $this->weekend_days ?? [6, 0];
+        $days = $this->weekend_days;
+
+        return is_array($days) ? $days : [6, 0];
     }
 
     /**

@@ -457,11 +457,11 @@
                     <div class="p-5 space-y-2 text-xs text-gray-600">
                         <div class="flex justify-between">
                             <span class="text-gray-500">Dibuat</span>
-                            <span>{{ $property->created_at->format('d M Y') }}</span>
+                            <span>{{ $property->created_at?->format('d M Y') ?? '-' }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-500">Diperbarui</span>
-                            <span>{{ $property->updated_at->format('d M Y, H:i') }}</span>
+                            <span>{{ $property->updated_at?->format('d M Y, H:i') ?? '-' }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-500">ID</span>

@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class PropertyController extends Controller
@@ -412,8 +413,16 @@ class PropertyController extends Controller
 
         // Persistent Geoapify POIs (Phase 5). Eager load the related place and
         // order nearest-first so the admin _nearby partial renders a clean table.
-        $property->load(['propertyPlaces' => fn ($q) => $q->orderBy('distance_m', 'asc'), 'propertyPlaces.place']);
-        $propertyPlaces = $property->propertyPlaces;
+        // Guarded: the Geoapify migrations may not have run yet on an existing
+        // install, and an unguarded eager load throws QueryException (500).
+        // Read the relation only when it is loaded, otherwise the dynamic
+        // property access would lazy-load and hit the missing table anyway.
+        if (Schema::hasTable('property_places')) {
+            $property->load(['propertyPlaces' => fn ($q) => $q->orderBy('distance_m', 'asc'), 'propertyPlaces.place']);
+        }
+        $propertyPlaces = $property->relationLoaded('propertyPlaces')
+            ? $property->propertyPlaces
+            : collect();
 
         $amenities = Amenity::where('is_active', true)
             ->orderBy('name')

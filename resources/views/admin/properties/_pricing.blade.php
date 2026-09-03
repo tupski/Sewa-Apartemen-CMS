@@ -1,6 +1,9 @@
 @php
     $selectedTypes = old('unit_types', $property->unit_types ?? []);
     $selectedWeekend = old('weekend_days', $property?->weekendDays() ?? [6, 0]);
+    // Guard against a malformed `prices` payload (e.g. double-encoded JSON,
+    // which casts to a string) so indexing below never hits a string offset.
+    $priceValues = is_array($property?->prices) ? $property->prices : [];
     $days = [0 => 'Minggu', 1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu'];
 
     // Transit fields (split wd/we)
@@ -117,7 +120,7 @@
                                         <span class="lg:hidden text-xs text-gray-500">Weekday</span>
                                         <x-money-input
                                             :name="'prices['.$key.']['.$slot.'_wd]'"
-                                            :value="old('prices.'.$key.'.'.$slot.'_wd', $property?->prices[$key][$slot.'_wd'] ?? '')"
+                                            :value="old('prices.'.$key.'.'.$slot.'_wd', $priceValues[$key][$slot.'_wd'] ?? '')"
                                             wrapperClass="w-32 lg:w-auto shrink-0"
                                             inputClass="w-full lg:w-28 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
                                     </div>
@@ -127,7 +130,7 @@
                                         <span class="lg:hidden text-xs text-gray-500">Weekend</span>
                                         <x-money-input
                                             :name="'prices['.$key.']['.$slot.'_we]'"
-                                            :value="old('prices.'.$key.'.'.$slot.'_we', $property?->prices[$key][$slot.'_we'] ?? '')"
+                                            :value="old('prices.'.$key.'.'.$slot.'_we', $priceValues[$key][$slot.'_we'] ?? '')"
                                             wrapperClass="w-32 lg:w-auto shrink-0"
                                             inputClass="w-full lg:w-28 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
                                     </div>
@@ -166,7 +169,7 @@
                                     <span class="lg:hidden text-xs text-gray-500">Weekday</span>
                                     <x-money-input
                                         :name="'prices['.$key.'][night_wd]'"
-                                        :value="old('prices.'.$key.'.night_wd', $property?->prices[$key]['night_wd'] ?? '')"
+                                        :value="old('prices.'.$key.'.night_wd', $priceValues[$key]['night_wd'] ?? '')"
                                         wrapperClass="w-40 lg:w-auto shrink-0"
                                         inputClass="w-full lg:w-36 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
                                 </div>
@@ -176,7 +179,7 @@
                                     <span class="lg:hidden text-xs text-gray-500">Weekend</span>
                                     <x-money-input
                                         :name="'prices['.$key.'][night_we]'"
-                                        :value="old('prices.'.$key.'.night_we', $property?->prices[$key]['night_we'] ?? '')"
+                                        :value="old('prices.'.$key.'.night_we', $priceValues[$key]['night_we'] ?? '')"
                                         wrapperClass="w-40 lg:w-auto shrink-0"
                                         inputClass="w-full lg:w-36 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
                                 </div>
@@ -214,7 +217,7 @@
                                     <span class="lg:hidden text-xs text-gray-500">Harga per Minggu</span>
                                     <x-money-input
                                         :name="'prices['.$key.'][weekly]'"
-                                        :value="old('prices.'.$key.'.weekly', $property?->prices[$key]['weekly'] ?? '')"
+                                        :value="old('prices.'.$key.'.weekly', $priceValues[$key]['weekly'] ?? '')"
                                         placeholder="Kosongkan jika tidak tersedia"
                                         wrapperClass="w-48 sm:w-64 lg:w-auto shrink-0"
                                         inputClass="w-full lg:w-64 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
@@ -253,7 +256,7 @@
                                     <span class="lg:hidden text-xs text-gray-500">Harga per Bulan</span>
                                     <x-money-input
                                         :name="'prices['.$key.'][monthly]'"
-                                        :value="old('prices.'.$key.'.monthly', $property?->prices[$key]['monthly'] ?? '')"
+                                        :value="old('prices.'.$key.'.monthly', $priceValues[$key]['monthly'] ?? '')"
                                         placeholder="Kosongkan jika tidak tersedia"
                                         wrapperClass="w-48 sm:w-64 lg:w-auto shrink-0"
                                         inputClass="w-full lg:w-64 pr-2 py-1.5 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-right text-sm" />
