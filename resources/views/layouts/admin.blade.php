@@ -266,6 +266,10 @@
                         );
                         $gitUpdateAvailable = ($gitUpdateState['available'] ?? false) === true;
                         $gitUpdateCount     = (int) ($gitUpdateState['commits_behind'] ?? 0);
+
+                        // Header profile chip: photo when the user uploaded one, initials otherwise.
+                        $authUser     = Auth::user();
+                        $authRoleName = $authUser?->roles->first()?->name;
                     @endphp
 
                     <div class="flex items-center space-x-3">
@@ -300,35 +304,7 @@
                             </a>
                         @endif
 
-                        <!-- Clear Cache button (Task 4) -->
-                        <div x-data="{ cacheClearing: false }" class="relative">
-                            <button @click="
-                                cacheClearing = true;
-                                fetch('{{ route('admin.clear-cache') }}', {
-                                    method: 'POST',
-                                    headers: {
-                                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                                        'Accept': 'application/json'
-                                    }
-                                })
-                                .then(r => r.json())
-                                .then(d => {
-                                    cacheClearing = false;
-                                    if (d.success) window.toast(d.message, 'success');
-                                    else window.toast(d.message || 'Failed to clear cache', 'error');
-                                })
-                                .catch(() => { cacheClearing = false; window.toast('Failed to clear cache', 'error'); })"
-                                :disabled="cacheClearing"
-                                class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 transition disabled:opacity-50"
-                                aria-label="Clear Cache" title="Clear Cache">
-                                <svg x-show="!cacheClearing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                </svg>
-                                <svg x-show="cacheClearing" x-cloak class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                                </svg>
-                            </button>
-                        </div>
+                        {{-- Clear Cache moved into the profile dropdown (icon-only row). --}}
 
                         <!-- Language Switcher -->
                         {{-- @php
@@ -364,72 +340,94 @@
                         </div>
                         @endif --}}
 
-                        <!-- Currency Switcher -->
-                        @php
-                            $availableCurrencies = array_merge(['IDR'], array_keys(\App\Services\CurrencyRateService::all()));
-                            $displayCurrency     = session('display_currency', 'IDR');
-                        @endphp
-                        @if(count($availableCurrencies) > 1)
-                        <div x-data="{ curOpen: false }" class="relative">
-                            <button @click="curOpen = !curOpen"
-                                    class="flex items-center gap-1 px-2 py-1.5 rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 text-xs font-mono font-bold transition"
-                                    title="Ganti Kurs">
-                                {{ $displayCurrency }}
-                                <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                            </button>
-                            <div x-show="curOpen" @click.away="curOpen = false"
-                                 x-transition
-                                 class="absolute right-0 mt-1 w-28 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1 max-h-60 overflow-y-auto"
-                                 style="display:none">
-                                @foreach($availableCurrencies as $cur)
-                                <form method="POST" action="{{ route('admin.set-currency') }}">
-                                    @csrf
-                                    <input type="hidden" name="currency" value="{{ $cur }}">
-                                    <button type="submit"
-                                            class="w-full px-3 py-2 text-xs font-mono text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition
-                                                   {{ $cur === $displayCurrency ? 'font-bold text-blue-600' : '' }}">
-                                        {{ $cur }}
-                                    </button>
-                                </form>
-                                @endforeach
-                            </div>
-                        </div>
-                        @endif
-
-                        <!-- Dark mode toggle -->
-                        <button @click="dark = !dark"
-                                class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800"
-                                aria-label="Toggle dark mode" :title="dark ? 'Light mode' : 'Dark mode'">
-                            <svg x-show="!dark" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
-                            <svg x-show="dark" class="w-5 h-5" style="display: none;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                        </button>
-
-                        <!-- User Dropdown -->
-                        <div x-data="{ dropdownOpen: false }" class="relative">
-                            <button @click="dropdownOpen = !dropdownOpen" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1 dark:text-gray-200 dark:hover:text-white" aria-label="User menu" aria-expanded="false" :aria-expanded="dropdownOpen">
-                                <span class="text-sm font-medium">{{ Auth::user()->name }}</span>
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                </svg>
+                        {{-- ===== Profile Dropdown =====
+                             Trigger is the avatar: the uploaded photo when present, otherwise
+                             the user's initials. Menu order: name + role, profile, logout, then
+                             an icon-only utility row (clear cache | dark-mode toggle).
+                             `dark` lives on the page-root x-data, so the nested component here
+                             still mutates the same state the pre-paint script reads.
+                        --}}
+                        <div x-data="{ dropdownOpen: false, cacheClearing: false }" class="relative">
+                            <button @click="dropdownOpen = !dropdownOpen"
+                                    data-testid="profile-menu-trigger"
+                                    class="flex items-center rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition"
+                                    aria-label="{{ __('admin.user_menu') }}"
+                                    :aria-expanded="dropdownOpen"
+                                    :title="'{{ $authUser?->name }}'">
+                                @if($authUser?->avatar)
+                                    <img src="{{ $authUser->avatarUrl(80) }}"
+                                         alt="{{ $authUser->name }}"
+                                         class="w-9 h-9 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-700">
+                                @else
+                                    <span class="w-9 h-9 rounded-full bg-blue-600 text-white text-sm font-semibold inline-flex items-center justify-center select-none"
+                                          aria-hidden="true">{{ $authUser?->initials() }}</span>
+                                @endif
                             </button>
 
                             <div x-show="dropdownOpen"
                                  @click.away="dropdownOpen = false"
+                                 @keydown.escape.window="dropdownOpen = false"
                                  x-transition:enter="transition ease-out duration-100"
                                  x-transition:enter-start="transform opacity-0 scale-95"
                                  x-transition:enter-end="transform opacity-100 scale-100"
                                  x-transition:leave="transition ease-in duration-75"
                                  x-transition:leave-start="transform opacity-100 scale-100"
                                  x-transition:leave-end="transform opacity-0 scale-95"
-                                 class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 dark:bg-gray-800"
+                                 class="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 dark:bg-gray-800 dark:ring-gray-700"
                                  style="display: none;">
-                                <a href="{{ route('profile.edit') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700">Profile</a>
+                                {{-- Identity --}}
+                                <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                                    <p class="text-sm font-semibold text-gray-800 truncate dark:text-gray-100">{{ $authUser?->name }}</p>
+                                    <p class="text-xs text-gray-500 truncate dark:text-gray-400">{{ $authRoleName ?? __('admin.no_role') }}</p>
+                                </div>
+
+                                <a href="{{ route('profile.edit') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700">{{ __('admin.profile') }}</a>
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
                                     <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700">
-                                        Log Out
+                                        {{ __('admin.logout') }}
                                     </button>
                                 </form>
+
+                                {{-- Icon-only utilities --}}
+                                <div class="mt-1 pt-1 border-t border-gray-100 dark:border-gray-700 flex items-center justify-center gap-2">
+                                    <button @click="
+                                        cacheClearing = true;
+                                        fetch('{{ route('admin.clear-cache') }}', {
+                                            method: 'POST',
+                                            headers: {
+                                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                                'Accept': 'application/json'
+                                            }
+                                        })
+                                        .then(r => r.json())
+                                        .then(d => {
+                                            cacheClearing = false;
+                                            if (d.success) window.toast(d.message, 'success');
+                                            else window.toast(d.message || '{{ __('admin.clear_cache_failed') }}', 'error');
+                                        })
+                                        .catch(() => { cacheClearing = false; window.toast('{{ __('admin.clear_cache_failed') }}', 'error'); })"
+                                        :disabled="cacheClearing"
+                                        data-testid="clear-cache-button"
+                                        class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 transition disabled:opacity-50"
+                                        aria-label="{{ __('admin.clear_cache') }}" title="{{ __('admin.clear_cache') }}">
+                                        <svg x-show="!cacheClearing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 20l5-5m0 0l3.5-3.5M9 15l-2-2m2 2l2 2m-4.5-4.5L13 5.5a2.121 2.121 0 013 3L8.5 16m-4.5 4h6"/>
+                                        </svg>
+                                        <svg x-show="cacheClearing" x-cloak class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                        </svg>
+                                    </button>
+
+                                    <button @click="dark = !dark"
+                                            data-testid="dark-mode-toggle"
+                                            class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 transition"
+                                            aria-label="{{ __('admin.toggle_dark_mode') }}"
+                                            :title="dark ? '{{ __('admin.light_mode') }}' : '{{ __('admin.dark_mode') }}'">
+                                        <svg x-show="!dark" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                                        <svg x-show="dark" class="w-5 h-5" style="display: none;" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

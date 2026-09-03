@@ -99,6 +99,13 @@
         </div>
     </div>
 
+    {{-- ── NATIONAL HOLIDAY CALENDAR ───────────────────────────────── --}}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-1">
+            @include('admin.dashboard._holiday-calendar')
+        </div>
+    </div>
+
     {{-- ── TOP PROPERTIES + RECENT BOOKINGS ────────────────────────── --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 

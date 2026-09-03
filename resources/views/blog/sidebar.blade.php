@@ -15,7 +15,10 @@
         </ul>
     </div>
 
-    <!-- Categories -->
+    {{-- Categories — only rendered when at least one category has published
+         posts. BlogController::buildSidebarData() already filters empty ones
+         out in SQL, so an empty collection means "hide the whole block". --}}
+    @if($categories->isNotEmpty())
     <div>
         <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">{{ __('blog.categories') }}</h3>
         <ul class="space-y-2">
@@ -30,6 +33,7 @@
             @endforeach
         </ul>
     </div>
+    @endif
 
     <!-- Tags Cloud -->
     <div>

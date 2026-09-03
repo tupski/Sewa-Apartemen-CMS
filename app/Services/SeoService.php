@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Post;
 use App\Models\Property;
 use App\Models\SeoMetadata;
 use App\Models\SystemPage;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class SeoService
@@ -483,6 +485,16 @@ class SeoService
         $type = $og['type'] ?? 'website';
         $priceAmount = null;
         $priceCurrency = null;
+
+        // Blog post enrichment: fall back to the featured image so a post that
+        // has a `seo_metadata` row but no explicit OG image still gets a rich
+        // social/chat preview (WhatsApp, Facebook, X).
+        if ($model instanceof Post) {
+            if ($image === '' && $model->featured_image) {
+                $image = Storage::disk('public')->url($model->featured_image);
+            }
+            $type = $og['type'] ?? 'article';
+        }
 
         if ($model instanceof Property) {
             // Prefer featured image, then first gallery photo, for a rich preview.

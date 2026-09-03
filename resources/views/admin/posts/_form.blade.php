@@ -178,6 +178,65 @@
                 </div>
             </div>
         </div>
+
+        {{-- ──────────── Open Graph / Social Share Preview ────────────
+             Mirrors what WhatsApp / Facebook / X render from the post's
+             og:title, og:description and og:image. The tags themselves are
+             emitted on the public page by SeoService — this block is a
+             read-only preview so editors can see the result before publishing.
+        --}}
+        <div class="mt-8 pt-6 border-t border-gray-200" data-testid="og-preview">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <h4 class="text-base font-semibold text-gray-800">{{ __('Social Share Preview') }}</h4>
+                <div class="flex gap-2">
+                    <button type="button" class="og-tab-btn px-3 py-1 text-xs font-medium rounded bg-blue-600 text-white" data-og="whatsapp">
+                        <i class="fa-brands fa-whatsapp mr-1"></i>WhatsApp
+                    </button>
+                    <button type="button" class="og-tab-btn px-3 py-1 text-xs font-medium rounded bg-gray-200 text-gray-700 hover:bg-gray-300" data-og="facebook">
+                        <i class="fa-brands fa-facebook mr-1"></i>Facebook
+                    </button>
+                </div>
+            </div>
+
+            <p class="text-xs text-gray-500 mb-3">
+                {{ __('Uses the meta title/description above and the featured image. Save the post to update the live preview on social platforms.') }}
+            </p>
+
+            {{-- WhatsApp-style chat bubble --}}
+            <div id="og-preview-whatsapp" class="max-w-sm">
+                <div class="rounded-lg p-2" style="background-color:#dcf8c6">
+                    <div class="bg-white rounded-md overflow-hidden shadow-sm">
+                        <img id="og-wa-image" src="" alt=""
+                             class="w-full h-40 object-cover hidden">
+                        <div id="og-wa-noimage" class="w-full h-40 bg-gray-100 flex items-center justify-center text-gray-400">
+                            <i class="fa-regular fa-image text-3xl" aria-hidden="true"></i>
+                        </div>
+                        <div class="p-2.5">
+                            <p class="text-[13px] font-semibold text-gray-900 leading-snug line-clamp-2" id="og-wa-title">{{ $post->title ?? __('Post Title') }}</p>
+                            <p class="text-[12px] text-gray-600 leading-snug line-clamp-2 mt-0.5" id="og-wa-description">{{ $post->seo->meta_description ?? ($post->excerpt ?? __('A brief description of the post for search results')) }}</p>
+                            <p class="text-[11px] text-gray-400 mt-1 truncate" id="og-wa-domain">{{ parse_url(config('app.url'), PHP_URL_HOST) ?: 'example.com' }}</p>
+                        </div>
+                    </div>
+                    <p class="text-[12px] text-gray-700 mt-1.5 px-1 truncate" id="og-wa-url">{{ url('/blog/'.($post->slug ?? 'post-slug')) }}</p>
+                </div>
+            </div>
+
+            {{-- Facebook-style link card --}}
+            <div id="og-preview-facebook" class="hidden max-w-md">
+                <div class="border border-gray-300 rounded-md overflow-hidden bg-white">
+                    <img id="og-fb-image" src="" alt=""
+                         class="w-full h-48 object-cover hidden">
+                    <div id="og-fb-noimage" class="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400">
+                        <i class="fa-regular fa-image text-4xl" aria-hidden="true"></i>
+                    </div>
+                    <div class="px-3 py-2.5 bg-gray-50 border-t border-gray-200">
+                        <p class="text-[11px] uppercase tracking-wide text-gray-500 truncate" id="og-fb-domain">{{ parse_url(config('app.url'), PHP_URL_HOST) ?: 'example.com' }}</p>
+                        <p class="text-[15px] font-semibold text-gray-900 leading-snug line-clamp-2 mt-0.5" id="og-fb-title">{{ $post->title ?? __('Post Title') }}</p>
+                        <p class="text-[13px] text-gray-600 leading-snug line-clamp-1 mt-0.5" id="og-fb-description">{{ $post->seo->meta_description ?? ($post->excerpt ?? __('A brief description of the post for search results')) }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     {{-- ──────────── Bottom action buttons ──────────── --}}
@@ -282,6 +341,66 @@
                 } else {
                     slugEdited = false;
                 }
+            });
+        })();
+
+        // ═══════════════════════════════════════════════════════════════
+        // OPEN GRAPH PREVIEW HELPERS
+        // Declared at initPostForm scope (function declarations hoist) so the
+        // featured-image section and the SEO section can both drive the
+        // WhatsApp/Facebook share cards.
+        // ═══════════════════════════════════════════════════════════════
+        var OG_BLOG_BASE = @json(rtrim(url('/blog'), '/'));
+
+        function setOgImage(url) {
+            [
+                { img: 'og-wa-image', empty: 'og-wa-noimage' },
+                { img: 'og-fb-image', empty: 'og-fb-noimage' }
+            ].forEach(function (pair) {
+                var imgEl = document.getElementById(pair.img);
+                var emptyEl = document.getElementById(pair.empty);
+                if (!imgEl || !emptyEl) return;
+                if (url) {
+                    imgEl.src = url;
+                    imgEl.classList.remove('hidden');
+                    emptyEl.classList.add('hidden');
+                } else {
+                    imgEl.removeAttribute('src');
+                    imgEl.classList.add('hidden');
+                    emptyEl.classList.remove('hidden');
+                }
+            });
+        }
+
+        function updateOgText(title, description, slug) {
+            var map = {
+                'og-wa-title': title,
+                'og-fb-title': title,
+                'og-wa-description': description,
+                'og-fb-description': description,
+                'og-wa-url': OG_BLOG_BASE + '/' + slug
+            };
+            Object.keys(map).forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.textContent = map[id];
+            });
+        }
+
+        // Social-share preview tabs (WhatsApp / Facebook)
+        (function () {
+            document.querySelectorAll('.og-tab-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var target = this.getAttribute('data-og');
+                    document.querySelectorAll('.og-tab-btn').forEach(function (b) {
+                        b.className = 'og-tab-btn px-3 py-1 text-xs font-medium rounded bg-gray-200 text-gray-700 hover:bg-gray-300';
+                    });
+                    this.className = 'og-tab-btn px-3 py-1 text-xs font-medium rounded bg-blue-600 text-white';
+
+                    var wa = document.getElementById('og-preview-whatsapp');
+                    var fb = document.getElementById('og-preview-facebook');
+                    if (wa) wa.classList.toggle('hidden', target !== 'whatsapp');
+                    if (fb) fb.classList.toggle('hidden', target !== 'facebook');
+                });
             });
         })();
 
@@ -524,6 +643,7 @@
                         placeholder.classList.add('hidden');
                         preview.classList.remove('hidden');
                         fileInput.disabled = true; // max 1
+                        setOgImage(existingUrl);
                     }
                 })();
             @endif
@@ -536,6 +656,8 @@
                     placeholder.classList.add('hidden');
                     preview.classList.remove('hidden');
                     fileInput.disabled = true; // max 1 photo
+                    // Keep the social-share preview in sync with the picked file.
+                    setOgImage(e.target.result);
                 };
                 reader.readAsDataURL(file);
             }
@@ -574,6 +696,7 @@
                 preview.classList.add('hidden');
                 fileInput.value = '';
                 fileInput.disabled = false;
+                setOgImage('');
                 // Add a hidden input to signal deletion on the server
                 var delInput = document.getElementById('remove_featured_image');
                 if (!delInput) {
@@ -622,6 +745,10 @@
                 previewDesc.textContent = d;
                 previewMobileDesc.textContent = d;
                 if (breadcrumbSlug) breadcrumbSlug.textContent = 'blog';
+
+                // Mirror the same values into the social-share preview so the
+                // WhatsApp/Facebook cards stay in sync while typing.
+                updateOgText(t, d, s);
 
                 // Character counters
                 var tl = titleInput.value.length;

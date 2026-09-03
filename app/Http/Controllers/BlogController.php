@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Post;
 use App\Models\Tag;
 use App\Services\SeoService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -121,22 +122,32 @@ class BlogController extends Controller
         // Fallback ke remember() biasa jika driver tidak support tags (file/database).
         try {
             return Cache::tags(['blog'])
-                ->remember('blog_sidebar', now()->addHour(), function () {
-                    return [
-                        'recentPosts' => Post::published()->latest('published_at')->limit(5)->get(),
-                        'categories' => Category::withCount(['posts' => fn ($q) => $q->published()])->orderBy('name')->get(),
-                        'tags' => Tag::withCount(['posts' => fn ($q) => $q->published()])->orderBy('name')->get(),
-                    ];
-                });
+                ->remember('blog_sidebar', now()->addHour(), fn (): array => $this->buildSidebarData());
         } catch (\BadMethodCallException $e) {
             // Driver tidak support cache tags (file/database) — fallback ke remember biasa
-            return Cache::remember('blog_sidebar', now()->addHour(), function () {
-                return [
-                    'recentPosts' => Post::published()->latest('published_at')->limit(5)->get(),
-                    'categories' => Category::withCount(['posts' => fn ($q) => $q->published()])->orderBy('name')->get(),
-                    'tags' => Tag::withCount(['posts' => fn ($q) => $q->published()])->orderBy('name')->get(),
-                ];
-            });
+            return Cache::remember('blog_sidebar', now()->addHour(), fn (): array => $this->buildSidebarData());
         }
+    }
+
+    /**
+     * Sidebar payload.
+     *
+     * Kategori HANYA disertakan bila punya minimal satu post published —
+     * `whereHas()` memfilter di SQL, jadi kategori kosong tidak pernah sampai
+     * ke view (sidebar menyembunyikan blok Kategori bila koleksinya kosong).
+     *
+     * @return array{recentPosts: Collection, categories: Collection, tags: Collection}
+     */
+    protected function buildSidebarData(): array
+    {
+        return [
+            'recentPosts' => Post::published()->latest('published_at')->limit(5)->get(),
+            'categories' => Category::query()
+                ->whereHas('posts', fn ($q) => $q->published())
+                ->withCount(['posts' => fn ($q) => $q->published()])
+                ->orderBy('name')
+                ->get(),
+            'tags' => Tag::withCount(['posts' => fn ($q) => $q->published()])->orderBy('name')->get(),
+        ];
     }
 }

@@ -22,3 +22,12 @@ Schedule::command('git:check-updates')
     ->timezone('Asia/Jakarta')
     ->withoutOverlapping()
     ->runInBackground();
+
+// Refresh the cached national-holiday table monthly. Holiday decrees change
+// rarely (and only for future years), so monthly is plenty — the dashboard
+// always reads the DB, never the API.
+Schedule::command('holidays:fetch')
+    ->monthlyOn(1, '02:00')
+    ->timezone('Asia/Jakarta')
+    ->withoutOverlapping()
+    ->runInBackground();
