@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Services\SafeHtmlService;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -18,7 +20,7 @@ class PageRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -39,6 +41,11 @@ class PageRequest extends FormRequest
             'is_homepage' => ['nullable', 'boolean'],
             'layout' => ['nullable', 'string', 'max:100'],
             'blocks' => ['nullable', 'array'],
+            'seo' => ['nullable', 'array'],
+            'seo.meta_title' => ['nullable', 'string', 'max:255'],
+            'seo.meta_description' => ['nullable', 'string', 'max:320'],
+            'seo.open_graph' => ['nullable', 'array'],
+            'seo.open_graph.keywords' => ['nullable', 'string', 'max:500'],
         ];
     }
 
@@ -58,6 +65,8 @@ class PageRequest extends FormRequest
             'is_homepage' => 'homepage setting',
             'layout' => 'page layout',
             'blocks' => 'page blocks',
+            'seo.meta_title' => 'meta title',
+            'seo.meta_description' => 'meta description',
         ];
     }
 
@@ -85,7 +94,7 @@ class PageRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $this->merge([
-                'content' => \App\Services\SafeHtmlService::sanitize($this->input('content')),
+                'content' => SafeHtmlService::sanitize($this->input('content')),
             ]);
         });
     }

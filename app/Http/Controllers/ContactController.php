@@ -17,7 +17,9 @@ class ContactController extends Controller
     public function index()
     {
         // Base page title only; SeoService::title() appends " - {Site Name}".
-        $seo = SeoService::metaTags(
+        // Admin overrides live in admin Pages → System Pages (`contact`).
+        $seo = SeoService::forSystemPage(
+            'contact',
             __('contact.title'),
             __('contact.subtitle'),
             route('contact'),
@@ -42,8 +44,8 @@ class ContactController extends Controller
         }
 
         $validated = $request->validate([
-            'name'    => ['required', 'string', 'max:120'],
-            'email'   => ['required', 'email', 'max:190'],
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:190'],
             'subject' => ['required', 'string', 'max:190'],
             'message' => ['required', 'string', 'max:5000'],
         ]);
@@ -52,15 +54,15 @@ class ContactController extends Controller
         $siteName = SettingsService::get('site_name', config('app.name', 'Kakarama Room'));
 
         $body = "Name: {$validated['name']}\n"
-            . "Email: {$validated['email']}\n"
-            . "Subject: {$validated['subject']}\n\n"
-            . $validated['message'];
+            ."Email: {$validated['email']}\n"
+            ."Subject: {$validated['subject']}\n\n"
+            .$validated['message'];
 
         try {
             if ($contactEmail !== '') {
                 Mail::raw($body, function ($mail) use ($contactEmail, $validated, $siteName) {
                     $mail->to($contactEmail)
-                        ->subject('[' . $siteName . '] ' . Str::limit($validated['subject'], 120))
+                        ->subject('['.$siteName.'] '.Str::limit($validated['subject'], 120))
                         ->replyTo($validated['email'], $validated['name']);
                 });
             } else {

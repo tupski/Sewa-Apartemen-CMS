@@ -25,6 +25,7 @@ use App\Http\Controllers\RedirectController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SeoController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SystemPageSeoController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\VoucherController;
 use App\Models\Language;
@@ -93,6 +94,10 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix(slug('admin_prefix', 'a
     Route::resource('media', MediaController::class);
 
     // Pages Management
+    // NOTE: the system-pages SEO routes must be declared BEFORE the resource so
+    // 'system-seo' is not swallowed as a {page} wildcard by the resource routes.
+    Route::get('pages/system-seo/{systemPage}', [SystemPageSeoController::class, 'edit'])->name('pages.system-seo.edit');
+    Route::match(['put', 'patch'], 'pages/system-seo/{systemPage}', [SystemPageSeoController::class, 'update'])->name('pages.system-seo.update');
     Route::resource('pages', PageController::class);
     Route::patch('pages/{page}/status', [PageController::class, 'updateStatus'])->name('pages.status');
 

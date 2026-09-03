@@ -173,5 +173,79 @@
             </div>
         @endif
     </div>
+
+    {{-- ── System Pages SEO ──
+         Routes that are not CMS pages (homepage, apartment listing, apartment
+         detail template, blog, promo, contact) have no Page record, so their
+         SEO metadata is managed here against the shared seo_metadata morph. --}}
+    <div class="mt-10">
+        <div class="mb-4">
+            <h2 class="text-xl font-bold text-gray-800">SEO Halaman Sistem</h2>
+            <p class="text-sm text-gray-600 mt-1">
+                Atur meta title, description, dan Open Graph untuk halaman yang tidak dibuat lewat CMS
+                (homepage, daftar apartemen, detail apartemen, blog, promo, kontak).
+            </p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Halaman
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Meta Title
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @foreach($systemPages as $systemPage)
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4">
+                                    <a href="{{ route('admin.pages.system-seo.edit', $systemPage) }}"
+                                       class="text-sm font-medium text-blue-600 hover:text-blue-900">
+                                        {{ $systemPage->label }}
+                                    </a>
+                                    <div class="text-xs text-gray-400 font-mono mt-0.5">{{ $systemPage->key }}</div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-600">
+                                    @if($systemPage->seo?->meta_title)
+                                        {{ \Illuminate\Support\Str::limit($systemPage->seo->meta_title, 60) }}
+                                    @else
+                                        <span class="text-gray-400 italic">Memakai default</span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    @if($systemPage->seo && ($systemPage->seo->meta_title || $systemPage->seo->meta_description))
+                                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                            Custom
+                                        </span>
+                                    @else
+                                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                            Default
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <a href="{{ route('admin.pages.system-seo.edit', $systemPage) }}"
+                                       class="text-blue-600 hover:text-blue-900">
+                                        Atur SEO
+                                    </a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection

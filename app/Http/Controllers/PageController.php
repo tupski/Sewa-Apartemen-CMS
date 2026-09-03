@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\PageRequest;
 use App\Models\Block;
 use App\Models\Page;
+use App\Models\SystemPage;
 use App\Services\SeoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -13,10 +14,15 @@ class PageController extends Controller
 {
     /**
      * Create a new controller instance.
+     *
+     * `publicShow` serves the public CMS page (and the catch-all `/{page:slug}`
+     * route), so it must stay guest-accessible — mirroring
+     * PropertyController's except() list. Without this, every published page
+     * redirected guests to /login.
      */
     public function __construct()
     {
-        $this->middleware('auth');
+        $this->middleware('auth')->except(['publicShow']);
     }
 
     /**
@@ -38,7 +44,13 @@ class PageController extends Controller
 
         $pages = $query->orderBy('created_at', 'desc')->paginate(15);
 
-        return view('admin.pages.index', compact('pages'));
+        // Non-CMS routes (homepage, listing, detail template, blog, promo,
+        // contact) whose SEO is managed here. syncRegistry() is idempotent so
+        // existing installs pick up new entries without a seeder run.
+        SystemPage::syncRegistry();
+        $systemPages = SystemPage::with('seo')->ordered()->get();
+
+        return view('admin.pages.index', compact('pages', 'systemPages'));
     }
 
     /**

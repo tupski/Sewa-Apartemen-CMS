@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Voucher;
 use App\Services\SeoService;
-use App\Services\SettingsService;
 use Carbon\Carbon;
 
 class PromotionController extends Controller
@@ -37,7 +36,9 @@ class PromotionController extends Controller
             ->values();
 
         // Base page title only; SeoService::title() appends " - {Site Name}".
-        $seo = SeoService::metaTags(
+        // Admin overrides live in admin Pages → System Pages (`promotions`).
+        $seo = SeoService::forSystemPage(
+            'promotions',
             __('promo.title'),
             __('promo.subtitle'),
             route('promotions'),

@@ -134,48 +134,48 @@
         <div class="space-y-4">
             <!-- Meta Title -->
             <div>
-                <label for="meta_title" class="block text-sm font-medium text-gray-700 mb-2">
+                <label for="seo_meta_title" class="block text-sm font-medium text-gray-700 mb-2">
                     Meta Title
                 </label>
                 <input type="text"
-                       name="meta_title"
-                       id="meta_title"
-                       value="{{ old('meta_title', $page->meta_title ?? '') }}"
+                       name="seo[meta_title]"
+                       id="seo_meta_title"
+                       value="{{ old('seo.meta_title', $page->seo->meta_title ?? '') }}"
                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                 <p class="text-xs text-gray-500 mt-1">Recommended: 50-60 characters</p>
-                @error('meta_title')
+                @error('seo.meta_title')
                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                 @enderror
             </div>
 
             <!-- Meta Description -->
             <div>
-                <label for="meta_description" class="block text-sm font-medium text-gray-700 mb-2">
+                <label for="seo_meta_description" class="block text-sm font-medium text-gray-700 mb-2">
                     Meta Description
                 </label>
-                <textarea name="meta_description"
-                          id="meta_description"
+                <textarea name="seo[meta_description]"
+                          id="seo_meta_description"
                           rows="3"
-                          class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">{{ old('meta_description', $page->meta_description ?? '') }}</textarea>
+                          class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">{{ old('seo.meta_description', $page->seo->meta_description ?? '') }}</textarea>
                 <p class="text-xs text-gray-500 mt-1">Recommended: 150-160 characters</p>
-                @error('meta_description')
+                @error('seo.meta_description')
                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                 @enderror
             </div>
 
-            <!-- Meta Keywords -->
+            <!-- Meta Keywords (stored in open_graph.keywords for compatibility) -->
             <div>
-                <label for="meta_keywords" class="block text-sm font-medium text-gray-700 mb-2">
+                <label for="seo_meta_keywords" class="block text-sm font-medium text-gray-700 mb-2">
                     Meta Keywords
                 </label>
                 <input type="text"
-                       name="meta_keywords"
-                       id="meta_keywords"
-                       value="{{ old('meta_keywords', $page->meta_keywords ?? '') }}"
+                       name="seo[open_graph][keywords]"
+                       id="seo_meta_keywords"
+                       value="{{ old('seo.open_graph.keywords', $page->seo->open_graph['keywords'] ?? '') }}"
                        placeholder="keyword1, keyword2, keyword3"
                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                 <p class="text-xs text-gray-500 mt-1">Separate keywords with commas</p>
-                @error('meta_keywords')
+                @error('seo.open_graph.keywords')
                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                 @enderror
             </div>

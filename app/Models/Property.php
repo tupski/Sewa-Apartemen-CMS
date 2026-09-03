@@ -33,8 +33,6 @@ class Property extends Model
         'longitude',
         'featured_image_id',
         'status',
-        'meta_title',
-        'meta_description',
         'is_featured',
         'order',
         'max_days',

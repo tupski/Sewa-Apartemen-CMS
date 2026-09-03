@@ -143,6 +143,15 @@ class PropertyController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Build SEO for the listing page; the admin can override title/description
+        // for this route via admin Pages → System Pages (`properties.index`).
+        $seo = SeoService::forSystemPage(
+            'properties.index',
+            'Cari Apartemen & Properti Sewa',
+            'Temukan apartemen sewa harian, transit, mingguan, atau bulanan di lokasi strategis. Harga transparan, fasilitas lengkap, booking mudah online.',
+            url()->current(),
+        );
+
         return view('properties.index', [
             'properties' => $properties,
             'typeFilter' => $typeFilter,
@@ -154,6 +163,7 @@ class PropertyController extends Controller
             'sort' => $sort,
             'availableCities' => $availableCities,
             'availableAmenities' => $availableAmenities,
+            'seo' => $seo,
         ]);
     }
 
@@ -213,9 +223,11 @@ class PropertyController extends Controller
             ->orderBy('distance_m', 'asc')
             ->get();
 
-        // Build SEO from the property's own metadata (falls back to name/description).
-        // Title suffixing (" - {Site Name}") is applied centrally by SeoService.
-        $seo = SeoService::metaTagsArray($property);
+        // Build SEO with precedence: the property's own morph override, then the
+        // admin-managed `properties.show` template (with :name/:city placeholders),
+        // then the property's name/description columns. Title suffixing
+        // (" - {Site Name}") is applied centrally by SeoService.
+        $seo = SeoService::forPropertyDetail($property);
 
         return view('properties.show', compact('property', 'nearbyProperties', 'seo', 'nearbyPlacesWithDistance', 'persistentPlaces'));
     }

@@ -68,8 +68,10 @@ class HomeController extends Controller
 
         // Homepage title format ({Site Name} - {Tagline}) is applied centrally
         // by SeoService::title() via homepage detection, so we pass the base
-        // site name here and let the service append the tagline.
-        $seo = SeoService::metaTags(
+        // site name here and let the service append the tagline. An admin
+        // override from admin Pages → System Pages (`home`) wins when present.
+        $seo = SeoService::forSystemPage(
+            'home',
             $siteName,
             $description,
             url('/'),
