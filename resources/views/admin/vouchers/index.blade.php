@@ -8,7 +8,7 @@
     <div class="mb-6 flex items-center justify-between">
         <div>
             <h2 class="text-2xl font-bold text-gray-800">Voucher</h2>
-            <p class="text-sm text-gray-600 mt-1">Kelola kode diskon untuk booking tamu</p>
+            <p class="text-sm text-gray-600 mt-1">Kelola kode diskon untuk booking tamu. (Dapat digunakan hanya jika mengaktifkan metode Booking Form)</p>
         </div>
         <a href="{{ route('admin.vouchers.create') }}"
            class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition">

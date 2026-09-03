@@ -211,10 +211,6 @@
 @push('scripts')
 <script>
 (function () {
-    // Chart.js is loaded on-demand (deduped) so `Chart` is guaranteed to be
-    // defined before use — even after a Turbo body-swap, where an inline
-    // @push('head') CDN <script> could otherwise run after this code and throw
-    // "Chart is not defined". Only loaded on pages that actually draw charts.
     var CHART_SRC = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js';
 
     function renderCharts() {

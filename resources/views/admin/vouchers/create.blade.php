@@ -14,7 +14,7 @@
         </a>
         <div>
             <h2 class="text-2xl font-bold text-gray-800">Tambah Voucher</h2>
-            <p class="text-sm text-gray-600 mt-0.5">Buat kode diskon baru untuk tamu</p>
+            <p class="text-sm text-gray-600 mt-0.5">Buat kode diskon baru untuk tamu. (Dapat digunakan hanya jika mengaktifkan metode Booking Form)</p>
         </div>
     </div>
 
