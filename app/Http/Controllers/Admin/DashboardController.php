@@ -101,12 +101,42 @@ class DashboardController extends Controller
     }
 
     /**
+     * Return the holiday calendar partial for AJAX modal loading.
+     */
+    public function calendar(Request $request): View
+    {
+        $month = $this->resolveCalendarMonth($request);
+        $holidays = NationalHolidayService::forMonth($month->year, $month->month);
+        $upcomingHolidays = NationalHolidayService::upcoming();
+
+        return view('admin.dashboard._holiday-calendar', compact('holidayMonth', 'holidays', 'upcomingHolidays'));
+    }
+
+    /**
      * Resolve the month shown by the holiday calendar from `?holiday_month=YYYY-MM`,
      * falling back to the current month when the value is missing or malformed.
      */
     protected function resolveHolidayMonth(Request $request): Carbon
     {
         $raw = (string) $request->query('holiday_month', '');
+
+        if (preg_match('/^\d{4}-\d{2}$/', $raw) === 1) {
+            try {
+                return Carbon::createFromFormat('Y-m-d', $raw.'-01')->startOfMonth();
+            } catch (\Throwable $e) {
+                // Fall through to the current month.
+            }
+        }
+
+        return now()->startOfMonth();
+    }
+
+    /**
+     * Resolve the month for the AJAX calendar endpoint from `?month=YYYY-MM`.
+     */
+    protected function resolveCalendarMonth(Request $request): Carbon
+    {
+        $raw = (string) $request->query('month', '');
 
         if (preg_match('/^\d{4}-\d{2}$/', $raw) === 1) {
             try {

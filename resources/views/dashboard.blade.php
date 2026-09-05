@@ -5,6 +5,31 @@
 @section('content')
 <div class="max-w-7xl mx-auto space-y-6">
 
+    {{-- ── QUICK ACTIONS ─────────────────────────────────────────────── --}}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        @php
+        $quickActions = [
+            ['title' => 'Tambah Property', 'desc' => 'Buat properti sewa baru', 'icon' => 'fa-plus', 'url' => route('admin.properties.create'), 'color' => 'blue'],
+            ['title' => 'Buat Posting', 'desc' => 'Tulis artikel blog baru', 'icon' => 'fa-pen-to-square', 'url' => route('admin.posts.create'), 'color' => 'green'],
+            ['title' => 'Kelola Booking', 'desc' => 'Lihat dan kelola booking', 'icon' => 'fa-calendar-check', 'url' => route('admin.bookings.index'), 'color' => 'purple'],
+            ['title' => 'Kelola Halaman', 'desc' => 'Kelola halaman statis', 'icon' => 'fa-file-lines', 'url' => route('admin.pages.index'), 'color' => 'orange'],
+        ];
+        $qaColors = ['blue' => 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800', 'green' => 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800', 'purple' => 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800', 'orange' => 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800'];
+        @endphp
+        @foreach($quickActions as $action)
+        <a href="{{ $action['url'] }}" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 hover:shadow-md transition border {{ $qaColors[$action['color']] }} flex flex-col">
+            <div class="w-10 h-10 rounded-lg {{ $qaColors[$action['color']] }} flex items-center justify-center mb-3">
+                <i class="fa-solid {{ $action['icon'] }} text-lg"></i>
+            </div>
+            <h4 class="font-semibold text-gray-800 dark:text-white mb-1">{{ $action['title'] }}</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-3 flex-1">{{ $action['desc'] }}</p>
+            <span class="text-xs font-medium {{ $qaColors[$action['color']] }} px-3 py-1.5 rounded-full text-center inline-flex items-center gap-1">
+                Buka <i class="fa-solid fa-arrow-right text-[10px]"></i>
+            </span>
+        </a>
+        @endforeach
+    </div>
+
     {{-- ── TODAY STRIP ──────────────────────────────────────────────── --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         @php

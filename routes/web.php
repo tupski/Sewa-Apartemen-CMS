@@ -86,6 +86,9 @@ Route::post('/'.slug('slug_booking_status', 'booking/status').'/validate-voucher
 // The admin path prefix is configurable via admin "Slug & Path" (admin_prefix setting)
 Route::middleware(['auth', 'verified', 'admin'])->prefix(slug('admin_prefix', 'admin'))->name('admin.')->group(function () {
 
+    // Dashboard Calendar (AJAX for modal)
+    Route::get('dashboard/calendar', [DashboardController::class, 'calendar'])->name('dashboard.calendar');
+
     // Media Management
     // NOTE: custom routes declared BEFORE the resource so 'upload' / 'from-url'
     // are not matched as a {media} wildcard by the resource's show/update routes.

@@ -81,7 +81,7 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                         </svg>
-                        {{ __('Your repository is') }} <strong class="ml-0.5">{{ __('sudah terbaru') }}</strong>.
+                        {{ __('Repo ini ') }} <strong class="ml-0.5">{{ __('sudah terbaru') }}</strong>.
                     </div>
                 </template>
                 <template x-if="status.commits_behind > 0">
@@ -146,7 +146,7 @@
             }
         }"
         class="flex flex-col sm:flex-row sm:items-center gap-3"
-    >
+        >
         <button
             type="button"
             @click="triggerCheck()"

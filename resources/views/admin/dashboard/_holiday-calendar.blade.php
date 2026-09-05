@@ -3,8 +3,8 @@
 
     Reads ONLY the cached `national_holidays` table via
     NationalHolidayService::forMonth() — no API call happens during render.
-    Month navigation is a plain server-rendered link (`?holiday_month=YYYY-MM`),
-    so it works under Turbo Drive without any JS.
+    Month navigation uses AJAX when loaded in modal (data-turbo="false"),
+    plain server-rendered links when embedded in dashboard page.
 
     Expects:
       $holidayMonth      Carbon  first day of the displayed month
@@ -20,8 +20,12 @@
     $prevMonth     = $firstDay->copy()->subMonth()->format('Y-m');
     $nextMonth     = $firstDay->copy()->addMonth()->format('Y-m');
     $weekdayLabels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+
+    // Detect if this is an AJAX request (for modal)
+    $isAjax = request()->ajax() || request()->hasHeader('X-Requested-With');
 @endphp
 
+@if(!$isAjax)
 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm" data-testid="holiday-calendar">
     <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-3">
         <h3 class="font-semibold text-gray-800 dark:text-white text-sm">{{ __('holiday.title') }}</h3>
@@ -41,6 +45,29 @@
             </a>
         </div>
     </div>
+@else
+<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm" data-testid="holiday-calendar">
+    <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-3">
+        <h3 class="font-semibold text-gray-800 dark:text-white text-sm">{{ __('holiday.title') }}</h3>
+        <div class="flex items-center gap-1">
+            <a href="#" data-turbo="false"
+               @click.prevent="$dispatch('calendar-navigate', { detail: '{{ $prevMonth }}' })"
+               class="p-1.5 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700 transition"
+               aria-label="{{ __('holiday.prev_month') }}" title="{{ __('holiday.prev_month') }}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </a>
+            <span class="text-xs font-semibold text-gray-600 dark:text-gray-300 min-w-[7.5rem] text-center">
+                {{ $firstDay->translatedFormat('F Y') }}
+            </span>
+            <a href="#" data-turbo="false"
+               @click.prevent="$dispatch('calendar-navigate', { detail: '{{ $nextMonth }}' })"
+               class="p-1.5 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700 transition"
+               aria-label="{{ __('holiday.next_month') }}" title="{{ __('holiday.next_month') }}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </a>
+        </div>
+    </div>
+@endif
 
     <div class="p-4 sm:p-6">
         {{-- Grid --}}
