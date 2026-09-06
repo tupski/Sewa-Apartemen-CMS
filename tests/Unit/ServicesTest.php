@@ -2,11 +2,10 @@
 
 namespace Tests\Unit;
 
+use App\Models\Media;
 use App\Models\Page;
-use App\Models\Post;
 use App\Models\Property;
 use App\Models\Setting;
-use App\Models\Unit;
 use App\Services\AnalyticsService;
 use App\Services\RobotsService;
 use App\Services\SchemaService;
@@ -197,6 +196,34 @@ class ServicesTest extends TestCase
         $this->assertArrayHasKey('canonical', $meta);
         $this->assertArrayHasKey('robots', $meta);
         $this->assertStringContainsString('Test Property', $meta['title']);
+    }
+
+    public function test_property_featured_image_takes_precedence_over_social_image_overrides(): void
+    {
+        $featuredImage = Media::create([
+            'disk' => 'public',
+            'directory' => 'properties/test',
+            'filename' => 'featured.jpg',
+            'original_filename' => 'featured.jpg',
+            'mime_type' => 'image/jpeg',
+            'extension' => 'jpg',
+            'size' => 1024,
+        ]);
+        $property = Property::factory()->create([
+            'featured_image_id' => $featuredImage->id,
+        ]);
+        $property->seo()->create([
+            'open_graph' => ['image' => 'seo/override.jpg'],
+            'twitter' => ['image' => 'seo/twitter-override.jpg'],
+        ]);
+
+        $meta = SeoService::forPropertyDetail($property->load(['seo', 'featuredImage']));
+
+        $this->assertSame($featuredImage->url, $meta['image']);
+        $this->assertStringContainsString(
+            'property="og:image" content="'.$featuredImage->url.'"',
+            SeoService::renderMetaTags($property)
+        );
     }
 
     public function test_seo_meta_tags_array_from_array(): void

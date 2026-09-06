@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\Tag;
 use App\Services\SafeHtmlService;
@@ -10,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class PostController extends Controller
 {
@@ -44,8 +46,9 @@ class PostController extends Controller
     {
         $categories = Category::orderBy('name')->get();
         $tags = Tag::orderBy('name')->get();
+        $featuredMedia = null;
 
-        return view('admin.posts.create', compact('categories', 'tags'));
+        return view('admin.posts.create', compact('categories', 'tags', 'featuredMedia'));
     }
 
     public function store(Request $request)
@@ -62,6 +65,8 @@ class PostController extends Controller
             'category_id' => 'nullable|exists:categories,id',
             // Client enforces images only + 5MB, keep server-side rules as the trust boundary.
             'featured_image' => 'nullable|image|mimes:jpeg,png,webp,gif|max:5120',
+            'featured_image_media_id' => 'nullable|integer|exists:media,id',
+            'remove_featured_image' => 'nullable|boolean',
             'tags' => 'nullable|string',
             'seo' => 'nullable|array',
             // BUG-024 FIX: Validasi field SEO agar tidak ada string tak terbatas
@@ -71,7 +76,10 @@ class PostController extends Controller
         ]);
 
         try {
+            $featuredMedia = $this->resolveFeaturedMedia($validated['featured_image_media_id'] ?? null);
+
             $data = $validated;
+            unset($data['featured_image_media_id'], $data['remove_featured_image']);
             $data['user_id'] = auth()->id();
             // Status is optional in the request; default to draft.
             $data['status'] = $data['status'] ?? 'draft';
@@ -91,6 +99,8 @@ class PostController extends Controller
                     'name_category' => $data['title'] ?? 'post',
                 ]);
                 $data['featured_image'] = $result['path'];
+            } elseif ($featuredMedia) {
+                $data['featured_image'] = $this->mediaPath($featuredMedia);
             }
 
             $post = Post::create($data);
@@ -112,6 +122,10 @@ class PostController extends Controller
                 ->route('admin.posts.index')
                 ->with('success', 'Post created successfully.');
         } catch (\Exception $e) {
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+
             return back()
                 ->withInput()
                 ->with('error', 'Failed to create post: '.$e->getMessage());
@@ -123,8 +137,9 @@ class PostController extends Controller
         $categories = Category::orderBy('name')->get();
         $tags = Tag::orderBy('name')->get();
         $postTags = $post->tags->pluck('name')->implode(', ');
+        $featuredMedia = $this->mediaForPath($post->featured_image);
 
-        return view('admin.posts.edit', compact('post', 'categories', 'tags', 'postTags'));
+        return view('admin.posts.edit', compact('post', 'categories', 'tags', 'postTags', 'featuredMedia'));
     }
 
     /**
@@ -146,6 +161,8 @@ class PostController extends Controller
             'status' => 'nullable|in:draft,published',
             'category_id' => 'nullable|exists:categories,id',
             'featured_image' => 'nullable|image|mimes:jpeg,png,webp,gif|max:5120',
+            'featured_image_media_id' => 'nullable|integer|exists:media,id',
+            'remove_featured_image' => 'nullable|boolean',
             'tags' => 'nullable|string',
             'seo' => 'nullable|array',
             // BUG-024 FIX: Konsisten dengan store() — validasi field SEO pada update juga
@@ -155,9 +172,12 @@ class PostController extends Controller
         ]);
 
         try {
+            $featuredMedia = $this->resolveFeaturedMedia($validated['featured_image_media_id'] ?? null);
+
             // FIND-005: sanitize rich content before persistence
             $validated['content'] = SafeHtmlService::sanitize($validated['content'] ?? null);
             $data = $validated;
+            unset($data['featured_image_media_id'], $data['remove_featured_image']);
 
             // Status is optional in the request; default to draft.
             $data['status'] = $data['status'] ?? 'draft';
@@ -176,12 +196,14 @@ class PostController extends Controller
                     'name_prefix' => 'Blog',
                     'name_category' => $data['title'] ?? 'post',
                 ]);
+                $this->deleteLegacyFeaturedImage($post->featured_image);
                 $data['featured_image'] = $result['path'];
+            } elseif ($featuredMedia) {
+                $this->deleteLegacyFeaturedImage($post->featured_image);
+                $data['featured_image'] = $this->mediaPath($featuredMedia);
             } elseif ($request->boolean('remove_featured_image')) {
                 // The user removed the featured image in the form (× button).
-                if ($post->featured_image) {
-                    Storage::disk('public')->delete($post->featured_image);
-                }
+                $this->deleteLegacyFeaturedImage($post->featured_image);
                 $data['featured_image'] = null;
             } else {
                 unset($data['featured_image']);
@@ -206,6 +228,10 @@ class PostController extends Controller
                 ->route('admin.posts.index')
                 ->with('success', 'Postingan berhasil diperbarui.');
         } catch (\Exception $e) {
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+
             return back()
                 ->withInput()
                 ->with('error', 'Failed to update post: '.$e->getMessage());
@@ -258,6 +284,66 @@ class PostController extends Controller
                 'message' => 'Image upload failed: '.$e->getMessage(),
             ], 422);
         }
+    }
+
+    /**
+     * Resolve a selected media-library item to an image owned by the application.
+     */
+    protected function resolveFeaturedMedia(?int $mediaId): ?Media
+    {
+        if ($mediaId === null) {
+            return null;
+        }
+
+        $media = Media::query()
+            ->whereKey($mediaId)
+            ->where('type', 'image')
+            ->whereIn('mime_type', ['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+            ->first();
+
+        if (! $media) {
+            throw ValidationException::withMessages([
+                'featured_image_media_id' => 'The selected featured image is invalid.',
+            ]);
+        }
+
+        return $media;
+    }
+
+    protected function mediaPath(Media $media): string
+    {
+        return trim($media->directory.'/'.$media->filename, '/');
+    }
+
+    protected function mediaForPath(?string $path): ?Media
+    {
+        if (! $path) {
+            return null;
+        }
+
+        $normalizedPath = trim(str_replace('\\', '/', $path), '/');
+        $directory = trim(dirname($normalizedPath), '.\/');
+        $query = Media::query()->where('filename', basename($normalizedPath));
+
+        if ($directory === '') {
+            $query->whereNull('directory');
+        } else {
+            $query->where('directory', $directory);
+        }
+
+        return $query
+            ->where('type', 'image')
+            ->whereIn('mime_type', ['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+            ->first();
+    }
+
+    protected function deleteLegacyFeaturedImage(?string $path): void
+    {
+        if (! $path || $this->mediaForPath($path)) {
+            return;
+        }
+
+        Storage::disk('public')->delete($path);
     }
 
     protected function syncTags(Post $post, string $tagString): void

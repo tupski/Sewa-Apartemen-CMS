@@ -3,11 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\Role;
 use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class BlogTest extends TestCase
@@ -40,6 +43,131 @@ class BlogTest extends TestCase
         $this->assertDatabaseHas('posts', [
             'title' => 'Test Blog Post',
             'slug' => 'test-blog-post',
+        ]);
+    }
+
+    public function test_admin_can_create_post_with_a_direct_featured_image_upload(): void
+    {
+        Storage::fake('public');
+
+        $response = $this->actingAs($this->user)->post(route('admin.posts.store'), [
+            'title' => 'Direct Upload Featured Image Post',
+            'slug' => 'direct-upload-featured-image-post',
+            'content' => '<p>Post content.</p>',
+            'status' => 'draft',
+            'featured_image' => UploadedFile::fake()->image('featured.jpg'),
+        ]);
+
+        $response->assertRedirect(route('admin.posts.index'));
+        $post = Post::where('slug', 'direct-upload-featured-image-post')->firstOrFail();
+
+        $this->assertNotNull($post->featured_image);
+        Storage::disk('public')->assertExists($post->featured_image);
+    }
+
+    public function test_admin_can_create_post_with_a_media_library_featured_image(): void
+    {
+        $media = $this->createImageMedia();
+
+        $response = $this->actingAs($this->user)->post(route('admin.posts.store'), [
+            'title' => 'Library Featured Image Post',
+            'slug' => 'library-featured-image-post',
+            'content' => '<p>Post content.</p>',
+            'status' => 'draft',
+            'featured_image_media_id' => $media->id,
+        ]);
+
+        $response->assertRedirect(route('admin.posts.index'));
+        $this->assertDatabaseHas('posts', [
+            'slug' => 'library-featured-image-post',
+            'featured_image' => $media->directory.'/'.$media->filename,
+        ]);
+    }
+
+    public function test_admin_can_replace_or_remove_a_post_featured_image(): void
+    {
+        Storage::fake('public');
+        $oldMedia = $this->createImageMedia();
+        $newMedia = $this->createImageMedia();
+        $post = Post::factory()->create([
+            'user_id' => $this->user->id,
+            'featured_image' => $oldMedia->directory.'/'.$oldMedia->filename,
+        ]);
+
+        $this->actingAs($this->user)->put(route('admin.posts.update', $post), [
+            'title' => $post->title,
+            'slug' => $post->slug,
+            'content' => $post->content,
+            'status' => 'draft',
+            'featured_image_media_id' => $newMedia->id,
+        ])->assertRedirect(route('admin.posts.index'));
+
+        $this->assertSame($newMedia->directory.'/'.$newMedia->filename, $post->fresh()->featured_image);
+
+        $this->actingAs($this->user)->put(route('admin.posts.update', $post), [
+            'title' => $post->title,
+            'slug' => $post->slug,
+            'content' => $post->content,
+            'status' => 'draft',
+            'remove_featured_image' => '1',
+        ])->assertRedirect(route('admin.posts.index'));
+
+        $this->assertNull($post->fresh()->featured_image);
+    }
+
+    public function test_post_featured_image_selection_rejects_non_image_media(): void
+    {
+        $media = Media::create([
+            'user_id' => $this->user->id,
+            'disk' => 'public',
+            'directory' => 'media/2026/09',
+            'filename' => 'document.pdf',
+            'original_filename' => 'document.pdf',
+            'mime_type' => 'application/pdf',
+            'extension' => 'pdf',
+            'size' => 100,
+            'type' => 'document',
+        ]);
+
+        $response = $this->from(route('admin.posts.create'))
+            ->actingAs($this->user)
+            ->post(route('admin.posts.store'), [
+                'title' => 'Invalid Featured Media',
+                'slug' => 'invalid-featured-media',
+                'content' => '<p>Post content.</p>',
+                'status' => 'draft',
+                'featured_image_media_id' => $media->id,
+            ]);
+
+        $response->assertSessionHasErrors('featured_image_media_id');
+        $this->assertDatabaseMissing('posts', ['slug' => 'invalid-featured-media']);
+    }
+
+    public function test_post_create_form_keeps_direct_upload_support_and_disables_turbo(): void
+    {
+        $response = $this->actingAs($this->user)->get(route('admin.posts.create'));
+
+        $response->assertOk();
+        $response->assertSee('enctype="multipart/form-data"', false);
+        $response->assertSee('data-turbo="false"', false);
+        $response->assertSee('name="featured_image_media_id"', false);
+        $response->assertSee('From URL', false);
+    }
+
+    private function createImageMedia(): Media
+    {
+        return Media::create([
+            'user_id' => $this->user->id,
+            'disk' => 'public',
+            'directory' => 'media/2026/09',
+            'filename' => fake()->unique()->word().'.jpg',
+            'original_filename' => 'featured.jpg',
+            'mime_type' => 'image/jpeg',
+            'extension' => 'jpg',
+            'size' => 100,
+            'width' => 1200,
+            'height' => 800,
+            'type' => 'image',
         ]);
     }
 

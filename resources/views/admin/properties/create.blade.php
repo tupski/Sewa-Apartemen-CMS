@@ -501,8 +501,12 @@
     function updateCoords(lat, lng) {
         var latFixed = parseFloat(lat).toFixed(6);
         var lngFixed = parseFloat(lng).toFixed(6);
-        document.getElementById('latitude').value  = latFixed;
-        document.getElementById('longitude').value = lngFixed;
+        var latitudeInput = document.getElementById('latitude');
+        var longitudeInput = document.getElementById('longitude');
+        latitudeInput.value = latFixed;
+        longitudeInput.value = lngFixed;
+        latitudeInput.dispatchEvent(new Event('input', { bubbles: true }));
+        longitudeInput.dispatchEvent(new Event('input', { bubbles: true }));
         document.getElementById('map-coords-display').textContent =
             'Lat: ' + latFixed + '  |  Lng: ' + lngFixed;
     }

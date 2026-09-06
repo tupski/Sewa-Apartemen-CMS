@@ -994,6 +994,190 @@ Alpine.data('photoGallery', function (config = {}) {
     document.addEventListener('turbo:render', init);
 })();
 
+// ─── Post featured-image picker ─────────────────────────────────────────────
+// Keeps the post DB contract as a stored path while using Media IDs only as
+// a server-resolved selection token. Uploads and URL imports go through the
+// existing MediaController endpoints; no downloader or storage path is copied
+// into the post form from the browser.
+Alpine.data('postFeaturedImage', (config = {}) => ({
+    initialMedia: config.initialMedia || null,
+    legacyUrl: config.legacyUrl || '',
+    mediaIndexUrl: config.mediaIndexUrl || '',
+    mediaUploadUrl: config.mediaUploadUrl || '',
+    mediaFromUrlUrl: config.mediaFromUrlUrl || '',
+    csrf: config.csrf || '',
+    selectedMedia: config.initialMedia || null,
+    previewUrl: config.initialMedia?.url || config.legacyUrl || '',
+    previewName: config.initialMedia?.filename || '',
+    removeImage: false,
+    pickerOpen: false,
+    pickerTab: 'library',
+    items: [],
+    loading: false,
+    loaded: false,
+    search: '',
+    url: '',
+    error: '',
+
+    get selectedMediaId() {
+        return this.selectedMedia?.id || '';
+    },
+
+    init() {
+        this.syncOgImage(this.previewUrl);
+    },
+
+    openPicker() {
+        this.pickerOpen = true;
+        this.pickerTab = 'library';
+        this.error = '';
+        if (!this.loaded) this.loadMedia();
+    },
+
+    closePicker() {
+        this.pickerOpen = false;
+        this.error = '';
+    },
+
+    loadMedia() {
+        this.loading = true;
+        this.error = '';
+        const params = new URLSearchParams({ json: '1', type: 'image' });
+        if (this.search.trim()) params.set('search', this.search.trim());
+
+        fetch(this.mediaIndexUrl + '?' + params.toString(), {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        })
+            .then(async (response) => {
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.message || 'Unable to load media library.');
+                return data;
+            })
+            .then((data) => {
+                const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+                this.items = (data.data || []).filter((item) => allowedMimes.includes(item.mime_type));
+                this.loaded = true;
+            })
+            .catch((error) => { this.error = error.message; })
+            .finally(() => { this.loading = false; });
+    },
+
+    selectMedia(item) {
+        this.selectedMedia = item;
+        this.previewUrl = item.url || item.thumbnail_url || '';
+        this.previewName = item.original_filename || item.filename || '';
+        this.removeImage = false;
+        this.$refs.fileInput.value = '';
+        this.syncOgImage(this.previewUrl);
+        this.closePicker();
+    },
+
+    handleDirectFile(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        this.selectedMedia = null;
+        this.removeImage = false;
+        this.previewName = file.name;
+        const reader = new FileReader();
+        reader.onload = (loadEvent) => {
+            this.previewUrl = loadEvent.target.result;
+            this.syncOgImage(this.previewUrl);
+        };
+        reader.readAsDataURL(file);
+    },
+
+    uploadFile(event) {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('files[]', file);
+        formData.append('_token', this.csrf);
+        this.loading = true;
+        this.error = '';
+
+        fetch(this.mediaUploadUrl, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData,
+        })
+            .then(async (response) => {
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.message || 'Upload failed.');
+                return data;
+            })
+            .then((data) => {
+                const media = (data.uploaded || [])[0];
+                if (!media) throw new Error('Upload did not return a media item.');
+                this.items.unshift(media);
+                this.selectMedia(media);
+            })
+            .catch((error) => { this.error = error.message; })
+            .finally(() => { this.loading = false; });
+    },
+
+    importUrl() {
+        if (!this.url.trim()) return;
+        this.loading = true;
+        this.error = '';
+
+        fetch(this.mediaFromUrlUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': this.csrf,
+            },
+            body: JSON.stringify({ url: this.url.trim() }),
+        })
+            .then(async (response) => {
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.message || 'Import failed.');
+                return data;
+            })
+            .then((data) => {
+                if (!data.media) throw new Error('Import did not return a media item.');
+                this.items.unshift(data.media);
+                this.url = '';
+                this.selectMedia(data.media);
+            })
+            .catch((error) => { this.error = error.message; })
+            .finally(() => { this.loading = false; });
+    },
+
+    remove() {
+        this.selectedMedia = null;
+        this.previewUrl = '';
+        this.previewName = '';
+        this.removeImage = true;
+        this.$refs.fileInput.value = '';
+        this.syncOgImage('');
+    },
+
+    syncOgImage(url) {
+        [
+            ['og-wa-image', 'og-wa-noimage'],
+            ['og-fb-image', 'og-fb-noimage'],
+        ].forEach(([imageId, emptyId]) => {
+            const image = document.getElementById(imageId);
+            const empty = document.getElementById(emptyId);
+            if (!image || !empty) return;
+            if (url) {
+                image.src = url;
+                image.classList.remove('hidden');
+                empty.classList.add('hidden');
+            } else {
+                image.removeAttribute('src');
+                image.classList.add('hidden');
+                empty.classList.remove('hidden');
+            }
+        });
+    },
+}));
+
 // ─── Media Library (WordPress-style uploader) ──────────────────────────────
 // Powers resources/views/admin/media/index.blade.php: grid, Add-Media modal
 // (upload / library / from-URL tabs) and the details editor modal.

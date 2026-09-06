@@ -38,6 +38,8 @@
                                 id="poi-resync-btn"
                                 onclick="window.propertyPoiResync(this)"
                                 data-url="{{ route('admin.properties.resync-nearby-places', $property) }}"
+                                data-persisted-lat="{{ $property->latitude }}"
+                                data-persisted-lng="{{ $property->longitude }}"
                                 :disabled="! $hasCoords || ! $hasApiKey"
                                 class="shrink-0">
                 <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" data-poi-spinner>
@@ -61,11 +63,17 @@
     {{-- Create screen: explain why syncing is unavailable instead of pretending it works --}}
     @unless($exists)
         <div class="mt-3 rounded-md bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
-            Simpan properti terlebih dahulu (dengan pin lokasi di peta) untuk bisa menyinkronkan POI dari Geoapify.
+            {{ __('Save the property first (with the map location) to sync POIs from Geoapify.') }}
         </div>
     @endunless
 
     {{-- Warnings: missing coordinates / missing API key --}}
+    @if($exists && $hasCoords)
+        <div id="poi-save-before-sync" class="mt-3 rounded-md bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
+            {{ __('Save the property after changing the map pin, then resync POIs.') }}
+        </div>
+    @endif
+
     @if($exists && ! $hasCoords)
         <div class="mt-3 rounded-md bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-yellow-800">
             Koordinat properti belum diisi. Tambahkan latitude dan longitude terlebih dahulu.
@@ -108,7 +116,28 @@
 window.propertyPoiResync = function (btn) {
     'use strict';
 
-    if (!btn || btn.disabled) return;
+    if (!btn) return;
+
+    var latInput = document.getElementById('latitude');
+    var lngInput = document.getElementById('longitude');
+    var coordinatesDiffer = function (first, second) {
+        if (!first && !second) return false;
+        var firstNumber = Number(first);
+        var secondNumber = Number(second);
+        return !Number.isFinite(firstNumber) || !Number.isFinite(secondNumber)
+            || Math.abs(firstNumber - secondNumber) > 0.0000001;
+    };
+    var hasUnsavedCoordinates = latInput && lngInput
+        && (coordinatesDiffer(latInput.value, btn.dataset.persistedLat)
+            || coordinatesDiffer(lngInput.value, btn.dataset.persistedLng));
+    var saveNotice = document.getElementById('poi-save-before-sync');
+
+    if (hasUnsavedCoordinates) {
+        if (saveNotice) saveNotice.classList.add('ring-2', 'ring-blue-300');
+        return;
+    }
+
+    if (btn.disabled) return;
 
     var url     = btn.dataset.url;
     var label   = btn.querySelector('[data-poi-label]');
@@ -177,5 +206,39 @@ window.propertyPoiResync = function (btn) {
         if (spinner) spinner.classList.remove('animate-spin');
     });
 };
+
+(function () {
+    var btn = document.getElementById('poi-resync-btn');
+    var latInput = document.getElementById('latitude');
+    var lngInput = document.getElementById('longitude');
+    var saveNotice = document.getElementById('poi-save-before-sync');
+
+    if (!btn || !latInput || !lngInput) return;
+
+    function coordinatesDiffer(first, second) {
+        if (!first && !second) return false;
+        var firstNumber = Number(first);
+        var secondNumber = Number(second);
+        return !Number.isFinite(firstNumber) || !Number.isFinite(secondNumber)
+            || Math.abs(firstNumber - secondNumber) > 0.0000001;
+    }
+
+    function updateSyncState() {
+        var changed = coordinatesDiffer(latInput.value, btn.dataset.persistedLat)
+            || coordinatesDiffer(lngInput.value, btn.dataset.persistedLng);
+
+        if (changed) {
+            btn.disabled = true;
+            if (saveNotice) saveNotice.classList.add('ring-2', 'ring-blue-300');
+        } else if ({{ $hasCoords && $hasApiKey ? 'true' : 'false' }}) {
+            btn.disabled = false;
+            if (saveNotice) saveNotice.classList.remove('ring-2', 'ring-blue-300');
+        }
+    }
+
+    latInput.addEventListener('input', updateSyncState);
+    lngInput.addEventListener('input', updateSyncState);
+    updateSyncState();
+})();
 </script>
 @endpush

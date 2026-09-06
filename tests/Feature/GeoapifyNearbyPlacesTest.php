@@ -641,6 +641,21 @@ class GeoapifyNearbyPlacesTest extends TestCase
         $response->assertSee(route('admin.properties.resync-nearby-places', $property), false);
     }
 
+    public function test_property_edit_page_requires_saving_changed_map_coordinates_before_resync(): void
+    {
+        $this->authenticate();
+
+        $property = $this->propertyWithCoords();
+
+        $response = $this->get(route('admin.properties.edit', $property));
+
+        $response->assertStatus(200);
+        $response->assertSee('data-persisted-lat="', false);
+        $response->assertSee('data-persisted-lng="', false);
+        $response->assertSee(__('Save the property after changing the map pin, then resync POIs.'), false);
+        $response->assertSee('coordinatesDiffer', false);
+    }
+
     /* ===================================================================
      | Group 4 — Frontend rendering + no-live-API guarantee
      * =================================================================== */

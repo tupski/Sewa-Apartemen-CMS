@@ -497,12 +497,11 @@ class SeoService
         }
 
         if ($model instanceof Property) {
-            // Prefer featured image, then first gallery photo, for a rich preview.
-            if ($image === '') {
-                $image = $model->featuredImage?->url
-                    ?: optional($model->photos->first())->media?->url
-                    ?: '';
-            }
+            // The featured property photo is authoritative for property OG images.
+            $image = $model->featuredImage?->url
+                ?: $image
+                ?: optional($model->photos->first())->media?->url
+                ?: '';
 
             $lowest = $model->lowestPrice();
             if ($lowest !== null && $lowest > 0) {

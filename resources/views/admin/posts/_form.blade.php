@@ -67,28 +67,111 @@
         @error('content') <p class="text-red-500 text-sm mt-1">{{ $message }}</p> @enderror
     </div>
 
-    {{-- ──────────── Featured Image (Drag & Drop) ──────────── --}}
-    <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Featured Image') }}</label>
-        <div id="featured-image-dropzone"
-             class="relative border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 transition group">
-            <input type="file" name="featured_image" id="featured_image_input" accept="image/jpeg,image/png,image/webp,image/gif"
+    {{-- ──────────── Featured Image ──────────── --}}
+    @php
+        $featuredMediaPayload = $featuredMedia ? [
+            'id' => $featuredMedia->id,
+            'url' => $featuredMedia->url,
+            'thumbnail_url' => $featuredMedia->thumbnail_url,
+            'filename' => $featuredMedia->original_filename ?: $featuredMedia->filename,
+        ] : null;
+        $legacyFeaturedUrl = isset($post) && $post->featured_image && ! $featuredMedia
+            ? Storage::disk('public')->url($post->featured_image)
+            : null;
+    @endphp
+    <div
+        x-data="postFeaturedImage({
+            initialMedia: @js($featuredMediaPayload),
+            legacyUrl: @js($legacyFeaturedUrl),
+            mediaIndexUrl: @js(route('admin.media.index')),
+            mediaUploadUrl: @js(route('admin.media.upload')),
+            mediaFromUrlUrl: @js(route('admin.media.from-url')),
+            csrf: @js(csrf_token())
+        })"
+        x-init="init()"
+        class="border-t border-gray-200 pt-6"
+    >
+        <input type="hidden" name="featured_image_media_id" :value="selectedMediaId || ''">
+        <input type="hidden" name="remove_featured_image" :value="removeImage ? '1' : '0'">
+
+        <div class="flex items-center justify-between gap-3 mb-2">
+            <label class="block text-sm font-medium text-gray-700">{{ __('Featured Image') }}</label>
+            <button type="button" @click="openPicker()"
+                    class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 border border-blue-200 rounded-md hover:bg-blue-50 transition">
+                <i class="fa-regular fa-images"></i> {{ __('Choose from Media Library') }}
+            </button>
+        </div>
+
+        <div class="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition group">
+            <input type="file" name="featured_image" id="featured_image_input"
+                   accept="image/jpeg,image/png,image/webp,image/gif"
+                   x-ref="fileInput" @change="handleDirectFile($event)"
                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
-            <div id="featured-image-preview" class="hidden relative">
-                <img id="featured-image-img" src="" alt="Preview" class="max-h-64 mx-auto rounded-lg shadow">
-                <button type="button" id="featured-image-remove"
-                        class="absolute -top-2 -right-2 w-7 h-7 bg-red-600 text-white rounded-full shadow hover:bg-red-700 transition flex items-center justify-center z-20"
-                        title="{{ __('Remove image') }}">
+            <div x-show="previewUrl" class="relative" x-cloak>
+                <img :src="previewUrl" :alt="previewName || '{{ __('Featured Image') }}'" class="max-h-64 mx-auto rounded-lg shadow">
+                <button type="button" @click.stop="remove()"
+                        class="absolute -top-2 right-1/2 translate-x-1/2 w-7 h-7 bg-red-600 text-white rounded-full shadow hover:bg-red-700 transition flex items-center justify-center z-20"
+                        title="{{ __('Remove image') }}" aria-label="{{ __('Remove image') }}">
                     <i class="fa-solid fa-times text-xs"></i>
                 </button>
+                <p class="mt-2 text-xs text-gray-500" x-text="previewName"></p>
             </div>
-            <div id="featured-image-placeholder" class="text-gray-400 group-hover:text-gray-600 transition">
+            <div x-show="!previewUrl" class="text-gray-400 group-hover:text-gray-600 transition">
                 <i class="fa-solid fa-cloud-upload-alt text-4xl mb-2"></i>
                 <p class="text-sm">{{ __('Drag & drop image here or click to browse') }}</p>
                 <p class="text-xs mt-1">{{ __('JPEG, PNG, WebP or GIF. Max 5 MB.') }}</p>
             </div>
         </div>
         @error('featured_image') <p class="text-red-500 text-sm mt-1">{{ $message }}</p> @enderror
+        @error('featured_image_media_id') <p class="text-red-500 text-sm mt-1">{{ $message }}</p> @enderror
+
+        <template x-teleport="body">
+            <div x-show="pickerOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+                 @click.self="closePicker()" @keydown.escape.window="closePicker()" role="dialog" aria-modal="true">
+                <div class="relative w-full max-w-3xl max-h-[90vh] flex flex-col bg-white rounded-xl shadow-2xl overflow-hidden">
+                    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-900">{{ __('Choose Featured Image') }}</h2>
+                        <button type="button" @click="closePicker()" class="text-gray-400 hover:text-gray-700" aria-label="{{ __('Close') }}"><i class="fa-solid fa-xmark text-xl"></i></button>
+                    </div>
+                    <div class="flex border-b border-gray-200 px-6">
+                        <button type="button" @click="pickerTab = 'library'; loadMedia()" :class="pickerTab === 'library' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'" class="px-4 py-3 -mb-px border-b-2 text-sm font-medium">{{ __('Media Library') }}</button>
+                        <button type="button" @click="pickerTab = 'upload'" :class="pickerTab === 'upload' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'" class="px-4 py-3 -mb-px border-b-2 text-sm font-medium">{{ __('Upload') }}</button>
+                        <button type="button" @click="pickerTab = 'url'" :class="pickerTab === 'url' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'" class="px-4 py-3 -mb-px border-b-2 text-sm font-medium">{{ __('From URL') }}</button>
+                    </div>
+                    <div class="p-6 overflow-y-auto">
+                        <div x-show="pickerTab === 'library'">
+                            <div class="flex gap-2 mb-4">
+                                <input type="search" x-model="search" @keydown.enter.prevent="loadMedia()" placeholder="{{ __('Search') }}" class="flex-1 px-3 py-2 border border-gray-300 rounded-md">
+                                <button type="button" @click="loadMedia()" class="px-4 py-2 bg-gray-100 rounded-md">{{ __('Search') }}</button>
+                            </div>
+                            <div x-show="loading" class="py-10 text-center text-gray-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>
+                            <div x-show="!loading" class="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                                <template x-for="item in items" :key="item.id">
+                                    <button type="button" @click="selectMedia(item)" class="group relative aspect-square overflow-hidden rounded-lg border-2 border-transparent hover:border-blue-500">
+                                        <img :src="item.thumbnail_url || item.url" :alt="item.original_filename || item.filename" class="w-full h-full object-cover" loading="lazy">
+                                        <span class="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-1 text-[10px] text-white truncate" x-text="item.original_filename || item.filename"></span>
+                                    </button>
+                                </template>
+                            </div>
+                            <p x-show="!loading && !items.length" class="py-10 text-center text-sm text-gray-400">{{ __('No media found') }}</p>
+                        </div>
+                        <div x-show="pickerTab === 'upload'" class="text-center py-8">
+                            <input type="file" x-ref="pickerFile" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" @change="uploadFile($event)">
+                            <button type="button" @click="$refs.pickerFile.click()" class="px-4 py-2 bg-blue-600 text-white rounded-md" :disabled="loading">{{ __('Select image') }}</button>
+                            <p class="mt-3 text-xs text-gray-500">{{ __('JPEG, PNG, WebP or GIF. Max 10 MB.') }}</p>
+                        </div>
+                        <div x-show="pickerTab === 'url'">
+                            <div class="flex gap-2">
+                                <input type="url" x-model="url" placeholder="https://example.com/image.jpg" class="flex-1 px-3 py-2 border border-gray-300 rounded-md">
+                                <button type="button" @click="importUrl()" :disabled="loading || !url" class="px-4 py-2 bg-blue-600 text-white rounded-md">{{ __('Import') }}</button>
+                            </div>
+                            <p class="mt-2 text-xs text-gray-500">{{ __('The URL is downloaded through the protected media importer.') }}</p>
+                        </div>
+                        <p x-show="error" x-text="error" class="mt-4 text-sm text-red-600"></p>
+                    </div>
+                </div>
+            </div>
+        </template>
     </div>
 
     {{-- ──────────── Tags (Pills / Badges) ──────────── --}}

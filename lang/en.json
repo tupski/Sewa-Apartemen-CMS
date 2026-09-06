@@ -13,6 +13,8 @@
     "Category": "Category",
     "POI sync queued successfully.": "POI sync queued successfully.",
     "Property must have coordinates set before syncing POI.": "Property must have coordinates set before syncing POI.",
+    "Save the property first (with the map location) to sync POIs from Geoapify.": "Save the property first (with the map location) to sync POIs from Geoapify.",
+    "Save the property after changing the map pin, then resync POIs.": "Save the property after changing the map pin, then resync POIs.",
     "nav.find_apartments": "Find Apartments",
     "nav.whatsapp": "WhatsApp",
     "nav.home": "Home",
