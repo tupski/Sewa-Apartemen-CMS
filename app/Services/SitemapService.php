@@ -3,19 +3,18 @@
 namespace App\Services;
 
 use App\Models\Page;
+use App\Models\Post;
 use App\Models\Property;
 use Illuminate\Support\Facades\Cache;
 
 class SitemapService
 {
     /**
-     * Generate sitemap XML content.
+     * Generate cached sitemap XML content.
      */
     public function generate(): string
     {
-        return Cache::remember('sitemap.xml', 86400, function () {
-            return $this->buildXml();
-        });
+        return Cache::remember('sitemap.xml', 86400, fn (): string => $this->buildXml());
     }
 
     /**
@@ -23,84 +22,93 @@ class SitemapService
      */
     protected function buildXml(): string
     {
-        $urls = $this->collectUrls();
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+        $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n";
 
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-        $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
-
-        foreach ($urls as $url) {
+        foreach ($this->collectUrls() as $url) {
             $xml .= "  <url>\n";
-            $xml .= '    <loc>' . e($url['loc']) . "</loc>\n";
+            $xml .= '    <loc>'.e($url['loc'])."</loc>\n";
             if (isset($url['lastmod'])) {
-                $xml .= '    <lastmod>' . $url['lastmod'] . "</lastmod>\n";
+                $xml .= '    <lastmod>'.e($url['lastmod'])."</lastmod>\n";
             }
             if (isset($url['changefreq'])) {
-                $xml .= '    <changefreq>' . $url['changefreq'] . "</changefreq>\n";
+                $xml .= '    <changefreq>'.e($url['changefreq'])."</changefreq>\n";
             }
             if (isset($url['priority'])) {
-                $xml .= '    <priority>' . $url['priority'] . "</priority>\n";
+                $xml .= '    <priority>'.e($url['priority'])."</priority>\n";
             }
             $xml .= "  </url>\n";
         }
 
-        $xml .= '</urlset>';
-
-        return $xml;
+        return $xml.'</urlset>';
     }
 
     /**
-     * Collect all sitemap URLs.
+     * Collect all indexable public URLs using named routes and configurable slugs.
+     *
+     * @return array<int, array{loc: string, lastmod?: string, changefreq?: string, priority?: string}>
      */
     protected function collectUrls(): array
     {
-        $urls = [];
-
-        // Static routes
-        $urls[] = [
-            'loc' => url('/'),
-            'lastmod' => now()->toIso8601String(),
-            'changefreq' => 'daily',
-            'priority' => '1.0',
+        $now = now()->toIso8601String();
+        $urls = [
+            [
+                'loc' => route('home'),
+                'lastmod' => $now,
+                'changefreq' => 'daily',
+                'priority' => '1.0',
+            ],
+            [
+                'loc' => route('properties.public.index'),
+                'lastmod' => $now,
+                'changefreq' => 'daily',
+                'priority' => '0.9',
+            ],
+            [
+                'loc' => route('blog.index'),
+                'lastmod' => $now,
+                'changefreq' => 'weekly',
+                'priority' => '0.7',
+            ],
+            [
+                'loc' => route('promotions'),
+                'lastmod' => $now,
+                'changefreq' => 'weekly',
+                'priority' => '0.7',
+            ],
+            [
+                'loc' => route('contact'),
+                'lastmod' => $now,
+                'changefreq' => 'monthly',
+                'priority' => '0.5',
+            ],
         ];
 
-        // Properties
-        foreach (Property::where('status', 'published')->get() as $property) {
+        foreach (Property::published()->get(['slug', 'updated_at']) as $property) {
             $urls[] = [
-                'loc' => url('/apartments/' . $property->slug),
-                'lastmod' => $property->updated_at->toIso8601String(),
+                'loc' => route('properties.public.show', $property),
+                'lastmod' => $property->updated_at?->toIso8601String() ?? $now,
                 'changefreq' => 'weekly',
                 'priority' => '0.8',
             ];
         }
 
-        // Pages
-        foreach (Page::where('status', 'published')->get() as $page) {
+        foreach (Page::published()->get(['slug', 'updated_at']) as $page) {
             $urls[] = [
-                'loc' => url('/' . $page->slug),
-                'lastmod' => $page->updated_at->toIso8601String(),
+                'loc' => url('/'.$page->slug),
+                'lastmod' => $page->updated_at?->toIso8601String() ?? $now,
                 'changefreq' => 'monthly',
                 'priority' => '0.6',
             ];
         }
 
-        // Blog
-        if (class_exists(\App\Models\Post::class)) {
+        foreach (Post::published()->get(['slug', 'updated_at']) as $post) {
             $urls[] = [
-                'loc' => url('/blog'),
-                'lastmod' => now()->toIso8601String(),
-                'changefreq' => 'weekly',
-                'priority' => '0.7',
+                'loc' => route('blog.show', $post->slug),
+                'lastmod' => $post->updated_at?->toIso8601String() ?? $now,
+                'changefreq' => 'monthly',
+                'priority' => '0.6',
             ];
-
-            $postModel = \App\Models\Post::class;
-            foreach ($postModel::where('status', 'published')->get() as $post) {
-                $urls[] = [
-                    'loc' => url('/blog/' . ($post->slug ?? $post->id)),
-                    'lastmod' => $post->updated_at->toIso8601String(),
-                    'changefreq' => 'monthly',
-                    'priority' => '0.6',
-                ];
-            }
         }
 
         return $urls;

@@ -240,12 +240,14 @@ class SeoService
         $seoData = static::metaTagsArray($source);
 
         $html = '';
-        $html .= '<title>'.e($seoData['title']).'</title>'."\n";
-        $html .= '<meta name="description" content="'.e($seoData['description']).'">'."\n";
+        // `data-seo-head` lets Turbo's head snapshot identify page metadata while
+        // preserving normal Turbo Drive navigation and avoiding full reloads.
+        $html .= '<title data-seo-head="true">'.e($seoData['title']).'</title>'."\n";
+        $html .= '<meta name="description" content="'.e($seoData['description']).'" data-seo-head="true">'."\n";
         if ($seoData['canonical']) {
-            $html .= '<link rel="canonical" href="'.e($seoData['canonical']).'">'."\n";
+            $html .= '<link rel="canonical" href="'.e($seoData['canonical']).'" data-seo-head="true">'."\n";
         }
-        $html .= '<meta name="robots" content="'.e($seoData['robots']).'">'."\n";
+        $html .= '<meta name="robots" content="'.e($seoData['robots']).'" data-seo-head="true">'."\n";
         $html .= static::openGraphTags($seoData);
         $html .= static::twitterTags($seoData);
         $html .= static::renderJsonLd($seoData['jsonld'] ?? []);
@@ -356,6 +358,10 @@ class SeoService
         $tw = $override?->twitter ?? [];
 
         $meta = static::metaTags($title, $description, $url);
+        $meta['jsonld'] = [
+            SchemaService::organization(),
+            SchemaService::website(),
+        ];
 
         // metaTags() applies the "{Site Name} - {Tagline}" homepage format, which
         // would otherwise discard an admin-authored homepage title. An explicit
@@ -385,7 +391,10 @@ class SeoService
             $meta['twitter_image'] = $tw['image'] ?? null;
         }
 
-        return array_merge($meta, $extra);
+        $meta = array_merge($meta, $extra);
+        $meta['jsonld'] = $extra['jsonld'] ?? $meta['jsonld'];
+
+        return $meta;
     }
 
     /**
@@ -586,10 +595,26 @@ class SeoService
             SchemaService::website(),
         ];
 
-        $class = get_class($model);
+        $url = url()->current();
 
-        if ($class === Property::class) {
-            $schemas[] = SchemaService::realEstateListing($model);
+        if ($model instanceof Property) {
+            $url = route('properties.public.show', $model);
+            $schemas[] = SchemaService::realEstateListing($model, $url);
+            $schemas[] = SchemaService::breadcrumbList([
+                'Home' => url('/'),
+                'Apartments' => slug_url('slug_apartments', 'apartments'),
+                $model->name => $url,
+            ]);
+        }
+
+        if ($model instanceof Post) {
+            $url = route('blog.show', $model->slug);
+            $schemas[] = SchemaService::postArticle($model, $url);
+            $schemas[] = SchemaService::breadcrumbList([
+                'Home' => url('/'),
+                'Blog' => slug_url('slug_blog', 'blog'),
+                $model->title => $url,
+            ]);
         }
 
         return $schemas;
@@ -621,6 +646,7 @@ class SeoService
                        $clean,
                        JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
                        | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+                       | JSON_INVALID_UTF8_SUBSTITUTE
                    )."\n"
                    .'</script>'."\n";
         }

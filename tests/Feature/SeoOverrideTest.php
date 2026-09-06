@@ -140,7 +140,7 @@ class SeoOverrideTest extends TestCase
         $response = $this->get(route('pages.show', $page->slug));
 
         $response->assertStatus(200);
-        $response->assertSee('<title>Judul SEO Halaman Unik', false);
+        $response->assertSee('<title data-seo-head="true">Judul SEO Halaman Unik', false);
         $response->assertSee('Deskripsi SEO halaman unik.', false);
     }
 
@@ -186,7 +186,7 @@ class SeoOverrideTest extends TestCase
         $response = $this->get(route('properties.public.show', $property->slug));
 
         $response->assertStatus(200);
-        $response->assertSee('MORPH-TITLE-WINS', false);
+        $response->assertSee('<title data-seo-head="true">MORPH-TITLE-WINS', false);
         $response->assertDontSee('LEGACY-COLUMN-TITLE', false);
     }
 
@@ -356,7 +356,7 @@ class SeoOverrideTest extends TestCase
         $response->assertSee('property="og:title" content="OG-PROMO-TITLE"', false);
         $response->assertSee('og/promo.jpg', false);
         // The <title> still uses meta_title, not the OG-only override.
-        $response->assertSee('<title>Promo Bulan Ini', false);
+        $response->assertSee('<title data-seo-head="true">Promo Bulan Ini', false);
     }
 
     public function test_system_page_seo_requires_admin(): void

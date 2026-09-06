@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\Tag;
+use App\Services\SchemaService;
 use App\Services\SeoService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -28,7 +29,25 @@ class BlogController extends Controller
             'blog.index',
             'Blog',
             'Read our latest articles and updates',
-            url('/blog'),
+            route('blog.index'),
+            [],
+            [
+                'jsonld' => [
+                    SchemaService::organization(),
+                    SchemaService::website(),
+                    SchemaService::collectionPage(
+                        'Blog',
+                        'Read our latest articles and updates',
+                        route('blog.index'),
+                        $posts->getCollection()->values()->map(fn (Post $item, int $index): array => [
+                            '@type' => 'ListItem',
+                            'position' => $index + 1,
+                            'url' => route('blog.show', $item->slug),
+                            'name' => $item->title,
+                        ])->all(),
+                    ),
+                ],
+            ],
         );
 
         return view('blog.index', array_merge(compact('posts', 'seo'), $sidebarData));
@@ -64,10 +83,20 @@ class BlogController extends Controller
             : SeoService::metaTags(
                 $post->title,
                 Str::limit(strip_tags($post->excerpt ?? $post->content), 160),
-                url('/blog/'.$post->slug),
+                route('blog.show', $post->slug),
                 $postImage,
                 'article',
             );
+        $seo['jsonld'] = [
+            SchemaService::organization(),
+            SchemaService::website(),
+            SchemaService::postArticle($post, route('blog.show', $post->slug)),
+            SchemaService::breadcrumbList([
+                'Home' => url('/'),
+                'Blog' => route('blog.index'),
+                $post->title => route('blog.show', $post->slug),
+            ]),
+        ];
 
         return view('blog.show', array_merge(compact('post', 'relatedPosts', 'seo'), $sidebarData));
     }

@@ -9,6 +9,7 @@ use App\Models\Media;
 use App\Models\Property;
 use App\Models\PropertyPhoto;
 use App\Services\SafeHtmlService;
+use App\Services\SchemaService;
 use App\Services\SeoService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -149,7 +150,25 @@ class PropertyController extends Controller
             'properties.index',
             'Cari Apartemen & Properti Sewa',
             'Temukan apartemen sewa harian, transit, mingguan, atau bulanan di lokasi strategis. Harga transparan, fasilitas lengkap, booking mudah online.',
-            url()->current(),
+            route('properties.public.index'),
+            [],
+            [
+                'jsonld' => [
+                    SchemaService::organization(),
+                    SchemaService::website(),
+                    SchemaService::collectionPage(
+                        'Cari Apartemen & Properti Sewa',
+                        'Temukan apartemen sewa harian, transit, mingguan, atau bulanan di lokasi strategis.',
+                        route('properties.public.index'),
+                        $properties->getCollection()->values()->map(fn (Property $item, int $index): array => [
+                            '@type' => 'ListItem',
+                            'position' => $index + 1,
+                            'url' => route('properties.public.show', $item),
+                            'name' => $item->name,
+                        ])->all(),
+                    ),
+                ],
+            ],
         );
 
         return view('properties.index', [
@@ -228,6 +247,11 @@ class PropertyController extends Controller
         // then the property's name/description columns. Title suffixing
         // (" - {Site Name}") is applied centrally by SeoService.
         $seo = SeoService::forPropertyDetail($property);
+        $seo['jsonld'][] = SchemaService::breadcrumbList([
+            'Home' => url('/'),
+            'Apartments' => slug_url('slug_apartments', 'apartments'),
+            $property->name => route('properties.public.show', $property),
+        ]);
 
         return view('properties.show', compact('property', 'nearbyProperties', 'seo', 'nearbyPlacesWithDistance', 'persistentPlaces'));
     }

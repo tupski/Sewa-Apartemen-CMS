@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Post;
 use App\Models\Property;
+use App\Services\SchemaService;
 use App\Services\SeoService;
 use App\Services\SettingsService;
 use Illuminate\Http\Request;
@@ -75,6 +76,14 @@ class HomeController extends Controller
             $siteName,
             $description,
             url('/'),
+            [],
+            [
+                'jsonld' => [
+                    SchemaService::organization(),
+                    SchemaService::website(),
+                    SchemaService::webPage($siteName, $description, url('/')),
+                ],
+            ],
         );
 
         return view('home', compact(

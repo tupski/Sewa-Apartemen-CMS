@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\Post;
 use App\Models\Property;
 use App\Models\Redirect;
+use App\Models\Role;
+use App\Models\SystemPage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -89,7 +92,7 @@ class SeoTest extends TestCase
     public function test_seo_metadata_saved_via_property_store(): void
     {
         $user = User::factory()->create();
-        $role = \App\Models\Role::updateOrCreate(['slug' => 'super-admin'], ['name' => 'Super Admin']);
+        $role = Role::updateOrCreate(['slug' => 'super-admin'], ['name' => 'Super Admin']);
         $user->roles()->syncWithoutDetaching([$role->id => ['model_type' => User::class]]);
         $this->actingAs($user);
 
@@ -114,5 +117,46 @@ class SeoTest extends TestCase
         $this->assertEquals('Custom SEO Title', $seo->meta_title);
         $this->assertEquals('Custom SEO Description', $seo->meta_description);
         $this->assertTrue($seo->index_status);
+    }
+
+    public function test_public_pages_render_turbo_compatible_seo_and_schema_head(): void
+    {
+        SystemPage::syncRegistry();
+        Post::factory()->published()->create([
+            'title' => 'Schema Article',
+            'slug' => 'schema-article',
+            'content' => 'Article body',
+        ]);
+        Property::create([
+            'name' => 'Schema Apartment',
+            'slug' => 'schema-apartment',
+            'status' => 'published',
+        ]);
+
+        foreach ([
+            route('home'),
+            route('properties.public.index'),
+            route('properties.public.show', 'schema-apartment'),
+            route('promotions'),
+            route('blog.show', 'schema-article'),
+            route('contact'),
+        ] as $url) {
+            $response = $this->get($url);
+
+            $response->assertOk();
+            $response->assertSee('data-seo-head="true"', false);
+            $response->assertSee('application/ld+json', false);
+        }
+    }
+
+    public function test_sitemap_uses_named_routes_and_robots_disallows_admin_paths(): void
+    {
+        $sitemap = $this->get(route('sitemap'));
+        $robots = $this->get(route('robots'));
+
+        $sitemap->assertSee('/apartments', false);
+        $sitemap->assertSee('/blog', false);
+        $robots->assertSee('Disallow: /admin', false);
+        $robots->assertSee('Disallow: /bookings', false);
     }
 }

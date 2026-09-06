@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Voucher;
+use App\Services\SchemaService;
 use App\Services\SeoService;
 use Carbon\Carbon;
 
@@ -42,6 +43,19 @@ class PromotionController extends Controller
             __('promo.title'),
             __('promo.subtitle'),
             route('promotions'),
+            [],
+            [
+                'jsonld' => [
+                    SchemaService::organization(),
+                    SchemaService::website(),
+                    SchemaService::promotionPage(
+                        __('promo.title'),
+                        __('promo.subtitle'),
+                        route('promotions'),
+                        $vouchers,
+                    ),
+                ],
+            ],
         );
 
         return view('promotions.index', compact('vouchers', 'seo'));

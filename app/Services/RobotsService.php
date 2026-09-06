@@ -20,18 +20,18 @@ class RobotsService
         $lines[] = 'Allow: /';
         $lines[] = '';
         $lines[] = '# Disallow admin areas';
-        $lines[] = 'Disallow: /admin';
+        $lines[] = 'Disallow: /'.slug('admin_prefix', 'admin');
         $lines[] = 'Disallow: /install';
         $lines[] = 'Disallow: /login';
         $lines[] = 'Disallow: /logout';
         $lines[] = 'Disallow: /register';
         $lines[] = 'Disallow: /profile';
         $lines[] = 'Disallow: /dashboard';
-        $lines[] = 'Disallow: /bookings';
+        $lines[] = 'Disallow: /'.slug('slug_booking', 'bookings');
         $lines[] = '';
         $lines[] = '# Sitemap location';
-        $lines[] = 'Sitemap: ' . url('/sitemap.xml');
+        $lines[] = 'Sitemap: '.url('/sitemap.xml');
 
-        return implode("\n", $lines) . "\n";
+        return implode("\n", $lines)."\n";
     }
 }

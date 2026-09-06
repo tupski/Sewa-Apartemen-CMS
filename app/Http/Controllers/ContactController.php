@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\SchemaService;
 use App\Services\SeoService;
 use App\Services\SettingsService;
 use Illuminate\Http\Request;
@@ -23,6 +24,18 @@ class ContactController extends Controller
             __('contact.title'),
             __('contact.subtitle'),
             route('contact'),
+            [],
+            [
+                'jsonld' => [
+                    SchemaService::organization(),
+                    SchemaService::website(),
+                    SchemaService::contactPage(
+                        __('contact.title'),
+                        __('contact.subtitle'),
+                        route('contact'),
+                    ),
+                ],
+            ],
         );
 
         return view('contact.index', compact('seo'));
