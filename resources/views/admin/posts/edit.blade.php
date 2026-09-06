@@ -4,11 +4,9 @@
 
 @section('content')
 <div class="max-w-4xl mx-auto">
-    <div class="mb-6">
-        <a href="{{ route('admin.posts.index') }}" class="text-blue-600 hover:text-blue-900 text-sm">
-            &larr; Back to Posts
-        </a>
-    </div>
+    <x-admin-breadcrumb
+        :items="[['label' => 'Posts', 'route' => 'admin.posts.index']]"
+        current="Edit Post" />
 
     <div class="bg-white rounded-lg shadow-sm p-6">
         <h2 class="text-2xl font-bold text-gray-800 mb-6">Edit Post</h2>

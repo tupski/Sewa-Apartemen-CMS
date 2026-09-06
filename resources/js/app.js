@@ -779,6 +779,90 @@ Alpine.data('photoGallery', function (config = {}) {
     }, true);
 })();
 
+// ─── Submit loading states ──────────────────────────────────────────────────
+// Opt-in buttons (`data-loading-button`) show a spinner on valid submission.
+// Marked admin edit forms also receive a processing state. The listener runs
+// after native constraint validation, so invalid forms remain editable and keep
+// their existing validation behavior. Inputs stay enabled for multipart forms.
+(function () {
+    function loadingButtonsForForm(form) {
+        var buttons = Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"]'));
+        var formId = form.getAttribute('id');
+
+        if (formId) {
+            document.querySelectorAll('[data-loading-button]').forEach(function (button) {
+                if (button.getAttribute('form') === formId && !buttons.includes(button)) {
+                    buttons.push(button);
+                }
+            });
+        }
+
+        return buttons;
+    }
+
+    function showButtonSpinner(button) {
+        var spinner = button.querySelector('[data-button-spinner]');
+
+        if (!spinner) {
+            spinner = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            spinner.setAttribute('data-button-spinner', '');
+            spinner.setAttribute('class', 'h-4 w-4 animate-spin');
+            spinner.setAttribute('fill', 'none');
+            spinner.setAttribute('viewBox', '0 0 24 24');
+            spinner.setAttribute('aria-hidden', 'true');
+
+            var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('class', 'opacity-25');
+            circle.setAttribute('cx', '12');
+            circle.setAttribute('cy', '12');
+            circle.setAttribute('r', '10');
+            circle.setAttribute('stroke', 'currentColor');
+            circle.setAttribute('stroke-width', '4');
+
+            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('class', 'opacity-75');
+            path.setAttribute('fill', 'currentColor');
+            path.setAttribute('d', 'M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z');
+
+            spinner.append(circle, path);
+            button.insertBefore(spinner, button.firstChild);
+        }
+
+        spinner.classList.remove('hidden');
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+    }
+
+    document.addEventListener('submit', function (event) {
+        var form = event.target;
+        if (!(form instanceof HTMLFormElement)) return;
+
+        var buttons = loadingButtonsForForm(form);
+        var shouldProcess = form.matches('form[data-warn-unsaved]') || buttons.some(function (button) {
+            return button.hasAttribute('data-loading-button');
+        });
+
+        if (!shouldProcess) return;
+
+        if (form.dataset.processing === 'true') {
+            event.preventDefault();
+            return;
+        }
+
+        form.dataset.processing = 'true';
+        form.classList.add('opacity-50', 'pointer-events-none');
+        form.setAttribute('aria-busy', 'true');
+
+        var submitter = event.submitter;
+        var activeButton = submitter && buttons.includes(submitter) ? submitter : buttons[0];
+        if (activeButton) showButtonSpinner(activeButton);
+
+        buttons.forEach(function (button) {
+            button.disabled = true;
+        });
+    }, true);
+})();
+
 // ─── Unsaved-changes guard for admin forms ─────────────────────────────────
 // Warns the user before they navigate away (Turbo visit) or close/refresh the
 // tab (beforeunload) when a marked form has unsaved edits.
@@ -1581,6 +1665,37 @@ function initPropertyMap() {
         map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
     }
 }
+
+// ─── Scroll-to-top button ─────────────────────────────────────────
+// Any element with [data-scroll-top] gets show/hide + smooth-scroll.
+// Works with Turbo Drive: re-binds fresh elements on each turbo:load.
+function updateScrollTopButtons() {
+    document.querySelectorAll('[data-scroll-top]').forEach(function (btn) {
+        if (window.scrollY > 300) {
+            btn.classList.remove('hidden');
+            btn.classList.add('inline-flex');
+        } else {
+            btn.classList.add('hidden');
+            btn.classList.remove('inline-flex');
+        }
+    });
+}
+
+function initScrollTop() {
+    document.querySelectorAll('[data-scroll-top]').forEach(function (btn) {
+        if (btn.dataset.scrollInit === 'true') return;
+        btn.dataset.scrollInit = 'true';
+        btn.addEventListener('click', function () {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    });
+
+    updateScrollTopButtons();
+}
+
+window.addEventListener('scroll', updateScrollTopButtons, { passive: true });
+document.addEventListener('turbo:load', initScrollTop);
+document.addEventListener('DOMContentLoaded', initScrollTop);
 
 // Run on both Turbo navigations and initial (non-Turbo) page load.
 document.addEventListener('turbo:load', initPropertyMap);

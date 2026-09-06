@@ -21,13 +21,13 @@
 
     <!-- Search -->
     <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-        <form method="GET" action="{{ route('admin.redirects.index') }}" class="flex gap-4">
+        <form method="GET" action="{{ route('admin.redirects.index') }}" class="flex flex-wrap items-center gap-4">
             <div class="flex-1">
                 <input type="text"
                        name="search"
                        value="{{ request('search') }}"
                        placeholder="Search redirects..."
-                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                       class="min-w-[12rem] w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
             </div>
             <button type="submit"
                     class="px-6 py-2 bg-gray-600 text-white font-medium rounded-md hover:bg-gray-700 transition">

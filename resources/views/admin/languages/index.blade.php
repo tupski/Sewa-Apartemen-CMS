@@ -19,7 +19,8 @@
     @endif
 
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
-        <table class="w-full text-sm">
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
             <thead class="bg-gray-50 dark:bg-gray-700 text-xs uppercase text-gray-500 dark:text-gray-400">
                 <tr>
                     <th class="px-5 py-3 text-left">Urutan</th>
@@ -88,7 +89,8 @@
                 <tr><td colspan="8" class="px-5 py-10 text-center text-gray-400">Belum ada bahasa.</td></tr>
                 @endforelse
             </tbody>
-        </table>
+            </table>
+        </div>
     </div>
 </div>
 @endsection

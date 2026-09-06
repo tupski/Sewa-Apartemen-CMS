@@ -64,7 +64,6 @@
          class="h-screen lg:flex overflow-hidden">
         <!-- Sidebar -->
         <aside :class="[sidebarOpen ? 'translate-x-0' : '-translate-x-full', sidebarCollapsed ? 'lg:w-20' : 'lg:w-64']"
-               :data-collapsed="sidebarCollapsed"
                class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 lg:inset-0 lg:h-screen lg:shrink-0 flex flex-col overflow-y-auto overflow-x-hidden">
             <div class="flex items-center justify-between h-16 px-4 bg-gray-900 shrink-0">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2 overflow-hidden min-w-0"
@@ -97,10 +96,8 @@
             <nav class="py-4 flex-1 overflow-y-auto" role="navigation" aria-label="Sidebar navigation">
                 <!-- Dashboard -->
                 <a href="{{ route('dashboard') }}"
-                   data-sidebar-tooltip="Dashboard"
-                   title="Dashboard"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('dashboard') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('dashboard') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-solid fa-gauge-high w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Dashboard</span>
                 </a>
@@ -109,55 +106,43 @@
                 <p class="px-4 pt-5 pb-2 text-xs font-semibold text-gray-400 uppercase" :class="sidebarCollapsed ? 'lg:hidden' : ''">Content</p>
 
                 <a href="{{ route('admin.pages.index') }}"
-                   data-sidebar-tooltip="Pages"
-                   title="Pages"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.pages.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.pages.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-regular fa-file-lines w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Pages</span>
                 </a>
 
                 <a href="{{ route('admin.blocks.index') }}"
-                   data-sidebar-tooltip="Blocks"
-                   title="Blocks"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.blocks.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.blocks.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-solid fa-cubes w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Blocks</span>
                 </a>
 
                 <a href="{{ route('admin.media.index') }}"
-                   data-sidebar-tooltip="Media"
-                   title="Media"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.media.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.media.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-regular fa-images w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Media</span>
                 </a>
 
                 <a href="{{ route('admin.navigations.index') }}"
-                   data-sidebar-tooltip="Navigation"
-                   title="Navigation"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.navigations.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.navigations.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-solid fa-bars-staggered w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Navigation</span>
                 </a>
 
                 <a href="{{ route('admin.properties.index') }}"
-                   data-sidebar-tooltip="Properties"
-                   title="Properties"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.properties.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.properties.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-solid fa-building w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Properties</span>
                 </a>
 
                 <a href="{{ route('admin.amenities.index') }}"
-                   data-sidebar-tooltip="Amenities"
-                   title="Amenities"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.amenities.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.amenities.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-solid fa-spa w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Amenities</span>
                 </a>
@@ -166,28 +151,22 @@
                 <p class="px-4 pt-5 pb-2 text-xs font-semibold text-gray-400 uppercase" :class="sidebarCollapsed ? 'lg:hidden' : ''">Blog</p>
 
                 <a href="{{ route('admin.posts.index') }}"
-                   data-sidebar-tooltip="Posts"
-                   title="Posts"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.posts.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.posts.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-regular fa-newspaper w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Posts</span>
                 </a>
 
                 <a href="{{ route('admin.categories.index') }}"
-                   data-sidebar-tooltip="Categories"
-                   title="Categories"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.categories.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.categories.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-solid fa-folder-tree w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Categories</span>
                 </a>
 
                 <a href="{{ route('admin.tags.index') }}"
-                   data-sidebar-tooltip="Tags"
-                   title="Tags"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.tags.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.tags.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-solid fa-tags w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Tags</span>
                 </a>
@@ -196,39 +175,23 @@
                 <p class="px-4 pt-5 pb-2 text-xs font-semibold text-gray-400 uppercase" :class="sidebarCollapsed ? 'lg:hidden' : ''">Booking</p>
 
                 <a href="{{ route('admin.bookings.index') }}"
-                   data-sidebar-tooltip="Bookings"
-                   title="Bookings"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.bookings.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.bookings.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-regular fa-calendar-check w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Bookings</span>
                 </a>
 
                 <a href="{{ route('admin.vouchers.index') }}"
-                   data-sidebar-tooltip="Voucher"
-                   title="Voucher"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.vouchers.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.vouchers.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-solid fa-ticket w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Voucher</span>
                 </a>
 
-                {{-- Promo Rates are managed inside each property's edit screen; use the valid properties index route. --}}
-                <a href="{{ route('admin.properties.index') }}"
-                   data-sidebar-tooltip="Promo Rates"
-                   title="Promo Rates"
-                   :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.properties.promos.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
-                    <i class="fa-solid fa-percent w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
-                    <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Promo Rates</span>
-                </a>
-
                 <!-- Users -->
                 <a href="{{ route('admin.users.index') }}"
-                   data-sidebar-tooltip="Users"
-                   title="Users"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.users.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.users.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-solid fa-users w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Users</span>
                 </a>
@@ -237,55 +200,43 @@
                 <p class="px-4 pt-5 pb-2 text-xs font-semibold text-gray-400 uppercase" :class="sidebarCollapsed ? 'lg:hidden' : ''">System</p>
 
                 <a href="{{ route('admin.languages.index') }}"
-                   data-sidebar-tooltip="Bahasa"
-                   title="Bahasa"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.languages.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.languages.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-solid fa-language w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Bahasa</span>
                 </a>
 
                 <a href="{{ route('admin.currency-rates.index') }}"
-                   data-sidebar-tooltip="Kurs"
-                   title="Kurs"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.currency-rates.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.currency-rates.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-solid fa-money-bill-transfer w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Kurs</span>
                 </a>
 
                 <a href="{{ route('admin.slug-settings.index') }}"
-                   data-sidebar-tooltip="Slug & Path"
-                   title="Slug & Path"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.slug-settings.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.slug-settings.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-solid fa-link w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Slug & Path</span>
                 </a>
 
                 <a href="{{ route('admin.redirects.index') }}"
-                   data-sidebar-tooltip="Redirects"
-                   title="Redirects"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.redirects.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.redirects.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-solid fa-arrow-right-arrow-left w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Redirects</span>
                 </a>
 
                 <a href="{{ route('admin.backup.index') }}"
-                   data-sidebar-tooltip="Backup & Restore"
-                   title="Backup & Restore"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.backup.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.backup.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-solid fa-database w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Backup &amp; Restore</span>
                 </a>
 
                 <a href="{{ route('admin.settings.index') }}"
-                   data-sidebar-tooltip="Settings"
-                   title="Settings"
                    :class="sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''"
-                   class="sidebar-tooltip-link flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.settings.*') ? 'bg-gray-700 text-white border-l-2 border-blue-500' : '' }}">
+                   class="flex items-center w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-none transition {{ request()->routeIs('admin.settings.*') ? 'bg-gray-700 text-white' : '' }}">
                     <i class="fa-solid fa-gear w-5 mr-3 text-center shrink-0" :class="sidebarCollapsed ? 'lg:mr-0' : ''"></i>
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''">Settings</span>
                 </a>
@@ -492,6 +443,41 @@
                 </div>
             </header>
 
+            <!-- Flash Messages -->
+            <div class="px-4 sm:px-6 lg:px-8 py-4">
+                @if(session('success'))
+                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 flex items-center justify-between">
+                        <span>{{ session('success') }}</span>
+                        <button onclick="this.parentElement.remove()" class="text-green-700 hover:text-green-900">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                @endif
+
+                @if(session('error'))
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 flex items-center justify-between">
+                        <span>{{ session('error') }}</span>
+                        <button onclick="this.parentElement.remove()" class="text-red-700 hover:text-red-900">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                @endif
+
+                @if(session('info'))
+                    <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4 flex items-center justify-between">
+                        <span>{{ session('info') }}</span>
+                        <button onclick="this.parentElement.remove()" class="text-blue-700 hover:text-blue-900">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                @endif
+            </div>
 
             <!-- Main Content -->
             <main id="main-content" class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6" role="main">
@@ -528,11 +514,11 @@
                              the first time any toast rendered — which killed every
                              Alpine component on the page. Each template must wrap its
                              content in a single root ELEMENT. --}}
-                        <span class="shrink-0 mt-0.5">
-                            <template x-if="toast.type === 'success'"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></template>
-                            <template x-if="toast.type === 'error'"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></template>
-                            <template x-if="toast.type === 'warning'"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg></template>
-                            <template x-if="toast.type === 'info'"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></template>
+                        <span class="shrink-0 mt-0.5 text-lg leading-none">
+                            <template x-if="toast.type === 'success'"><span>✅</span></template>
+                            <template x-if="toast.type === 'error'"><span>❌</span></template>
+                            <template x-if="toast.type === 'warning'"><span>⚠️</span></template>
+                            <template x-if="toast.type === 'info'"><span>ℹ️</span></template>
                         </span>
                         <span class="flex-1 text-sm font-medium leading-snug" x-text="toast.message"></span>
                         <button @click="remove(toast.id)"
@@ -670,12 +656,25 @@
         });
     </script>
 
-    <!-- Scroll to top (managed by app.js initScrollTop) -->
-    <button data-scroll-top
+    <!-- Scroll to top -->
+    <button id="scroll-top" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
             class="hidden fixed bottom-6 right-6 z-50 w-11 h-11 rounded-full shadow-lg items-center justify-center text-white hover:opacity-90 transition bg-blue-600"
             aria-label="Scroll to top">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
     </button>
+    <script>
+        window.addEventListener('scroll', function () {
+            var btn = document.getElementById('scroll-top');
+            if (!btn) return;
+            if (window.scrollY > 300) {
+                btn.classList.remove('hidden');
+                btn.classList.add('inline-flex');
+            } else {
+                btn.classList.add('hidden');
+                btn.classList.remove('inline-flex');
+            }
+        });
+    </script>
 
     <!-- Calendar Modal JavaScript -->
     <script>

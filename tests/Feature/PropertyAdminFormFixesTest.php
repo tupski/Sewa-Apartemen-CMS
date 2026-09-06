@@ -258,11 +258,11 @@ class PropertyAdminFormFixesTest extends TestCase
             ->assertStatus(200)
             ->getContent();
 
-        foreach (['success' => '✅', 'error' => '❌', 'warning' => '⚠️', 'info' => 'ℹ️'] as $type => $icon) {
+        foreach (['success', 'error', 'warning', 'info'] as $type) {
             $this->assertStringContainsString(
-                '<template x-if="toast.type === \''.$type.'\'"><span>'.$icon.'</span></template>',
+                '<template x-if="toast.type === \''.$type.'\'"><svg',
                 $content,
-                "The {$type} toast icon must be wrapped in a single root element."
+                "The {$type} toast icon must be an SVG element inside the template."
             );
         }
     }

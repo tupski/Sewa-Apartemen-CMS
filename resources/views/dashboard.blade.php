@@ -3,10 +3,10 @@
 @section('page-title', 'Dashboard')
 
 @section('content')
-<div class="max-w-7xl mx-auto space-y-6">
+<div class="max-w-7xl mx-auto flex flex-col gap-6">
 
     {{-- ── QUICK ACTIONS ─────────────────────────────────────────────── --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="order-5 grid grid-cols-2 lg:grid-cols-4 gap-4">
         @php
         $quickActions = [
             ['title' => 'Tambah Property', 'desc' => 'Buat properti sewa baru', 'icon' => 'fa-plus', 'url' => route('admin.properties.create'), 'color' => 'blue'],
@@ -23,15 +23,12 @@
             </div>
             <h4 class="font-semibold text-gray-800 dark:text-white mb-1">{{ $action['title'] }}</h4>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-3 flex-1">{{ $action['desc'] }}</p>
-            <span class="text-xs font-medium {{ $qaColors[$action['color']] }} px-3 py-1.5 rounded-full text-center inline-flex items-center gap-1">
-                Buka <i class="fa-solid fa-arrow-right text-[10px]"></i>
-            </span>
         </a>
         @endforeach
     </div>
 
     {{-- ── TODAY STRIP ──────────────────────────────────────────────── --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="order-1 grid grid-cols-2 lg:grid-cols-4 gap-4">
         @php
         $todayCards = [
             ['label'=>'Booking Hari Ini','value'=>$todayBookings,'color'=>'indigo','icon'=>'fa-calendar-day','url'=>route('admin.bookings.index',['date_from'=>now()->format('Y-m-d'),'date_to'=>now()->format('Y-m-d')])],
@@ -57,8 +54,9 @@
         @endforeach
     </div>
 
-    {{-- ── KPI CARDS ────────────────────────────────────────────────── --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    {{-- ── KPI + REVENUE ────────────────────────────────────────────── --}}
+    <div class="order-2 space-y-4">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         @php
         $kpi = [
             ['label'=>'Total Properties','value'=>$totalProperties,'icon'=>'fa-building','color'=>'text-blue-600','url'=>route('admin.properties.index')],
@@ -84,10 +82,10 @@
             </div>
         @if($k['url'])</a>@else</div>@endif
         @endforeach
-    </div>
+        </div>
 
-    {{-- ── REVENUE KPI ──────────────────────────────────────────────── --}}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {{-- ── REVENUE KPI ──────────────────────────────────────────── --}}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
             <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Total Revenue</p>
             <p class="text-2xl font-bold text-gray-800 dark:text-white">Rp {{ number_format($totalRevenue ?? 0, 0, ',', '.') }}</p>
@@ -103,36 +101,50 @@
             <p class="text-2xl font-bold text-indigo-600">{{ $activeBookings }}</p>
             <p class="text-xs text-gray-400 mt-1">Status: confirmed</p>
         </div>
+        </div>
     </div>
 
     {{-- ── CHARTS ROW ───────────────────────────────────────────────── --}}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="order-3 grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {{-- Booking trend line chart --}}
         <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
             <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Booking & Revenue (6 Bulan)</h3>
-            <canvas id="trendChart" height="120"></canvas>
+            <div class="relative h-[240px]">
+                <div id="trendChartSkeleton" class="absolute inset-0 flex items-end gap-2 px-4 pb-8" aria-hidden="true">
+                    <span class="h-1/3 flex-1 animate-pulse rounded-t bg-gray-200 dark:bg-gray-700"></span>
+                    <span class="h-1/2 flex-1 animate-pulse rounded-t bg-gray-200 dark:bg-gray-700"></span>
+                    <span class="h-2/5 flex-1 animate-pulse rounded-t bg-gray-200 dark:bg-gray-700"></span>
+                    <span class="h-3/5 flex-1 animate-pulse rounded-t bg-gray-200 dark:bg-gray-700"></span>
+                    <span class="h-4/5 flex-1 animate-pulse rounded-t bg-gray-200 dark:bg-gray-700"></span>
+                    <span class="h-3/5 flex-1 animate-pulse rounded-t bg-gray-200 dark:bg-gray-700"></span>
+                </div>
+                <canvas id="trendChart" height="120"></canvas>
+            </div>
         </div>
 
         {{-- Booking status doughnut --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 flex flex-col">
             <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Status Booking</h3>
-            <div class="flex-1 flex items-center justify-center">
-                <canvas id="statusChart" style="max-height:200px"></canvas>
+            <div class="relative flex-1 min-h-[200px] flex items-center justify-center">
+                <div id="statusChartSkeleton" class="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+                    <div class="h-40 w-40 animate-pulse rounded-full border-[24px] border-gray-200 dark:border-gray-700"></div>
+                </div>
+                <canvas id="statusChart" class="relative z-10" style="max-height:200px"></canvas>
             </div>
             <div class="mt-3 space-y-1" id="statusLegend"></div>
         </div>
     </div>
 
     {{-- ── NATIONAL HOLIDAY CALENDAR ───────────────────────────────── --}}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="order-3 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-1">
             @include('admin.dashboard._holiday-calendar')
         </div>
     </div>
 
     {{-- ── TOP PROPERTIES + RECENT BOOKINGS ────────────────────────── --}}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="order-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {{-- Top properties --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
@@ -169,17 +181,14 @@
             @if($recentBookings->count())
             <div class="divide-y divide-gray-50 dark:divide-gray-700">
                 @foreach($recentBookings as $bk)
-                @php
-                $sc = ['pending'=>'bg-yellow-100 text-yellow-700','confirmed'=>'bg-green-100 text-green-700','cancelled'=>'bg-red-100 text-red-700','completed'=>'bg-blue-100 text-blue-700'];
-                @endphp
                 <div class="px-6 py-3 flex items-center justify-between">
                     <div>
                         <a href="{{ route('admin.bookings.show', $bk) }}" class="text-sm font-medium text-gray-800 dark:text-white hover:text-blue-600">{{ $bk->guest_name ?? '#'.$bk->id }}</a>
                         <p class="text-xs text-gray-400">{{ $bk->property->name ?? '—' }}</p>
                     </div>
                     <div class="text-right">
-                        <span class="text-xs px-2 py-0.5 rounded-full font-medium {{ $sc[$bk->status] ?? 'bg-gray-100 text-gray-600' }}">{{ ucfirst($bk->status) }}</span>
-                        <p class="text-xs text-gray-400 mt-0.5">{{ $bk->created_at->diffForHumans() }}</p>
+                        <x-admin-status-badge :status="$bk->status" />
+                        <p class="mt-0.5 text-xs text-gray-400">{{ $bk->created_at->diffForHumans() }}</p>
                     </div>
                 </div>
                 @endforeach
@@ -191,7 +200,7 @@
     </div>
 
     {{-- ── RECENT POSTS + PROPERTIES ───────────────────────────────── --}}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="order-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
             <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                 <h3 class="font-semibold text-gray-800 dark:text-white text-sm">Post Terbaru</h3>
@@ -306,6 +315,7 @@
                 }
             }
         });
+        document.getElementById('trendChartSkeleton')?.classList.add('hidden');
     }
 
     // ── Status doughnut ─────────────────────────────────────────────
@@ -351,6 +361,7 @@
             );
         });
     }
+    document.getElementById('statusChartSkeleton')?.classList.add('hidden');
     }
 
     // Load Chart.js on demand, then render. loadScript is defined in app.js.

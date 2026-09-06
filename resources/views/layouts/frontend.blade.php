@@ -455,9 +455,9 @@
                             </li>
                         @endif
                         @if ($contactEmail)
-                            <li class="flex items-center space-x-2">
-                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                                <a href="mailto:{{ $contactEmail }}" class="hover:text-white transition">{{ $contactEmail }}</a>
+                            <li class="flex min-w-0 items-center space-x-2">
+                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 00-2 2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                <a href="mailto:{{ $contactEmail }}" class="min-w-0 break-all hover:text-white transition">{{ $contactEmail }}</a>
                             </li>
                         @endif
                     </ul>
@@ -488,25 +488,12 @@
         </div>
     </footer>
 
-    <!-- Scroll to top -->
-    <button id="scroll-top" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+    <!-- Scroll to top (managed by app.js initScrollTop) -->
+    <button data-scroll-top
             class="hidden fixed bottom-36 right-6 z-50 w-11 h-11 rounded-full shadow-lg items-center justify-center text-white hover:opacity-90 transition"
             style="background-color: {{ $primaryColor }}" aria-label="Scroll to top">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
     </button>
-    <script>
-        window.addEventListener('scroll', function () {
-            var btn = document.getElementById('scroll-top');
-            if (!btn) return;
-            if (window.scrollY > 300) {
-                btn.classList.remove('hidden');
-                btn.classList.add('inline-flex');
-            } else {
-                btn.classList.add('hidden');
-                btn.classList.remove('inline-flex');
-            }
-        });
-    </script>
 
     {{-- Floating WhatsApp Button --}}
     @if (!empty($whatsapp))

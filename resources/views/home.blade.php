@@ -3,12 +3,11 @@
 @section('content')
     <!-- Hero -->
     <section class="relative overflow-hidden"
-             style="background: linear-gradient(135deg, {{ $primaryColor }} 0%, {{ $secondaryColor }} 100%);">
-        <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle at 1px 1px, #fff 1px, transparent 0); background-size: 24px 24px;" aria-hidden="true"></div>
+             style="background: {{ $primaryColor }}; background: linear-gradient(135deg, {{ $primaryColor }} 0%, color-mix(in srgb, {{ $primaryColor }} 70%, black) 100%);">
 
         <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
             <div class="max-w-3xl">
-                <h1 class="text-4xl md:text-6xl font-extrabold text-white leading-tight mb-4">
+                <h1 class="text-3xl sm:text-4xl md:text-6xl font-extrabold text-white leading-tight mb-4 break-words">
                     {{ $heroTitle ?: ($tagline ?: __('home.tagline')) }}
                 </h1>
                 @if ($heroSubtitle)
@@ -229,10 +228,10 @@
                                                class="group property-card overflow-hidden dark:!bg-gray-800 dark:!shadow-gray-900/30 block">
                                                 <div class="relative aspect-[4/3] bg-gray-200">
                                                     @if ($property->featuredImage)
-                                                        <img src="{{ $property->featuredImage->url }}" alt="{{ $property->name }}" draggable="false"
+                                                        <img src="{{ $property->featuredImage->url }}" alt="{{ trim((string) ($property->featuredImage->alt ?? '')) ?: $property->name . ' — foto 1' }}" draggable="false"
                                                              class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
                                                     @elseif ($property->photos->isNotEmpty() && $property->photos->first()->media)
-                                                        <img src="{{ $property->photos->first()->media->url }}" alt="{{ $property->name }}" draggable="false"
+                                                        <img src="{{ $property->photos->first()->media->url }}" alt="{{ trim((string) ($property->photos->first()->media->alt ?? '')) ?: $property->name . ' — foto 1' }}" draggable="false"
                                                              class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
                                                     @else
                                                         <div class="w-full h-full flex items-center justify-center text-blue-400 bg-gradient-to-br from-blue-100 to-indigo-200">
@@ -248,15 +247,8 @@
                                                         $typeBadge = $property->unit_types[0] ?? null;
                                                         $amenityBadges = $property->amenities->take(3);
                                                     @endphp
-                                                    @if ($typeBadge || $amenityBadges->isNotEmpty())
-                                                        <div class="absolute bottom-3 left-3 flex flex-wrap gap-1.5">
-                                                            @if ($typeBadge)
-                                                                <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 text-white backdrop-blur-sm">{{ $property->typeLabel($typeBadge) }}</span>
-                                                            @endif
-                                                            @foreach ($amenityBadges as $amenity)
-                                                                <span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-white/90 text-gray-800 backdrop-blur-sm">@if($amenity->icon_class)<i class="{{ $amenity->icon_class }}" aria-hidden="true"></i>@endif{{ $amenity->name }}</span>
-                                                            @endforeach
-                                                        </div>
+                                                    @if ($typeBadge)
+                                                        <span class="absolute top-3 right-3 text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 text-white backdrop-blur-sm">{{ $property->typeLabel($typeBadge) }}</span>
                                                     @endif
                                                 </div>
                                                 <div class="p-6">
@@ -265,6 +257,13 @@
                                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                                                         {{ $property->city ?: 'Tangerang' }}{{ $property->province ? ', ' . $property->province : '' }}
                                                     </div>
+                                                    @if ($amenityBadges->isNotEmpty())
+                                                        <div class="flex flex-wrap gap-1.5 mt-3">
+                                                            @foreach ($amenityBadges as $amenity)
+                                                                <span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300">@if($amenity->icon_class)<i class="{{ $amenity->icon_class }}" aria-hidden="true"></i>@endif{{ $amenity->name }}</span>
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
                                                     @php
                                                         // Weekend-aware "starting from" price: reflects the rate that applies
                                                         // today (Asia/Jakarta) across transit/daily/weekly/monthly.
@@ -279,7 +278,7 @@
                                                                 </p>
                                                             </div>
                                                         @else
-                                                            <span class="text-sm text-gray-400 dark:text-gray-500">{{ __('home.contact_for_price') }}</span>
+                                                            <span class="text-sm text-gray-500 dark:text-gray-400">{{ __('home.contact_for_price') }}</span>
                                                         @endif
                                                         <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-white group-hover:translate-x-1 transition"
                                                               style="background-color: {{ $primaryColor }}">
@@ -315,18 +314,20 @@
                                  role="tablist"
                                  aria-label="Slider navigation">
                                 <template x-for="i in dotCount" :key="i">
-                                    <button
-                                        type="button"
-                                        role="tab"
-                                        :aria-label="'Slide ' + i"
-                                        :aria-selected="currentIndex === i - 1"
-                                        @click="goTo(i - 1)"
-                                        class="rounded-full transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                                        :class="currentIndex === i - 1 ? 'w-3 h-3' : 'w-2.5 h-2.5'"
-                                        :style="currentIndex === i - 1
-                                            ? 'background-color: ' + primaryColor
-                                            : 'background-color: #D1D5DB'">
-                                    </button>
+                                    <span class="min-w-[44px] min-h-[44px] inline-flex items-center justify-center">
+                                        <button
+                                            type="button"
+                                            role="tab"
+                                            :aria-label="'Slide ' + i"
+                                            :aria-selected="currentIndex === i - 1"
+                                            @click="goTo(i - 1)"
+                                            class="rounded-full transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                                            :class="currentIndex === i - 1 ? 'w-3 h-3' : 'w-2.5 h-2.5'"
+                                            :style="currentIndex === i - 1
+                                                ? 'background-color: ' + primaryColor
+                                                : 'background-color: #D1D5DB'">
+                                        </button>
+                                    </span>
                                 </template>
                             </div>
                         </div>
@@ -339,10 +340,10 @@
                                class="group property-card overflow-hidden dark:!bg-gray-800 dark:!shadow-gray-900/30">
                                 <div class="relative aspect-[4/3] bg-gray-200">
                                     @if ($property->featuredImage)
-                                        <img src="{{ $property->featuredImage->url }}" alt="{{ $property->name }}"
+                                        <img src="{{ $property->featuredImage->url }}" alt="{{ trim((string) ($property->featuredImage->alt ?? '')) ?: $property->name . ' — foto 1' }}"
                                              class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
                                     @elseif ($property->photos->isNotEmpty() && $property->photos->first()->media)
-                                        <img src="{{ $property->photos->first()->media->url }}" alt="{{ $property->name }}"
+                                        <img src="{{ $property->photos->first()->media->url }}" alt="{{ trim((string) ($property->photos->first()->media->alt ?? '')) ?: $property->name . ' — foto 1' }}"
                                              class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
                                     @else
                                         <div class="w-full h-full flex items-center justify-center text-blue-400 bg-gradient-to-br from-blue-100 to-indigo-200">
@@ -358,15 +359,8 @@
                                         $typeBadge = $property->unit_types[0] ?? null;
                                         $amenityBadges = $property->amenities->take(3);
                                     @endphp
-                                    @if ($typeBadge || $amenityBadges->isNotEmpty())
-                                        <div class="absolute bottom-3 left-3 flex flex-wrap gap-1.5">
-                                            @if ($typeBadge)
-                                                <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 text-white backdrop-blur-sm">{{ $property->typeLabel($typeBadge) }}</span>
-                                            @endif
-                                            @foreach ($amenityBadges as $amenity)
-                                                <span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-white/90 text-gray-800 backdrop-blur-sm">@if($amenity->icon_class)<i class="{{ $amenity->icon_class }}" aria-hidden="true"></i>@endif{{ $amenity->name }}</span>
-                                            @endforeach
-                                        </div>
+                                    @if ($typeBadge)
+                                        <span class="absolute top-3 right-3 text-xs font-bold px-2.5 py-1 rounded-full bg-black/60 text-white backdrop-blur-sm">{{ $property->typeLabel($typeBadge) }}</span>
                                     @endif
                                 </div>
                                 <div class="p-6">
@@ -375,6 +369,13 @@
                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                                         {{ $property->city ?: 'Tangerang' }}{{ $property->province ? ', ' . $property->province : '' }}
                                     </div>
+                                    @if ($amenityBadges->isNotEmpty())
+                                        <div class="flex flex-wrap gap-1.5 mt-3">
+                                            @foreach ($amenityBadges as $amenity)
+                                                <span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300">@if($amenity->icon_class)<i class="{{ $amenity->icon_class }}" aria-hidden="true"></i>@endif{{ $amenity->name }}</span>
+                                            @endforeach
+                                        </div>
+                                    @endif
                                     @php
                                         // Weekend-aware "starting from" price: reflects the rate that applies
                                         // today (Asia/Jakarta) across transit/daily/weekly/monthly.
@@ -389,7 +390,7 @@
                                                 </p>
                                             </div>
                                         @else
-                                            <span class="text-sm text-gray-400 dark:text-gray-500">{{ __('home.contact_for_price') }}</span>
+                                            <span class="text-sm text-gray-500 dark:text-gray-400">{{ __('home.contact_for_price') }}</span>
                                         @endif
                                         <span class="inline-flex items-center justify-center w-9 h-9 rounded-full text-white group-hover:translate-x-1 transition"
                                               style="background-color: {{ $primaryColor }}">
@@ -467,7 +468,7 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                     @foreach ($posts as $post)
-                        <a href="{{ route('blog.show', $post->slug) }}" class="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition">
+                        <a href="{{ route('blog.show', $post->slug) }}" class="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition">
                             <div class="relative aspect-[16/9] bg-gray-200">
                                 @if ($post->featured_image)
                                     <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($post->featured_image) }}"
@@ -498,7 +499,7 @@
     @endif
 
     <!-- CTA / Contact -->
-    <section class="py-16 md:py-20" style="background: linear-gradient(135deg, {{ $primaryColor }} 0%, {{ $secondaryColor }} 100%);">
+    <section class="py-16 md:py-20" style="background: {{ $primaryColor }}; background: linear-gradient(135deg, {{ $primaryColor }} 0%, color-mix(in srgb, {{ $primaryColor }} 70%, black) 100%);">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">{{ $ctaTitle ?: __('home.cta_title') }}</h2>
             <p class="text-white/90 mb-8">{{ $ctaText ?: __('home.cta_sub') }}</p>

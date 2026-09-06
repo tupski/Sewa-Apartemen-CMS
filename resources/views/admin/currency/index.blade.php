@@ -51,7 +51,8 @@
                 <span class="text-xs text-gray-400">Diperbarui max 4x/hari via cron</span>
             </div>
             @if($rates->count())
-            <table class="w-full text-sm">
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 dark:bg-gray-700 text-xs uppercase text-gray-500 dark:text-gray-400">
                     <tr>
                         <th class="px-5 py-3 text-left">Mata Uang</th>
@@ -86,7 +87,8 @@
                     </tr>
                     @endforeach
                 </tbody>
-            </table>
+                </table>
+            </div>
             @else
             <div class="px-5 py-12 text-center">
                 <p class="text-sm text-gray-400 mb-3">Belum ada data kurs.</p>

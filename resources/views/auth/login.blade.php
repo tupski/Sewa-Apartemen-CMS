@@ -50,6 +50,7 @@
                     <div>
                         <x-input-label for="email" :value="__('Email')" />
                         <x-text-input id="email"
+                                      errorId="email-error"
                                       class="block mt-1 w-full"
                                       type="email"
                                       name="email"
@@ -57,7 +58,7 @@
                                       required
                                       autofocus
                                       autocomplete="username" />
-                        <x-input-error :messages="$errors->get('email')" class="mt-2" />
+                        <x-input-error id="email-error" :messages="$errors->get('email')" class="mt-2" />
                     </div>
 
                     {{-- Password --}}

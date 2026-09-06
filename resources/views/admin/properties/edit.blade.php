@@ -37,13 +37,9 @@
 
     {{-- ── Page Header ── --}}
     <div class="mb-6">
-        <div class="flex items-center gap-2 text-sm text-gray-600 mb-2">
-            <a href="{{ route('admin.properties.index') }}" class="hover:text-gray-900">Properties</a>
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-            </svg>
-            <span class="text-gray-900">Edit Property</span>
-        </div>
+        <x-admin-breadcrumb
+            :items="[['label' => 'Properties', 'route' => 'admin.properties.index']]"
+            :current="'Edit: ' . $property->name" />
         <div class="flex items-center justify-between gap-3">
             <h2 class="text-2xl font-bold text-gray-800">Edit Property</h2>
             @if($property->status === 'published')
@@ -59,6 +55,10 @@
             @endif
         </div>
     </div>
+
+    @if($property?->id)
+        <form id="promo-delete-form" class="hidden"></form>
+    @endif
 
     {{-- ── Main Form ── --}}
     {{-- data-turbo="false": force a native browser multipart submit. Turbo Drive

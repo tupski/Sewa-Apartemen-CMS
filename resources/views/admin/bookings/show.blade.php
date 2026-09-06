@@ -6,13 +6,9 @@
 <div class="w-full">
     <!-- Header -->
     <div class="mb-6">
-        <div class="flex items-center gap-2 text-sm text-gray-600 mb-2">
-            <a href="{{ route('admin.bookings.index') }}" class="hover:text-gray-900">Bookings</a>
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-            </svg>
-            <span class="text-gray-900">{{ $booking->code }}</span>
-        </div>
+        <x-admin-breadcrumb
+            :items="[['label' => 'Bookings', 'route' => 'admin.bookings.index']]"
+            :current="$booking->code" />
         <h2 class="text-2xl font-bold text-gray-800">Booking Details</h2>
     </div>
 

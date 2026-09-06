@@ -37,9 +37,6 @@
     {{-- ── Page Header ─────────────────────────────────────────────── --}}
     <section class="py-10 md:py-14 text-white"
              style="background: linear-gradient(135deg, {{ $primaryColor }} 0%, {{ $secondaryColor }} 100%);">
-        <div class="absolute inset-0 opacity-10 pointer-events-none"
-             style="background-image: radial-gradient(circle at 1px 1px, #fff 1px, transparent 0); background-size: 24px 24px;"
-             aria-hidden="true"></div>
         <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h1 class="text-3xl md:text-4xl font-bold mb-1">{{ __('prop.title') }}</h1>
             <p class="text-white/80 text-sm md:text-base">{{ __('prop.subtitle') }}</p>
@@ -58,23 +55,7 @@
             <div id="mobile-filter-bar" class="flex lg:hidden items-center gap-3 mb-5">
 
                 {{-- Sort dropdown mobile --}}
-                <form action="{{ route('properties.public.index') }}" method="GET" class="flex-1">
-                    @foreach(request()->except('sort') as $k => $v)
-                        @if(is_array($v))
-                            @foreach($v as $vi)<input type="hidden" name="{{ $k }}[]" value="{{ $vi }}">@endforeach
-                        @else
-                            <input type="hidden" name="{{ $k }}" value="{{ $v }}">
-                        @endif
-                    @endforeach
-                    <label for="sort-mobile" class="sr-only">{{ __('prop.sort_label') }}</label>
-                    <select id="sort-mobile" name="sort" onchange="this.form.submit()"
-                            class="w-full h-[42px] px-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-200 shadow-sm focus:outline-none focus:ring-2 appearance-none pr-8"
-                            style="background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E\"); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1rem;">
-                        @foreach($sortOptions as $val => $label)
-                            <option value="{{ $val }}" @selected($sort === $val)>{{ __('prop.sort_label') }}: {{ $label }}</option>
-                        @endforeach
-                    </select>
-                </form>
+                @include('properties._sort-dropdown', ['id' => 'sort-mobile', 'selectClass' => 'w-full h-[42px] px-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-200 shadow-sm focus:outline-none focus:ring-2 appearance-none pr-8', 'optionPrefix' => true])
             </div>
 
             {{-- Desktop layout: sidebar kiri + listing kanan --}}
@@ -317,25 +298,7 @@
                         </div>
 
                         {{-- Sort dropdown desktop --}}
-                        <form action="{{ route('properties.public.index') }}" method="GET" class="hidden sm:block shrink-0">
-                            @foreach(request()->except('sort') as $k => $v)
-                                @if(is_array($v))
-                                    @foreach($v as $vi)<input type="hidden" name="{{ $k }}[]" value="{{ $vi }}">@endforeach
-                                @else
-                                    <input type="hidden" name="{{ $k }}" value="{{ $v }}">
-                                @endif
-                            @endforeach
-                            <div class="flex items-center gap-2">
-                                <label for="sort-desktop" class="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ __('prop.sort_label') }}:</label>
-                                <select id="sort-desktop" name="sort" onchange="this.form.submit()"
-                                        class="h-9 px-3 pr-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-200 shadow-sm focus:outline-none focus:ring-2 appearance-none"
-                                        style="background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E\"); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1rem;">
-                                    @foreach($sortOptions as $val => $label)
-                                        <option value="{{ $val }}" @selected($sort === $val)>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </form>
+                        @include('properties._sort-dropdown', ['id' => 'sort-desktop', 'formClass' => 'hidden sm:block shrink-0', 'selectClass' => 'h-9 px-3 pr-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-200 shadow-sm focus:outline-none focus:ring-2 appearance-none', 'showLabel' => true])
                     </div>
 
                     {{-- ── Cards Grid ──────────────────────────────────────────── --}}
@@ -374,7 +337,8 @@
         {{-- ══ MOBILE FILTER TRIGGER (Fixed bottom-center pill) ════════════ --}}
         <button @click="filterOpen = true"
                 type="button"
-                class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-6 py-3 rounded-full bg-red-600 border border-red-600 text-sm font-semibold text-white shadow-lg hover:bg-red-700 hover:border-red-700 active:bg-red-800 transition lg:hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900"
+                class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold text-white shadow-lg transition lg:hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900"
+                style="background-color: {{ $primaryColor }}; border-color: {{ $primaryColor }};"
                 aria-label="{{ __('prop.filter') }}">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" d="M3 6h18M7 12h10M11 18h2"/>

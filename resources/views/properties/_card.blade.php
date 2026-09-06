@@ -31,12 +31,12 @@
     <div class="relative aspect-[16/10] bg-gray-200 dark:bg-gray-700 overflow-hidden shrink-0">
         @if ($property->featuredImage)
             <img src="{{ $property->featuredImage?->url }}"
-                 alt="{{ $property->name }}"
+                 alt="{{ trim((string) ($property->featuredImage->alt ?? '')) ?: $property->name . ' — foto 1' }}"
                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                  loading="lazy">
         @elseif ($property->photos->isNotEmpty() && $property->photos->first()->media)
             <img src="{{ $property->photos->first()->media->url }}"
-                 alt="{{ $property->name }}"
+                 alt="{{ trim((string) ($property->photos->first()->media->alt ?? '')) ?: $property->name . ' — foto 1' }}"
                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                  loading="lazy">
         @else
@@ -47,19 +47,19 @@
             </div>
         @endif
 
-        {{-- Badges overlay --}}
-        <div class="absolute top-3 left-3 flex flex-wrap gap-1.5">
-            @if ($property->is_featured)
-                <span class="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg text-xs font-bold text-yellow-900 bg-yellow-400/95 shadow-sm">
-                    ★ {{ __('home.featured_badge') !== '★ Unggulan' ? 'Unggulan' : 'Unggulan' }}
-                </span>
-            @endif
-            @if($unitTypeLabel)
-                <span class="px-2 py-1 rounded-lg text-xs font-medium text-white/90 bg-black/40 backdrop-blur-sm">
-                    {{ $unitTypeLabel }}
-                </span>
-            @endif
-        </div>
+        {{-- Featured badge overlay --}}
+        @if ($property->is_featured)
+            <span class="absolute top-3 left-3 inline-flex items-center gap-0.5 px-2 py-1 rounded-lg text-xs font-bold text-yellow-900 bg-yellow-400/95 shadow-sm">
+                ★ {{ __('home.featured_badge') }}
+            </span>
+        @endif
+
+        {{-- Type badge overlay --}}
+        @if($unitTypeLabel)
+            <span class="absolute top-3 right-3 px-2 py-1 rounded-lg text-xs font-medium text-white/90 bg-black/40 backdrop-blur-sm">
+                {{ $unitTypeLabel }}
+            </span>
+        @endif
 
         {{-- Share button — opens the global share modal for THIS property.
              stop/prevent so clicking it never triggers the card's link navigation. --}}
@@ -71,13 +71,6 @@
             <i class="fa-solid fa-share-nodes text-sm text-gray-500 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors" aria-hidden="true"></i>
         </button>
 
-        {{-- Distance badge (only for nearby section; hidden gracefully when coords missing) --}}
-        @if($distanceValue !== null)
-            <span class="absolute bottom-3 left-3 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-white bg-black/55 backdrop-blur-sm shadow-sm">
-                <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
-                {{ number_format($distanceValue, 1, '.', '') }} km
-            </span>
-        @endif
     </div>
 
     {{-- Card body --}}
@@ -99,6 +92,14 @@
             </span>
         </p>
 
+        {{-- Distance badge (only for nearby section; hidden gracefully when coords missing) --}}
+        @if($distanceValue !== null)
+            <span class="inline-flex items-center gap-1 self-start px-2 py-1 rounded-lg text-xs font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/60">
+                <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                {{ number_format($distanceValue, 1, '.', '') }} km
+            </span>
+        @endif
+
         {{-- Amenity chips --}}
         @if($amenityBadges->isNotEmpty())
             <div class="flex flex-wrap gap-1.5">
@@ -118,12 +119,12 @@
         <div class="flex items-end justify-between gap-2 pt-2 border-t border-gray-100 dark:border-gray-700/50 mt-auto">
             <div>
                 @if($priceLabel)
-                    <p class="text-xs text-gray-400 dark:text-gray-500">{{ __('prop.from') }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('prop.from') }}</p>
                     <p class="text-base font-bold text-gray-900 dark:text-gray-100 leading-tight">
                         {{ $priceLabel }}
                     </p>
                 @else
-                    <p class="text-sm text-gray-400 dark:text-gray-500 italic">{{ __('home.contact_for_price') }}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 italic">{{ __('home.contact_for_price') }}</p>
                 @endif
             </div>
             <span class="inline-flex items-center gap-1 shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition hover:opacity-90 focus:outline-none"

@@ -4,67 +4,45 @@
 
 @section('content')
 <div class="w-full" x-data="bulkSelect()">
-    <!-- Header with Actions -->
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h2 class="text-2xl font-bold text-gray-800">Apartemen</h2>
-            <p class="text-sm text-gray-600 mt-1">Halaman ini untuk mengelola lokasi apartemen</p>
-        </div>
-        <a href="{{ route('admin.properties.create') }}"
-           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-            </svg>
-            Lokasi Apartemen Baru
-        </a>
-    </div>
+    <x-admin-page-header
+        title="Apartemen"
+        description="Halaman ini untuk mengelola lokasi apartemen"
+        :create-route="route('admin.properties.create')"
+        create-label="Lokasi Apartemen Baru" />
 
-    <!-- Filters -->
-    <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-        <form method="GET" action="{{ route('admin.properties.index') }}" class="flex flex-col md:flex-row gap-4">
-            <!-- Search -->
-            <div class="flex-1">
+    <x-admin-filter-bar
+        :action="route('admin.properties.index')"
+        :reset-route="request()->hasAny(['search', 'status', 'city']) ? route('admin.properties.index') : null">
+            <div class="min-w-[12rem] flex-1">
                 <input type="text"
                        name="search"
                        placeholder="Search by name..."
                        value="{{ request('search') }}"
-                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                       class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500">
             </div>
 
-            <!-- Status Filter -->
             <div class="w-full md:w-48">
                 <select name="status"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500">
                     <option value="">All Status</option>
                     <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draf</option>
                     <option value="published" {{ request('status') == 'published' ? 'selected' : '' }}>Dipublish</option>
                 </select>
             </div>
 
-            <!-- City Filter -->
             <div class="w-full md:w-48">
                 <input type="text"
                        name="city"
                        placeholder="Filter by city..."
                        value="{{ request('city') }}"
-                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                       class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500">
             </div>
 
-            <!-- Filter Button -->
             <button type="submit"
-                    class="px-6 py-2 bg-gray-600 text-white font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition">
+                    class="rounded-lg bg-blue-600 px-6 py-2 font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                 Filter
             </button>
-
-            <!-- Reset Button -->
-            @if(request()->hasAny(['search', 'status', 'city']))
-                <a href="{{ route('admin.properties.index') }}"
-                   class="px-6 py-2 bg-gray-200 text-gray-700 font-medium rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition text-center">
-                    Reset
-                </a>
-            @endif
-        </form>
-    </div>
+        </x-admin-filter-bar>
 
     <!-- Bulk Action Toolbar (appears when items are selected) -->
     <div x-show="selectedIds.length > 0"
@@ -162,13 +140,17 @@
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="text-sm text-gray-500">{{ count($property->unit_types ?? []) }} room types</span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <select onchange="updateStatus({{ $property->id }}, this.value)"
-                                            class="px-3 py-1 text-xs font-semibold rounded-full border-0 focus:ring-2 focus:ring-blue-500 cursor-pointer
-                                                {{ $property->status === 'published' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
-                                        <option value="published" {{ $property->status === 'published' ? 'selected' : '' }}>Published</option>
-                                        <option value="draft" {{ $property->status === 'draft' ? 'selected' : '' }}>Draft</option>
-                                    </select>
+                                <td class="whitespace-nowrap px-6 py-4">
+                                    <div class="flex items-center gap-2">
+                                        <x-admin-status-badge :status="$property->status" />
+                                        <label class="sr-only" for="property-status-{{ $property->id }}">Status for {{ $property->name }}</label>
+                                        <select id="property-status-{{ $property->id }}"
+                                                onchange="updateStatus({{ $property->id }}, this.value)"
+                                                class="rounded-full border-0 bg-transparent px-1 py-1 text-xs font-semibold focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                                            <option value="published" {{ $property->status === 'published' ? 'selected' : '' }}>Published</option>
+                                            <option value="draft" {{ $property->status === 'draft' ? 'selected' : '' }}>Draft</option>
+                                        </select>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
                                     <button type="button"
@@ -187,15 +169,17 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
                                         </a>
-                                        <form action="{{ route('admin.properties.destroy', $property) }}"
+                                        <form id="property-delete-{{ $property->id }}"
+                                              action="{{ route('admin.properties.destroy', $property) }}"
                                               method="POST"
-                                              onsubmit="return confirm('Are you sure you want to delete this property?')"
                                               class="inline">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit"
-                                                    class="text-red-600 hover:text-red-900 px-2 py-1 rounded hover:bg-red-50 transition"
-                                                    title="Delete">
+                                            <button type="button"
+                                                    class="rounded px-2 py-1 text-red-600 transition hover:bg-red-50 hover:text-red-900"
+                                                    title="Delete"
+                                                    aria-label="Delete {{ $property->name }}"
+                                                    @click="$dispatch('open-confirm', { id: 'property-delete-modal-{{ $property->id }}', trigger: $el })">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                                 </svg>
@@ -216,25 +200,30 @@
                 </div>
             @endif
         @else
-            <div class="text-center py-12">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">Properti tidak ditemukan!</h3>
-                <p class="mt-1 text-sm text-gray-500">Silakan coba buat properti apartemen baru.</p>
-                <div class="mt-6">
-                    <a href="{{ route('admin.properties.create') }}"
-                       class="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        Buat Apartemen Baru
-                    </a>
-                </div>
-            </div>
+            <x-admin-empty-state
+                title="Properti tidak ditemukan!"
+                description="Silakan coba buat properti apartemen baru."
+                :action-route="route('admin.properties.create')"
+                action-label="Buat Apartemen Baru"
+                icon="fa-solid fa-building" />
         @endif
     </div>
+    <form id="property-bulk-delete-form" class="hidden" @submit.prevent="applyBulkAction(true)"></form>
 </div>
+
+@foreach($properties as $property)
+    <x-confirm-modal
+        id="property-delete-modal-{{ $property->id }}"
+        title="Delete property?"
+        :message="'Delete ' . $property->name . '? This action cannot be undone.'"
+        confirm-form-id="property-delete-{{ $property->id }}" />
+    @endforeach
+
+    <x-confirm-modal
+        id="property-bulk-delete-modal"
+        title="Delete selected properties?"
+        message="This action cannot be undone."
+        confirm-form-id="property-bulk-delete-form" />
 
 @push('scripts')
 <script>
@@ -277,11 +266,15 @@ function bulkSelect() {
             this.bulkAction = '';
         },
 
-        applyBulkAction() {
+        applyBulkAction(confirmed = false) {
             if (!this.bulkAction || this.selectedIds.length === 0) return;
 
-            if (this.bulkAction === 'delete') {
-                if (!confirm(`Delete ${this.selectedIds.length} selected properties? This cannot be undone.`)) return;
+            if (this.bulkAction === 'delete' && !confirmed) {
+                this.$dispatch('open-confirm', {
+                    id: 'property-bulk-delete-modal',
+                    trigger: document.activeElement
+                });
+                return;
             }
 
             this.applying = true;
@@ -320,7 +313,7 @@ function bulkSelect() {
 // ─── Individual toggle featured ───────────────────────────────────────────
 function toggleFeatured(propertyId, button) {
     const icon = button.querySelector('i');
-    fetch(`/admin/properties/${propertyId}/featured`, {
+    fetch('{{ route('admin.properties.featured', ['property' => '__PROPERTY__']) }}'.replace('__PROPERTY__', propertyId), {
         method: 'PATCH',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -346,7 +339,7 @@ function toggleFeatured(propertyId, button) {
 // ─── Individual status update ─────────────────────────────────────────────
 function updateStatus(propertyId, status) {
     const select = event.target;
-    fetch(`/admin/properties/${propertyId}/status`, {
+    fetch('{{ route('admin.properties.status', ['property' => '__PROPERTY__']) }}'.replace('__PROPERTY__', propertyId), {
         method: 'PATCH',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,

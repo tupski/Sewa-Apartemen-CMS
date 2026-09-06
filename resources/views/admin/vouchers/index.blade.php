@@ -24,12 +24,12 @@
 
     <!-- Search filter -->
     <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-        <form method="GET" class="flex gap-3">
+        <form method="GET" class="flex flex-wrap items-center gap-3">
             <input type="text"
                    name="search"
                    value="{{ request('search') }}"
                    placeholder="Cari kode atau nama voucher..."
-                   class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">
+                   class="min-w-[12rem] flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">
             <button type="submit"
                     class="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200 transition">
                 Cari

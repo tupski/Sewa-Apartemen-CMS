@@ -478,6 +478,13 @@
         </div>
     </div>
 </div>
+
+@if($property?->id)
+    <x-confirm-modal
+        id="promo-delete-modal"
+        title="Hapus promo?"
+        message="Promo ini akan dihapus. Tindakan ini tidak dapat dibatalkan."
+        confirm-form-id="promo-delete-form" />
 @endif
 
 @push('scripts')
@@ -526,8 +533,34 @@
         var tableWrap    = document.getElementById('promo-table-wrap');
         var emptyMsg     = document.getElementById('promo-empty');
         var tbody        = document.getElementById('promo-tbody');
+        var promoDeleteForm = document.getElementById('promo-delete-form');
 
         if (!addBtn) return; // Not on edit page
+
+        if (promoDeleteForm) {
+            promoDeleteForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var id = this.dataset.promoId;
+                if (!id) return;
+
+                fetch('{{ route('admin.properties.promos.destroy', ['property' => '__PROPERTY__', 'promo' => '__PROMO__']) }}'
+                    .replace('__PROPERTY__', propertyId)
+                    .replace('__PROMO__', id), {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        document.getElementById('promo-row-' + id)?.remove();
+                        if (!tbody.querySelector('tr')) {
+                            tableWrap.classList.add('hidden');
+                            emptyMsg.classList.remove('hidden');
+                        }
+                    }
+                });
+            });
+        }
 
         addBtn.addEventListener('click', function () {
             resetForm();
@@ -556,8 +589,11 @@
             if (!payload) return;
 
             var url    = id
-                ? '/admin/properties/' + propertyId + '/promos/' + id
-                : '/admin/properties/' + propertyId + '/promos';
+                ? '{{ route('admin.properties.promos.update', ['property' => '__PROPERTY__', 'promo' => '__PROMO__']) }}'
+                    .replace('__PROPERTY__', propertyId)
+                    .replace('__PROMO__', id)
+                : '{{ route('admin.properties.promos.store', ['property' => '__PROPERTY__']) }}'
+                    .replace('__PROPERTY__', propertyId);
             var method = id ? 'PUT' : 'POST';
 
             fetch(url, {
@@ -591,24 +627,10 @@
             }
 
             if (e.target.classList.contains('promo-delete-btn')) {
-                var id   = e.target.dataset.id;
-                var name = e.target.dataset.name;
-                if (!confirm('Hapus promo "' + name + '"?')) return;
-
-                fetch('/admin/properties/' + propertyId + '/promos/' + id, {
-                    method: 'DELETE',
-                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-                })
-                .then(function (res) { return res.json(); })
-                .then(function (data) {
-                    if (data.success) {
-                        document.getElementById('promo-row-' + id)?.remove();
-                        if (!tbody.querySelector('tr')) {
-                            tableWrap.classList.add('hidden');
-                            emptyMsg.classList.remove('hidden');
-                        }
-                    }
-                });
+                promoDeleteForm.dataset.promoId = e.target.dataset.id;
+                window.dispatchEvent(new CustomEvent('open-confirm', {
+                    detail: { id: 'promo-delete-modal', trigger: e.target },
+                }));
             }
         });
 
@@ -702,3 +724,4 @@
     })();
 </script>
 @endpush
+@endif

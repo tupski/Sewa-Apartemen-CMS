@@ -8,17 +8,22 @@
     $displayMode = \App\Services\SettingsService::get('booking_display_mode', 'both');
     $whatsappNumber = \App\Services\SettingsService::get('whatsapp_default', '');
     $photos = $property->photos;
+    $featuredImageAlt = trim((string) ($property->featuredImage?->alt ?? '')) ?: $property->name . ' — foto 1';
     // Flat list of photos with category info (used by the lightbox).
-    $photoGallery = $photos->map(function ($p) {
+    $photoGallery = $photos->filter(fn ($p) => $p->media?->url)->values()->map(function ($p, $index) use ($property) {
+        $mediaAlt = trim((string) ($p->media?->alt ?? ''));
+        $photoAlt = $mediaAlt !== '' ? $mediaAlt : $property->name . ' — foto ' . ($index + 1);
+
         return [
-            'url'      => $p->media?->url,
+            'url'      => $p->media->url,
             'category' => $p->category ?: 'Other',
-            'name'     => $p->media?->alt_text ?: $p->media?->name ?: ($p->media?->original_name ?? ''),
+            'name'     => $photoAlt,
+            'alt'      => $photoAlt,
         ];
-    })->filter(function ($p) { return !empty($p['url']); })->values();
+    })->values();
     $allPhotoUrls = $photoGallery->pluck('url')->values();
-    $firstPhoto = $allPhotoUrls[0] ?? null;
-    $restPhotos = $allPhotoUrls->slice(1)->take(6)->values();
+    $firstPhoto = $photoGallery[0] ?? null;
+    $restPhotos = $photoGallery->slice(1)->take(6)->values();
     $hasBooking = !empty($property->unit_types) && ($property->hasBookingType('transit') || $property->hasBookingType('daily') || $property->hasBookingType('weekly') || $property->hasBookingType('monthly'));
     // When pricing_only mode, suppress the booking form even if prices exist
     $showBookingForm = $hasBooking && $displayMode !== 'pricing_only';
@@ -111,14 +116,14 @@
 
 @section('content')
     <!-- ============ GALLERY HEADER (Traveloka style) ============ -->
-    @if ($photos->isNotEmpty())
+    @if ($photoGallery->isNotEmpty())
         <section class="bg-gray-100 dark:bg-gray-900">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
                 <!-- Desktop: big left photo (full height) + all remaining photos right (3 per row) -->
                 <div class="relative md:grid md:grid-cols-4 gap-2 rounded-2xl overflow-hidden">
                     {{-- Main photo: aspect-[4/3] on mobile, spans full grid height on desktop --}}
                     <button type="button" data-photo="0" class="relative aspect-[4/3] md:aspect-auto md:h-auto md:[grid-row:1/-1] group overflow-hidden text-left">
-                        <img src="{{ $firstPhoto }}" alt="{{ $property->name }}" class="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300">
+                        <img src="{{ $firstPhoto['url'] }}" alt="{{ $firstPhoto['alt'] }}" class="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300">
                     </button>
                     <!-- Overlay: view all photos -->
                     <button type="button" id="gal-open" class="absolute bottom-4 right-4 z-10 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/95 text-sm font-semibold text-gray-900 shadow hover:bg-white transition">
@@ -126,17 +131,17 @@
                         {{ __('prop.view_all_photos') }} ({{ $allPhotoUrls->count() }})
                     </button>
                     {{-- Thumbnail photos: uniform aspect-[4/3] so portrait/landscape all match --}}
-                    @foreach ($restPhotos as $i => $url)
+                    @foreach ($restPhotos as $i => $photo)
                         <button type="button" data-photo="{{ $i + 1 }}" class="relative hidden md:block aspect-[4/3] group overflow-hidden">
-                            <img src="{{ $url }}" alt="{{ $property->name }}" loading="lazy" class="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300">
+                            <img src="{{ $photo['url'] }}" alt="{{ $photo['alt'] }}" loading="lazy" class="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300">
                         </button>
                     @endforeach
                 </div>
                 <!-- Mobile: first 3 photos row — aspect-square thumbnails for uniform grid -->
                 <div class="grid grid-cols-3 gap-2 md:hidden mt-2">
-                    @foreach ($restPhotos->take(3) as $i => $url)
+                    @foreach ($restPhotos->take(3) as $i => $photo)
                         <button type="button" data-photo="{{ $i + 1 }}" class="relative group overflow-hidden rounded-xl aspect-square">
-                            <img src="{{ $url }}" alt="{{ $property->name }}" loading="lazy" class="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300">
+                            <img src="{{ $photo['url'] }}" alt="{{ $photo['alt'] }}" loading="lazy" class="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300">
                         </button>
                     @endforeach
                 </div>
@@ -145,7 +150,7 @@
     @elseif ($property->featuredImage)
         <section class="bg-gray-100 dark:bg-gray-900">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-                <img src="{{ $property->featuredImage?->url }}" alt="{{ $property->name }}" class="w-full h-[50vh] object-cover rounded-2xl">
+                <img src="{{ $property->featuredImage?->url }}" alt="{{ $featuredImageAlt }}" class="w-full h-[50vh] object-cover rounded-2xl">
             </div>
         </section>
     @endif
@@ -398,7 +403,7 @@
                                                     <li class="flex items-start justify-between text-sm gap-3">
                                                         <span class="text-gray-700 dark:text-gray-300">{{ $pp->place->name ?? '' }}</span>
                                                         @if (!empty($pp->distance_formatted))
-                                                            <span class="text-gray-400 dark:text-gray-500 text-xs shrink-0 tabular-nums">{{ $pp->distance_formatted }}</span>
+                                                            <span class="text-gray-500 dark:text-gray-400 text-xs shrink-0 tabular-nums">{{ $pp->distance_formatted }}</span>
                                                         @endif
                                                     </li>
                                                 @endforeach
@@ -423,9 +428,9 @@
                                                     <li class="flex items-start justify-between text-sm gap-3">
                                                         <span class="text-gray-700 dark:text-gray-300">{{ $place['name'] ?? '' }}</span>
                                                         @if (!empty($place['distance_formatted']))
-                                                            <span class="text-gray-400 dark:text-gray-500 text-xs shrink-0 tabular-nums">{{ $place['distance_formatted'] }}</span>
+                                                            <span class="text-gray-500 dark:text-gray-400 text-xs shrink-0 tabular-nums">{{ $place['distance_formatted'] }}</span>
                                                         @elseif (!empty($place['distance_km']))
-                                                            <span class="text-gray-400 dark:text-gray-500 text-xs shrink-0 tabular-nums">{{ number_format((float) $place['distance_km'], 1, ',', '.') }} km</span>
+                                                            <span class="text-gray-500 dark:text-gray-400 text-xs shrink-0 tabular-nums">{{ number_format((float) $place['distance_km'], 1, ',', '.') }} km</span>
                                                         @endif
                                                     </li>
                                                 @endforeach
@@ -851,7 +856,7 @@
                     <div>
                         <label for="bk-phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             No. HP / WhatsApp <span class="text-red-500">*</span>
-                            <span class="text-xs text-gray-400 font-normal">(digunakan untuk konfirmasi booking)</span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400 font-normal">(digunakan untuk konfirmasi booking)</span>
                         </label>
                         <div class="flex">
                             {{-- Country code selector --}}
@@ -1683,7 +1688,7 @@
                 item.className = 'w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition text-left';
                 item.innerHTML = '<span class="text-base">' + c.flag + '</span>' +
                                  '<span class="flex-1">' + c.name + '</span>' +
-                                 '<span class="text-gray-400 font-mono text-xs">' + c.code + '</span>';
+                                 '<span class="text-gray-600 dark:text-gray-400 font-mono text-xs">' + c.code + '</span>';
                 item.addEventListener('click', function () {
                     flagEl.textContent = c.flag;
                     codeEl.textContent = c.code;
