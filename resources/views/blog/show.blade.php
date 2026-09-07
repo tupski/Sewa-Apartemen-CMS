@@ -73,6 +73,26 @@
                         </div>
                     </article>
 
+                    {{-- Property CTA — natural next step after the article.
+                         BlogController passes $ctaProperties (may be empty). --}}
+                    @if(isset($ctaProperties) && $ctaProperties->count() > 0)
+                        <section class="mt-8 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-700 p-6" aria-labelledby="blog-property-cta">
+                            <h2 id="blog-property-cta" class="text-xl font-bold text-gray-800 dark:text-white mb-1">
+                                @if(isset($ctaAreaLabel) && $ctaAreaLabel !== '')
+                                    {{ __('blog.cta_title_area', ['area' => $ctaAreaLabel]) }}
+                                @else
+                                    {{ __('blog.cta_title') }}
+                                @endif
+                            </h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ __('blog.cta_subtitle') }}</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                @foreach($ctaProperties as $property)
+                                    @include('blog._property-card', ['property' => $property])
+                                @endforeach
+                            </div>
+                        </section>
+                    @endif
+
                     <!-- Related Posts -->
                     @if($relatedPosts->count() > 0)
                         <div class="mt-8">

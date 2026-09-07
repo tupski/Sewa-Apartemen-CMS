@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\Tag;
+use App\Services\BlogPropertyService;
 use App\Services\SchemaService;
 use App\Services\SeoService;
 use Illuminate\Database\Eloquent\Collection;
@@ -98,7 +99,34 @@ class BlogController extends Controller
             ]),
         ];
 
-        return view('blog.show', array_merge(compact('post', 'relatedPosts', 'seo'), $sidebarData));
+        // Property CTA: matched via the post's location tags (service-owned
+        // logic), falling back to featured properties inside the service.
+        $blogPropertyService = app(BlogPropertyService::class);
+        $ctaProperties = $blogPropertyService->forPost($post, (int) config('blog.article_cta_limit', 3));
+        $ctaAreaLabel = $this->ctaAreaLabel($post);
+
+        return view('blog.show', array_merge(
+            compact('post', 'relatedPosts', 'seo', 'ctaProperties', 'ctaAreaLabel'),
+            $sidebarData
+        ));
+    }
+
+    /**
+     * Human area label for the article CTA heading ("Apartemen Tersedia di X"),
+     * derived from the post's location tags via the config map. Generic label
+     * when no location tag is present. Pure lookup — no DB access.
+     */
+    protected function ctaAreaLabel(Post $post): string
+    {
+        $map = (array) config('blog.location_tag_to_city', []);
+
+        foreach ($post->tags as $tag) {
+            if (array_key_exists($tag->slug, $map) && ! empty($map[$tag->slug])) {
+                return (string) $tag->name;
+            }
+        }
+
+        return '';
     }
 
     public function category(string $slug)
@@ -165,7 +193,12 @@ class BlogController extends Controller
      * `whereHas()` memfilter di SQL, jadi kategori kosong tidak pernah sampai
      * ke view (sidebar menyembunyikan blok Kategori bila koleksinya kosong).
      *
-     * @return array{recentPosts: Collection, categories: Collection, tags: Collection}
+     * $featuredProperties mengikuti pola cache 'blog_sidebar' yang sama
+     * (TTL 1 jam, invalidasi via Post/Category/Tag saved/deleted events);
+     * data properti sendiri di-cache terpisah di BlogPropertyService
+     * dengan TTL 1 jam juga.
+     *
+     * @return array{recentPosts: Collection, categories: Collection, tags: Collection, featuredProperties: Collection}
      */
     protected function buildSidebarData(): array
     {
@@ -177,6 +210,8 @@ class BlogController extends Controller
                 ->orderBy('name')
                 ->get(),
             'tags' => Tag::withCount(['posts' => fn ($q) => $q->published()])->orderBy('name')->get(),
+            'featuredProperties' => app(BlogPropertyService::class)
+                ->featured((int) config('blog.sidebar_properties_limit', 3)),
         ];
     }
 }

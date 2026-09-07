@@ -478,6 +478,10 @@
     "blog.recent": "Artikel Terbaru",
     "blog.categories": "Kategori",
     "blog.unknown_author": "Anonim",
+    "blog.cta_title": "Properti Pilihan",
+    "blog.cta_title_area": "Apartemen Tersedia di :area",
+    "blog.cta_subtitle": "Lihat detail, harga, dan lakukan pemesanan langsung.",
+    "blog.sidebar_properties": "Properti Populer",
 
     "booking.success_heading": "Permintaan Pemesanan Terkirim!",
     "booking.success_desc": "Permintaan pemesanan Anda telah diterima. Kami akan segera menghubungi Anda.",

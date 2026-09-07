@@ -478,6 +478,10 @@
     "blog.recent": "Recent Posts",
     "blog.categories": "Categories",
     "blog.unknown_author": "Unknown",
+    "blog.cta_title": "Featured Properties",
+    "blog.cta_title_area": "Apartments Available in :area",
+    "blog.cta_subtitle": "View details, pricing, and book directly.",
+    "blog.sidebar_properties": "Popular Properties",
 
     "booking.success_heading": "Booking Request Submitted!",
     "booking.success_desc": "Your booking request has been received. We will contact you shortly.",

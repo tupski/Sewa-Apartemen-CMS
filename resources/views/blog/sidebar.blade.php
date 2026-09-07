@@ -47,4 +47,17 @@
             @endforeach
         </div>
     </div>
+
+    {{-- Featured properties — BlogController::buildSidebarData() supplies
+         $featuredProperties (published only, may be empty). --}}
+    @if(isset($featuredProperties) && $featuredProperties->count() > 0)
+    <div>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">{{ __('blog.sidebar_properties') }}</h3>
+        <div class="space-y-4">
+            @foreach($featuredProperties as $property)
+                @include('blog._property-card', ['property' => $property])
+            @endforeach
+        </div>
+    </div>
+    @endif
 </div>
