@@ -27,7 +27,155 @@ in an italic line beneath it._
 
 ## [Unreleased]
 
+_Belum ada perubahan sejak 1.1.0._
+_No changes yet since 1.1.0._
+
+---
+
+## [1.1.0] - 2026-09-07
+
+Rilis fitur: media responsif (WebP/AVIF + srcset), markup Core Web Vitals
+(LCP/CLS), arsitektur blog pillar–cluster, manajemen hari libur nasional, SEO
+override halaman sistem, dan rangkaian tooling Version Control di admin.
+_Feature release: responsive media (WebP/AVIF + srcset), Core Web Vitals markup
+(LCP/CLS), blog pillar–cluster architecture, national holiday management,
+system page SEO overrides, and the admin Version Control tooling suite._
+
 ### Added
+
+- **Media Responsif — Varian WebP/AVIF + srcset (CWV Phase B)**: Service baru
+  `App\Services\ImageVariantService` menghasilkan varian lebar 400/800/1600 px
+  (tanpa upscale melebihi original) plus re-encode WebP dan AVIF untuk setiap
+  upload gambar raster, disimpan di folder `variants/` di samping file asli dan
+  dicatat ke `media.metadata.variants` (entry berisi width/height/size/url/path).
+  Generasi di-hook ke pipeline upload terpusat (`MediaController@persistUploadedFile`)
+  sehingga berlaku untuk upload file, drag & drop multi-file, dan import dari URL.
+  Semuanya best-effort: kegagalan codec atau sumber rusak hanya melewati varian
+  tersebut — upload tidak pernah gagal karena generasi varian. Penghapusan media
+  ikut membersihkan semua varian. Codec dideteksi runtime (`imagewebp`/`imageavif`),
+  sehingga host tanpa AVIF otomatis skip varian AVIF tanpa error.
+  _**Responsive Media — WebP/AVIF Variants + srcset (CWV Phase B)**: New service
+  `App\Services\ImageVariantService` generates 400/800/1600 px width variants
+  (never upscaling past the original) plus WebP and AVIF re-encodes for every
+  raster image upload, stored under a sibling `variants/` folder and recorded in
+  `media.metadata.variants` (entries carry width/height/size/url/path). Generation
+  is hooked into the centralized upload pipeline (`MediaController@persistUploadedFile`)
+  so single uploads, multi-file drag & drop, and URL imports all get variants.
+  Everything is best-effort: codec or corrupt-source failures skip that variant —
+  uploads never fail because of variant generation. Deleting media also removes
+  all its variants. Codecs are detected at runtime (`imagewebp`/`imageavif`), so
+  hosts without AVIF silently skip AVIF variants._
+
+- **Komponen Blade `x-media-image`**: Komponen tunggal untuk semua gambar berbasis
+  Media di frontend. Merender `<picture>` dengan `<source type="image/avif">` dan
+  `<source type="image/webp">` (saat varian tersedia) plus `srcset` ladder pada
+  format asli, atribut `sizes` per-slot, `width`/`height` intrinsik dari metadata
+  (tidak pernah dikarang), `loading` + `fetchpriority` via prop `eager` untuk LCP,
+  dan degradasi mulus ke `<img>` biasa tanpa varian. Dipakai di kartu property
+  (`_card`), homepage (carousel + grid), detail property (foto utama, thumbnail,
+  fallback featured image), dan sukses booking — menggantikan `<img>` manual.
+  _**Blade component `x-media-image`**: A single component for every Media-based
+  image on the frontend. It renders a `<picture>` with `<source type="image/avif">`
+  and `<source type="image/webp">` (when variants exist) plus a srcset ladder on
+  the original format, per-slot `sizes`, intrinsic `width`/`height` from metadata
+  (never fabricated), `loading` + `fetchpriority` via the `eager` prop for LCP,
+  and degrades to a plain `<img>` without variants. Used by the property card
+  partial, homepage (carousel + grid), property detail (hero, thumbnails,
+  featured-image fallback), and booking success — replacing hand-written `<img>`s._
+
+- **Command `media:generate-variants`**: Backfill varian untuk media lama.
+  Idempotent secara default (hanya memproses record tanpa `metadata.variants`),
+  `--force` untuk regenerate semua, `--id=` untuk satu record. Laporan per-record
+  dengan ringkasan generated/skipped/failed.
+  _**`media:generate-variants` command**: Backfills variants for legacy media.
+  Idempotent by default (only processes records without `metadata.variants`),
+  `--force` regenerates everything, `--id=` targets a single record. Per-record
+  output with a generated/skipped/failed summary._
+
+- **Core Web Vitals — Prioritas LCP & Stabilisasi CLS (CWV Phase A)**: Semua
+  `<img>` frontend berbasis Media kini membawa dimensi intrinsik asli
+  (`width`/`height` dari `media.width`/`media.height`) sehingga browser memesan
+  ruang layout sebelum gambar termuat. Kandidat LCP ditentukan dari layout nyata —
+  bukan sekadar menghapus `loading="lazy"`: kartu property pertama di homepage
+  (hero hanya gradient teks) dan foto galeri pertama di halaman property
+  mendapat `loading="eager" fetchpriority="high"`; tepat satu kandidat per
+  halaman. Halaman detail property mem-preload tepat satu gambar LCP via
+  `@stack('head')` — dengan `imagesrcset`/`imagesizes`/`type` yang identik dengan
+  pilihan `<picture>` (AVIF → WebP → original) saat varian tersedia, sehingga
+  tidak ada double-fetch; preload dilewati total bila metadata dimensi kosong.
+  Script Lucide dipindah ke versi pinned `1.42.0` + `defer` (tidak lagi
+  render-blocking `@latest`), dengan `lucide.createIcons()` dibungkus
+  `DOMContentLoaded` di layout frontend dan admin.
+  _**Core Web Vitals — LCP Prioritisation & CLS Stabilisation (CWV Phase A)**:
+  Every Media-based frontend `<img>` now carries real intrinsic dimensions
+  (`width`/`height` from `media.width`/`media.height`) so browsers reserve layout
+  space before the image loads. The LCP candidate is derived from the actual
+  layout — not by stripping `loading="lazy"` everywhere: the first property card
+  on the homepage (the hero is a text gradient) and the first gallery photo on
+  property pages get `loading="eager" fetchpriority="high"`; exactly one candidate
+  per page. Property detail preloads exactly one LCP image via `@stack('head')` —
+  with `imagesrcset`/`imagesizes`/`type` matching what `<picture>` selects
+  (AVIF → WebP → original) when variants exist, avoiding double fetches; the
+  preload is skipped entirely when dimension metadata is missing. The Lucide
+  script is now pinned at `1.42.0` + `defer` (no longer render-blocking
+  `@latest`), with `lucide.createIcons()` wrapped in `DOMContentLoaded` in both
+  frontend and admin layouts._
+
+- **Manajemen Hari Libur Nasional**: Model + tabel `national_holidays`, service
+  sinkronisasi terjadwal, kalender libur di dashboard admin, dan integrasi:
+  peringatan libur pada form post admin, sidebar blog, dan perhitungan booking.
+  _**National Holiday Management**: New `national_holidays` model/table, a
+  scheduled sync service, a holiday calendar in the admin dashboard, and
+  integrations: holiday hints on the admin post form, blog sidebar, and booking
+  calculations._
+
+- **Arsitektur Blog Pillar–Cluster**: Kolom `pillar_post_id` pada tabel posts,
+  relasi dan helper di model `Post`, pemilihan cluster di form admin, dan
+  tampilan artikel terkait berbasis cluster pada halaman blog — mendukung struktur
+  konten topik-utama/anak-topik untuk SEO topikal.
+  _**Blog Pillar–Cluster Architecture**: A `pillar_post_id` column on posts,
+  relations and helpers on the `Post` model, cluster selection in the admin form,
+  and cluster-based related-article rendering on blog pages — enabling
+  topic/cluster content structure for topical SEO._
+
+- **SEO Override Halaman Sistem**: Controller dedikasi untuk mengelola override
+  judul/deskripsi/robots halaman-halaman sistem (home, kontak, dsb.) dengan
+  integrasi `SeoService`.
+  _**System Page SEO Overrides**: A dedicated controller to manage title/
+  description/robots overrides for system pages (home, contact, etc.), wired into
+  `SeoService`._
+
+- **SEO Meta Kategori & Tag Blog**: Kolom deskripsi untuk tags, meta title dan
+  description untuk halaman arsip kategori dan tag, termasuk verifikasi foto alt
+  pada validasi property.
+  _**Blog Category & Tag SEO Meta**: A description column for tags plus meta
+  titles and descriptions for category/tag archive pages, including photo alt
+  validation enhancements on properties._
+
+- **Schema `postArticle` Diperkaya**: Output JSON-LD `postArticle` kini menyertakan
+  `wordCount`, `articleSection`, dan `about` — divalidasi unit test.
+  _**Enriched `postArticle` Schema**: The `postArticle` JSON-LD output now
+  includes `wordCount`, `articleSection`, and `about` — covered by unit tests._
+
+- **Property CTA di Blog**: Section call-to-action property pada halaman artikel
+  dan sidebar blog, dikendalikan konfigurasi `config/blog.php` via service
+  `BlogPropertyService`.
+  _**Property CTA in Blog**: Property call-to-action sections on article pages
+  and the blog sidebar, driven by `config/blog.php` via `BlogPropertyService`._
+
+- **Featured Image Handling di Admin Posts**: Pemilih dan pratinjau featured
+  image yang lebih baik pada form post admin (alur upload + library media).
+  _**Featured Image Handling in Admin Posts**: Improved featured-image picker and
+  preview on the admin post form (upload + media library flow)._
+
+- **Dokumentasi Indonesian-First**: Set dokumentasi baru (`docs/ADMIN.md`,
+  `docs/ARCHITECTURE.md`, `docs/BOOKING.md`, `docs/DATABASE.md`,
+  `docs/DEPLOYMENT.md`, `docs/FRONTEND.md`, dsb.) dengan README hub sebagai
+  pintu masuk.
+  _**Indonesian-First Documentation**: A new documentation set (`docs/ADMIN.md`,
+  `docs/ARCHITECTURE.md`, `docs/BOOKING.md`, `docs/DATABASE.md`,
+  `docs/DEPLOYMENT.md`, `docs/FRONTEND.md`, etc.) with a README hub as the entry
+  point._
 
 - **Pemeriksaan Pembaruan Terjadwal + Lencana Pembaruan di Header Admin**: Artisan command baru `git:check-updates`
   memeriksa apakah kode yang di-deploy tertinggal dari remote Git-nya. Command dijadwalkan harian pukul 01:00 WIB
@@ -116,12 +264,64 @@ in an italic line beneath it._
 
 ### Fixed
 
+- **TypeError `syncTags()` pada PostController**: `PostController::syncTags()`
+  menerima `string $tagString` dan memanggil `explode(',', $tagString)` — ketika
+  request mengirim field `tags` bernilai null (mis. refactor validasi atau payload
+  JSON eksplisit), `ConvertEmptyStringsToNull` membuat `input('tags', '')` tetap
+  `null` sehingga method melempar `TypeError` (HTTP 500). Signature kini
+  `?string $tagString` dengan normalisasi `$tagString ?? ''` di dalam method.
+  _**TypeError in `PostController::syncTags()`**: `PostController::syncTags()`
+  accepted `string $tagString` and called `explode(',', $tagString)` — when a
+  request posted a null `tags` field (e.g. after a validation refactor or an
+  explicit JSON payload), `ConvertEmptyStringsToNull` made `input('tags', '')`
+  return `null`, so the method threw a `TypeError` (HTTP 500). The signature is
+  now `?string $tagString` with `$tagString ?? ''` normalisation inside the
+  method._
+
+- **Error 500 edit property dengan pricing**: Perbaikan pada render form pricing
+  admin property yang error saat update harga (cast/struktur data `prices`),
+  ditutup dengan `PropertyEdit500FixTest`.
+  _**500 error on property edit with pricing**: Fixed the admin property pricing
+  form erroring on price updates (the `prices` cast/structure), covered by
+  `PropertyEdit500FixTest`._
+
+- **Render form & aksesibilitas admin panel**: Perbaikan masalah render form dan
+  temuan aksesibilitas di panel admin (label, kontras, dan struktur fokus).
+  _**Admin panel form rendering & accessibility**: Fixed form rendering issues
+  and accessibility findings in the admin panel (labels, contrast, focus
+  structure)._
+
 - Pesan validasi pada Admin > Settings > SEO tidak lagi membocorkan kunci
   terjemahan mentah `validation.regex`; kolom yang formatnya salah sekarang
   menampilkan pesan yang bisa dibaca pengguna.
   _Validation messages in Admin > Settings > SEO no longer leak the raw
   `validation.regex` translation key; incorrectly formatted fields now show a
   human-readable message._
+
+### Performance
+
+- **Pengiriman gambar responsif**: Gambar frontend kini dilayani sesuai ukuran
+  slot dan kemampuan browser — varian 400/800/1600 px via `srcset`/`sizes`,
+  format modern WebP/AVIF via `<picture>`. Original ~300 KB per foto kini
+  umumnya digantikan 25–80 KB pada slot kartu; halaman galeri property yang
+  sebelumnya memuat 3 MB+ foto original turun drastis byte transfernya.
+  _**Responsive image delivery**: Frontend images are now served at slot size
+  and codec support — 400/800/1600 px variants via `srcset`/`sizes`, modern
+  WebP/AVIF via `<picture>`. The ~300 KB per-photo original is commonly replaced
+  by 25–80 KB files in card slots; property gallery pages that previously
+  shipped 3 MB+ of originals drop their transfer size dramatically._
+
+- **Prioritas & preload LCP**: Tepat satu gambar LCP per halaman mendapat
+  `fetchpriority="high"` dan di-preload dengan kandidat yang sama dengan pilihan
+  `<picture>`, mempercepat Largest Contentful Paint tanpa double-fetch.
+  _**LCP priority & preload**: Exactly one LCP image per page gets
+  `fetchpriority="high"` and is preloaded with the same candidate `<picture>`
+  selects, speeding up Largest Contentful Paint without double fetches._
+
+- **Lucide non-blocking**: Script ikon Lucide tidak lagi render-blocking
+  (pinned `1.42.0` + `defer`).
+  _**Non-blocking Lucide**: The Lucide icon script no longer blocks rendering
+  (pinned `1.42.0` + `defer`)._
 
 ### Security
 

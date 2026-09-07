@@ -32,7 +32,11 @@ class VersionCreditTest extends TestCase
     {
         $version = config('artivo.version');
 
-        $this->assertSame('1.0.0', $version);
+        // The config file is the single source of truth; the test asserts the
+        // accessor agrees with the literal in config/artivo.php and that the
+        // value is valid SemVer — it must not hardcode a specific release.
+        $configFile = (string) file_get_contents(config_path('artivo.php'));
+        $this->assertMatchesRegularExpression("/'version'\s*=>\s*'".preg_quote((string) $version, '/')."'/", $configFile);
         $this->assertMatchesRegularExpression('/^\d+\.\d+\.\d+$/', $version);
     }
 
