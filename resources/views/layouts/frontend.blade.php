@@ -96,8 +96,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css"></noscript>
 
-    <!-- Lucide Icons (MIT) -->
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <!-- Lucide Icons (MIT) — pinned version + defer so the CDN script never
+         blocks rendering; createIcons() runs from DOMContentLoaded below. -->
+    <script src="https://unpkg.com/lucide@1.42.0/dist/umd/lucide.min.js" defer></script>
 
     <!-- Leaflet (map library) — CDN, pinned + SRI. Used by the property detail map. -->
     <link rel="stylesheet"
@@ -515,6 +516,10 @@
         document.addEventListener('alpine:initialized', function () {
             if (typeof lucide !== 'undefined') lucide.createIcons();
         });
+        // Deferred CDN script has executed by DOMContentLoaded — safe first pass.
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
     </script>
 
     {{-- Global Share Modal (opened via `open-share-modal` window event) --}}
@@ -529,7 +534,10 @@
     @stack('scripts')
 
     <script>
-        if (typeof lucide !== 'undefined') lucide.createIcons();
+        // Lucide is deferred now — run after the deferred script has executed.
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
     </script>
 </body>
 </html>

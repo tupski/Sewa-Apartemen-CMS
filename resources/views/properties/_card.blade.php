@@ -30,15 +30,17 @@
     {{-- Card image --}}
     <div class="relative aspect-[16/10] bg-gray-200 dark:bg-gray-700 overflow-hidden shrink-0">
         @if ($property->featuredImage)
-            <img src="{{ $property->featuredImage?->url }}"
-                 alt="{{ trim((string) ($property->featuredImage->alt ?? '')) ?: $property->name . ' — foto 1' }}"
-                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                 loading="lazy">
+            <x-media-image :media="$property->featuredImage"
+                           :alt="trim((string) ($property->featuredImage->alt ?? '')) ?: $property->name . ' — foto 1'"
+                           sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                           class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                           loading="lazy"/>
         @elseif ($property->photos->isNotEmpty() && $property->photos->first()->media)
-            <img src="{{ $property->photos->first()->media->url }}"
-                 alt="{{ trim((string) ($property->photos->first()->media->alt ?? '')) ?: $property->name . ' — foto 1' }}"
-                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                 loading="lazy">
+            <x-media-image :media="$property->photos->first()->media"
+                           :alt="trim((string) ($property->photos->first()->media->alt ?? '')) ?: $property->name . ' — foto 1'"
+                           sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                           class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                           loading="lazy"/>
         @else
             <div class="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
                 <svg class="w-12 h-12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">

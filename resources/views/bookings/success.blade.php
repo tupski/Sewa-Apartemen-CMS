@@ -41,9 +41,10 @@
                 <h3 class="font-semibold text-gray-800 dark:text-gray-100 mb-3">{{ __('booking.property_room') }}</h3>
                 <div class="flex gap-4">
                     @if($booking->property?->featuredImage)
-                        <img src="{{ $booking->property->featuredImage->url }}"
-                             alt="{{ $booking->property->name }}"
-                             class="w-24 h-24 object-cover rounded-lg">
+                        <x-media-image :media="$booking->property->featuredImage"
+                                       :alt="$booking->property->name"
+                                       sizes="96px"
+                                       class="w-24 h-24 object-cover rounded-lg"/>
                     @else
                         <div class="w-24 h-24 bg-gray-200 dark:bg-gray-900 rounded-lg flex items-center justify-center">
                             <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

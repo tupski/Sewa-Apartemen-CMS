@@ -224,15 +224,28 @@
                                     @foreach ($properties as $property)
                                         {{-- Card width is set by Alpine via :style so translation math stays exact --}}
                                         <div class="flex-shrink-0 px-3" :style="'width: ' + cardWidth">
+                                            @php
+                                                // Homepage hero is a text/gradient block — the first property
+                                                // card image is the actual LCP candidate. Subsequent cards stay lazy.
+                                                $lcpImage = $loop->first;
+                                            @endphp
                                             <a href="{{ route('properties.public.show', $property->slug) }}"
                                                class="group property-card overflow-hidden dark:!bg-gray-800 dark:!shadow-gray-900/30 block">
                                                 <div class="relative aspect-[4/3] bg-gray-200">
                                                     @if ($property->featuredImage)
-                                                        <img src="{{ $property->featuredImage->url }}" alt="{{ trim((string) ($property->featuredImage->alt ?? '')) ?: $property->name . ' — foto 1' }}" draggable="false"
-                                                             class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
+                                                        <x-media-image :media="$property->featuredImage"
+                                                                       :alt="trim((string) ($property->featuredImage->alt ?? '')) ?: $property->name . ' — foto 1'"
+                                                                       :eager="$lcpImage"
+                                                                       sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw"
+                                                                       draggable="false"
+                                                                       class="w-full h-full object-cover group-hover:scale-105 transition duration-500"/>
                                                     @elseif ($property->photos->isNotEmpty() && $property->photos->first()->media)
-                                                        <img src="{{ $property->photos->first()->media->url }}" alt="{{ trim((string) ($property->photos->first()->media->alt ?? '')) ?: $property->name . ' — foto 1' }}" draggable="false"
-                                                             class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
+                                                        <x-media-image :media="$property->photos->first()->media"
+                                                                       :alt="trim((string) ($property->photos->first()->media->alt ?? '')) ?: $property->name . ' — foto 1'"
+                                                                       :eager="$lcpImage"
+                                                                       sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw"
+                                                                       draggable="false"
+                                                                       class="w-full h-full object-cover group-hover:scale-105 transition duration-500"/>
                                                     @else
                                                         <div class="w-full h-full flex items-center justify-center text-blue-400 bg-gradient-to-br from-blue-100 to-indigo-200">
                                                             <i data-lucide="building-2" class="w-14 h-14"></i>
@@ -336,15 +349,26 @@
                     {{-- ===================== STATIC GRID (≤ 3 properties) ===================== --}}
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                         @foreach ($properties as $property)
+                            @php
+                                // Same LCP rule as the slider above: only the first card is the
+                                // LCP candidate; everything else stays lazy.
+                                $lcpImage = $loop->first;
+                            @endphp
                             <a href="{{ route('properties.public.show', $property->slug) }}"
                                class="group property-card overflow-hidden dark:!bg-gray-800 dark:!shadow-gray-900/30">
                                 <div class="relative aspect-[4/3] bg-gray-200">
                                     @if ($property->featuredImage)
-                                        <img src="{{ $property->featuredImage->url }}" alt="{{ trim((string) ($property->featuredImage->alt ?? '')) ?: $property->name . ' — foto 1' }}"
-                                             class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
+                                        <x-media-image :media="$property->featuredImage"
+                                                       :alt="trim((string) ($property->featuredImage->alt ?? '')) ?: $property->name . ' — foto 1'"
+                                                       :eager="$lcpImage"
+                                                       sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                                                       class="w-full h-full object-cover group-hover:scale-105 transition duration-500"/>
                                     @elseif ($property->photos->isNotEmpty() && $property->photos->first()->media)
-                                        <img src="{{ $property->photos->first()->media->url }}" alt="{{ trim((string) ($property->photos->first()->media->alt ?? '')) ?: $property->name . ' — foto 1' }}"
-                                             class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
+                                        <x-media-image :media="$property->photos->first()->media"
+                                                       :alt="trim((string) ($property->photos->first()->media->alt ?? '')) ?: $property->name . ' — foto 1'"
+                                                       :eager="$lcpImage"
+                                                       sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                                                       class="w-full h-full object-cover group-hover:scale-105 transition duration-500"/>
                                     @else
                                         <div class="w-full h-full flex items-center justify-center text-blue-400 bg-gradient-to-br from-blue-100 to-indigo-200">
                                             <i data-lucide="building-2" class="w-14 h-14"></i>

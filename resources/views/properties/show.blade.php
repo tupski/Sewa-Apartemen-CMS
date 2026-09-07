@@ -19,11 +19,45 @@
             'category' => $p->category ?: 'Other',
             'name'     => $photoAlt,
             'alt'      => $photoAlt,
+            // Intrinsic dimensions from Media metadata — rendered as width/height
+            // attributes so the browser reserves layout space before load (CLS).
+            'width'    => $p->media->width,
+            'height'   => $p->media->height,
+            // Media model — lets x-media-image render <picture> + srcset variants.
+            'media'    => $p->media,
         ];
     })->values();
     $allPhotoUrls = $photoGallery->pluck('url')->values();
     $firstPhoto = $photoGallery[0] ?? null;
     $restPhotos = $photoGallery->slice(1)->take(6)->values();
+    // LCP candidate: first gallery photo; with an empty gallery the
+    // featured-image fallback section is the LCP instead.
+    $lcpMedia = $firstPhoto['media'] ?? null;
+    if (! $lcpMedia && $photoGallery->isEmpty() && $property->featuredImage) {
+        $lcpMedia = $property->featuredImage;
+    }
+    // Slot size hints must mirror the rendering <img>/preload candidates:
+    //   main gallery photo = 1st grid column (25vw desktop, full width mobile);
+    //   featured-image fallback header ≈ the 1280px container.
+    $lcpSizes = $photoGallery->isNotEmpty()
+        ? '(min-width: 768px) 25vw, 100vw'
+        : '(min-width: 1280px) 1280px, calc(100vw - 2rem)';
+    // Preload exactly one LCP resource, matching what <picture> actually
+    // fetches: prefer the AVIF ladder, then WebP, else the original format.
+    // Browsers without the declared type skip the preload (no double fetch).
+    // Only preloaded when the media carries real intrinsic dimensions.
+    $lcpPreload = null;
+    if ($lcpMedia && ! empty($lcpMedia->width) && ! empty($lcpMedia->height)) {
+        $lcpAvif = $lcpMedia->srcsetFor('avif');
+        $lcpWebp = $lcpMedia->srcsetFor('webp');
+        if ($lcpAvif !== '') {
+            $lcpPreload = ['href' => $lcpMedia->url, 'type' => 'image/avif', 'srcset' => $lcpAvif];
+        } elseif ($lcpWebp !== '') {
+            $lcpPreload = ['href' => $lcpMedia->url, 'type' => 'image/webp', 'srcset' => $lcpWebp];
+        } else {
+            $lcpPreload = ['href' => $lcpMedia->url, 'type' => null, 'srcset' => $lcpMedia->srcsetFor('original') ?: null];
+        }
+    }
     $hasBooking = !empty($property->unit_types) && ($property->hasBookingType('transit') || $property->hasBookingType('daily') || $property->hasBookingType('weekly') || $property->hasBookingType('monthly'));
     // When pricing_only mode, suppress the booking form even if prices exist
     $showBookingForm = $hasBooking && $displayMode !== 'pricing_only';
@@ -114,6 +148,19 @@
      map (#property-map) is initialised by initPropertyMap() in resources/js/app.js,
      which reads the #map-data JSON block rendered in the "What's Around" section. --}}
 
+{{-- LCP preload: exactly one — the first gallery photo (or featured-image
+     fallback). Uses imagesrcset/imagesizes so the preloaded candidate is the
+     SAME file <picture> selects (AVIF → WebP → original). Skipped entirely
+     when the photo has no intrinsic dimensions or no gallery exists. --}}
+@if ($lcpPreload)
+    @push('head')
+        <link rel="preload" as="image" href="{{ $lcpPreload['href'] }}"
+              @if ($lcpPreload['srcset']) imagesrcset="{{ $lcpPreload['srcset'] }}" imagesizes="{{ $lcpSizes }}" @endif
+              @if ($lcpPreload['type']) type="{{ $lcpPreload['type'] }}" @endif
+              fetchpriority="high">
+    @endpush
+@endif
+
 @section('content')
     <!-- ============ GALLERY HEADER (Traveloka style) ============ -->
     @if ($photoGallery->isNotEmpty())
@@ -123,7 +170,11 @@
                 <div class="relative md:grid md:grid-cols-4 gap-2 rounded-2xl overflow-hidden">
                     {{-- Main photo: aspect-[4/3] on mobile, spans full grid height on desktop --}}
                     <button type="button" data-photo="0" class="relative aspect-[4/3] md:aspect-auto md:h-auto md:[grid-row:1/-1] group overflow-hidden text-left">
-                        <img src="{{ $firstPhoto['url'] }}" alt="{{ $firstPhoto['alt'] }}" class="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300">
+                        <x-media-image :media="$firstPhoto['media']"
+                                       :alt="$firstPhoto['alt']"
+                                       eager
+                                       sizes="(min-width: 768px) 25vw, 100vw"
+                                       class="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"/>
                     </button>
                     <!-- Overlay: view all photos -->
                     <button type="button" id="gal-open" class="absolute bottom-4 right-4 z-10 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/95 text-sm font-semibold text-gray-900 shadow hover:bg-white transition">
@@ -133,7 +184,10 @@
                     {{-- Thumbnail photos: uniform aspect-[4/3] so portrait/landscape all match --}}
                     @foreach ($restPhotos as $i => $photo)
                         <button type="button" data-photo="{{ $i + 1 }}" class="relative hidden md:block aspect-[4/3] group overflow-hidden">
-                            <img src="{{ $photo['url'] }}" alt="{{ $photo['alt'] }}" loading="lazy" class="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300">
+                            <x-media-image :media="$photo['media']"
+                                           :alt="$photo['alt']"
+                                           sizes="(min-width: 768px) 12.5vw, 33vw"
+                                           class="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"/>
                         </button>
                     @endforeach
                 </div>
@@ -141,7 +195,10 @@
                 <div class="grid grid-cols-3 gap-2 md:hidden mt-2">
                     @foreach ($restPhotos->take(3) as $i => $photo)
                         <button type="button" data-photo="{{ $i + 1 }}" class="relative group overflow-hidden rounded-xl aspect-square">
-                            <img src="{{ $photo['url'] }}" alt="{{ $photo['alt'] }}" loading="lazy" class="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300">
+                            <x-media-image :media="$photo['media']"
+                                           :alt="$photo['alt']"
+                                           sizes="33vw"
+                                           class="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"/>
                         </button>
                     @endforeach
                 </div>
@@ -150,7 +207,11 @@
     @elseif ($property->featuredImage)
         <section class="bg-gray-100 dark:bg-gray-900">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-                <img src="{{ $property->featuredImage?->url }}" alt="{{ $featuredImageAlt }}" class="w-full h-[50vh] object-cover rounded-2xl">
+                <x-media-image :media="$property->featuredImage"
+                               :alt="$featuredImageAlt"
+                               eager
+                               sizes="(min-width: 1280px) 1280px, calc(100vw - 2rem)"
+                               class="w-full h-[50vh] object-cover rounded-2xl"/>
             </div>
         </section>
     @endif
