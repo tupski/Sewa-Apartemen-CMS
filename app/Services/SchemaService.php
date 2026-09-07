@@ -252,6 +252,25 @@ class SchemaService
             $schema['image'] = [SeoService::absoluteImageUrl($post->featured_image)];
         }
 
+        $wordCount = str_word_count(
+            html_entity_decode(strip_tags((string) $post->content), ENT_QUOTES | ENT_HTML5, 'UTF-8')
+        );
+        if ($wordCount > 0) {
+            $schema['wordCount'] = $wordCount;
+        }
+
+        if (filled($post->category?->name)) {
+            $schema['articleSection'] = (string) $post->category->name;
+        }
+
+        $about = $post->tags
+            ->map(fn ($tag): string => (string) $tag->name)
+            ->filter()
+            ->values();
+        if ($about->isNotEmpty()) {
+            $schema['about'] = $about->all();
+        }
+
         return $schema;
     }
 

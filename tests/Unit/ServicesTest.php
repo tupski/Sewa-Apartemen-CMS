@@ -2,10 +2,13 @@
 
 namespace Tests\Unit;
 
+use App\Models\Category;
 use App\Models\Media;
 use App\Models\Page;
+use App\Models\Post;
 use App\Models\Property;
 use App\Models\Setting;
+use App\Models\Tag;
 use App\Services\AnalyticsService;
 use App\Services\RobotsService;
 use App\Services\SchemaService;
@@ -258,7 +261,7 @@ class ServicesTest extends TestCase
             'status' => 'published',
         ]);
 
-        $service = new SitemapService();
+        $service = new SitemapService;
         $xml = $service->generate();
 
         $this->assertStringContainsString('<?xml version="1.0" encoding="UTF-8"?>', $xml);
@@ -270,7 +273,7 @@ class ServicesTest extends TestCase
 
     public function test_sitemap_includes_homepage(): void
     {
-        $service = new SitemapService();
+        $service = new SitemapService;
         $xml = $service->generate();
 
         $this->assertStringContainsString('<priority>1.0</priority>', $xml);
@@ -284,7 +287,7 @@ class ServicesTest extends TestCase
             'status' => 'published',
         ]);
 
-        $service = new SitemapService();
+        $service = new SitemapService;
         $xml = $service->generate();
 
         $this->assertStringContainsString('about-us', $xml);
@@ -298,7 +301,7 @@ class ServicesTest extends TestCase
             'status' => 'draft',
         ]);
 
-        $service = new SitemapService();
+        $service = new SitemapService;
         $xml = $service->generate();
 
         $this->assertStringNotContainsString('draft-page', $xml);
@@ -308,7 +311,7 @@ class ServicesTest extends TestCase
 
     public function test_robots_disallows_admin_paths(): void
     {
-        $service = new RobotsService();
+        $service = new RobotsService;
         $txt = $service->generate();
 
         $this->assertStringContainsString('Disallow: /admin', $txt);
@@ -321,7 +324,7 @@ class ServicesTest extends TestCase
 
     public function test_robots_includes_sitemap_reference(): void
     {
-        $service = new RobotsService();
+        $service = new RobotsService;
         $txt = $service->generate();
 
         $this->assertStringContainsString('Sitemap:', $txt);
@@ -330,9 +333,9 @@ class ServicesTest extends TestCase
 
     public function test_robots_uses_override_when_set(): void
     {
-        SettingsService::set('robots_txt', 'User-agent: *' . "\n" . 'Disallow: /');
+        SettingsService::set('robots_txt', 'User-agent: *'."\n".'Disallow: /');
 
-        $service = new RobotsService();
+        $service = new RobotsService;
         $txt = $service->generate();
 
         $this->assertEquals("User-agent: *\nDisallow: /", $txt);
@@ -340,7 +343,7 @@ class ServicesTest extends TestCase
 
     public function test_robots_allows_root(): void
     {
-        $service = new RobotsService();
+        $service = new RobotsService;
         $txt = $service->generate();
 
         $this->assertStringContainsString('Allow: /', $txt);
@@ -420,6 +423,91 @@ class ServicesTest extends TestCase
         $this->assertEquals('Article', $schema['@type']);
         $this->assertEquals('Test Article', $schema['headline']);
         $this->assertEquals('John Doe', $schema['author']['name']);
+    }
+
+    // ==================== SchemaService::postArticle (Fase 4) ====================
+
+    public function test_post_article_schema_counts_words_from_plain_text_only(): void
+    {
+        $post = Post::factory()->create([
+            'content' => '<p>Hello world</p><p>This is an apartment guide.</p>',
+        ]);
+
+        $schema = SchemaService::postArticle($post);
+
+        $this->assertSame(6, $schema['wordCount']);
+        $this->assertIsInt($schema['wordCount']);
+    }
+
+    public function test_post_article_schema_uses_category_name_as_article_section(): void
+    {
+        $post = Post::factory()->create();
+        $post->category()->associate(Category::create(['name' => 'Panduan Apartemen', 'slug' => 'panduan-apartemen']))->save();
+
+        $schema = SchemaService::postArticle($post);
+
+        $this->assertEquals('Panduan Apartemen', $schema['articleSection']);
+    }
+
+    public function test_post_article_schema_uses_tag_names_as_about(): void
+    {
+        $post = Post::factory()->create();
+        $post->tags()->attach([
+            Tag::create(['name' => 'Apartemen', 'slug' => 'apartemen'])->id,
+            Tag::create(['name' => 'Transit', 'slug' => 'transit'])->id,
+        ]);
+
+        $schema = SchemaService::postArticle($post);
+
+        $this->assertEquals(['Apartemen', 'Transit'], $schema['about']);
+    }
+
+    public function test_post_article_schema_omits_word_count_when_content_empty(): void
+    {
+        $post = Post::factory()->create(['content' => '']);
+
+        $schema = SchemaService::postArticle($post);
+
+        $this->assertArrayNotHasKey('wordCount', $schema);
+    }
+
+    public function test_post_article_schema_omits_section_when_no_category(): void
+    {
+        $post = Post::factory()->create();
+
+        $schema = SchemaService::postArticle($post);
+
+        $this->assertArrayNotHasKey('articleSection', $schema);
+    }
+
+    public function test_post_article_schema_omits_about_when_no_tags(): void
+    {
+        $post = Post::factory()->create();
+
+        $schema = SchemaService::postArticle($post);
+
+        $this->assertArrayNotHasKey('about', $schema);
+    }
+
+    public function test_post_article_schema_keeps_existing_properties(): void
+    {
+        $post = Post::factory()->published()->create();
+        $post->category()->associate(Category::create(['name' => 'Panduan', 'slug' => 'panduan']))->save();
+        $post->tags()->attach(Tag::create(['name' => 'Transit', 'slug' => 'transit'])->id);
+
+        $schema = SchemaService::postArticle($post, 'https://example.com/blog/post');
+
+        $this->assertEquals('Article', $schema['@type']);
+        $this->assertEquals($post->title, $schema['headline']);
+        $this->assertNotSame('', $schema['description']);
+        $this->assertEquals('https://example.com/blog/post', $schema['url']);
+        $this->assertEquals('https://example.com/blog/post', $schema['mainEntityOfPage']['@id']);
+        $this->assertEquals('WebPage', $schema['mainEntityOfPage']['@type']);
+        $this->assertEquals(url('/').'#organization', $schema['publisher']['@id']);
+        $this->assertEquals($post->published_at->toIso8601String(), $schema['datePublished']);
+        $this->assertEquals($post->updated_at->toIso8601String(), $schema['dateModified']);
+        $this->assertEquals('Panduan', $schema['articleSection']);
+        $this->assertEquals(['Transit'], $schema['about']);
     }
 
     // ==================== AnalyticsService ====================
