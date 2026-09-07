@@ -87,3 +87,4 @@ IDEA.md
 .phpunit.result.cache
 /docs
 .aider*
+/packages

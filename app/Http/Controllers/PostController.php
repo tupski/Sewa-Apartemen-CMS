@@ -361,9 +361,9 @@ class PostController extends Controller
         Storage::disk('public')->delete($path);
     }
 
-    protected function syncTags(Post $post, string $tagString): void
+    protected function syncTags(Post $post, ?string $tagString): void
     {
-        $tagNames = array_filter(array_map('trim', explode(',', $tagString)));
+        $tagNames = array_filter(array_map('trim', explode(',', $tagString ?? '')));
         $tagIds = [];
 
         foreach ($tagNames as $name) {
