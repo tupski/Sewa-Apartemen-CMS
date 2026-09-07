@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Media;
 use App\Http\Requests\MediaRequest;
+use App\Models\Media;
+use App\Services\ImageVariantService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -13,14 +14,14 @@ class MediaController extends Controller
     /**
      * Allowed MIME types for uploads (shared by file upload + URL import).
      *
-     * @var array<string, string>  mime => extension
+     * @var array<string, string> mime => extension
      */
     protected array $allowedMimes = [
-        'image/jpeg'      => 'jpg',
-        'image/png'       => 'png',
-        'image/webp'      => 'webp',
-        'image/gif'       => 'gif',
-        'image/svg+xml'   => 'svg',
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
+        'image/svg+xml' => 'svg',
         'application/pdf' => 'pdf',
     ];
 
@@ -55,10 +56,10 @@ class MediaController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('filename', 'like', '%' . $search . '%')
-                  ->orWhere('original_filename', 'like', '%' . $search . '%')
-                  ->orWhere('title', 'like', '%' . $search . '%')
-                  ->orWhere('alt', 'like', '%' . $search . '%');
+                $q->where('filename', 'like', '%'.$search.'%')
+                    ->orWhere('original_filename', 'like', '%'.$search.'%')
+                    ->orWhere('title', 'like', '%'.$search.'%')
+                    ->orWhere('alt', 'like', '%'.$search.'%');
             });
         }
 
@@ -71,8 +72,8 @@ class MediaController extends Controller
                 'data' => $media->getCollection()->map(fn (Media $m) => $this->toArray($m))->values(),
                 'meta' => [
                     'current_page' => $media->currentPage(),
-                    'last_page'    => $media->lastPage(),
-                    'total'        => $media->total(),
+                    'last_page' => $media->lastPage(),
+                    'total' => $media->total(),
                 ],
             ]);
         }
@@ -96,9 +97,9 @@ class MediaController extends Controller
         try {
             $validated = $request->validated();
             $media = $this->persistUploadedFile($request->file('file'), [
-                'alt'         => $validated['alt'] ?? null,
-                'title'       => $validated['title'] ?? null,
-                'caption'     => $validated['caption'] ?? null,
+                'alt' => $validated['alt'] ?? null,
+                'title' => $validated['title'] ?? null,
+                'caption' => $validated['caption'] ?? null,
                 'description' => $validated['description'] ?? null,
             ]);
 
@@ -112,7 +113,7 @@ class MediaController extends Controller
                 return response()->json(['message' => $e->getMessage()], 422);
             }
 
-            return back()->withInput()->with('error', __('media.upload_failed') . ' ' . $e->getMessage());
+            return back()->withInput()->with('error', __('media.upload_failed').' '.$e->getMessage());
         }
     }
 
@@ -123,7 +124,7 @@ class MediaController extends Controller
     public function upload(Request $request)
     {
         $request->validate([
-            'files'   => ['required', 'array'],
+            'files' => ['required', 'array'],
             'files.*' => ['required', 'file', 'max:10240', 'mimes:jpg,jpeg,png,webp,gif,svg,pdf'],
         ]);
 
@@ -136,7 +137,7 @@ class MediaController extends Controller
                 $created[] = $this->toArray($media);
             } catch (\Throwable $e) {
                 $errors[] = [
-                    'file'    => $file->getClientOriginalName(),
+                    'file' => $file->getClientOriginalName(),
                     'message' => $e->getMessage(),
                 ];
             }
@@ -145,7 +146,7 @@ class MediaController extends Controller
         if ($request->wantsJson()) {
             return response()->json([
                 'uploaded' => $created,
-                'errors'   => $errors,
+                'errors' => $errors,
             ], $created ? 201 : 422);
         }
 
@@ -169,10 +170,10 @@ class MediaController extends Controller
     public function fromUrl(Request $request)
     {
         $validated = $request->validate([
-            'url'         => ['required', 'string', 'max:2048', 'url'],
-            'alt'         => ['nullable', 'string', 'max:255'],
-            'title'       => ['nullable', 'string', 'max:255'],
-            'caption'     => ['nullable', 'string', 'max:500'],
+            'url' => ['required', 'string', 'max:2048', 'url'],
+            'alt' => ['nullable', 'string', 'max:255'],
+            'title' => ['nullable', 'string', 'max:255'],
+            'caption' => ['nullable', 'string', 'max:500'],
             'description' => ['nullable', 'string'],
         ]);
 
@@ -200,13 +201,13 @@ class MediaController extends Controller
             );
 
             $media = $this->persistUploadedFile($uploaded, [
-                'alt'               => $validated['alt'] ?? null,
-                'title'             => $validated['title'] ?? null,
-                'caption'           => $validated['caption'] ?? null,
-                'description'       => $validated['description'] ?? null,
+                'alt' => $validated['alt'] ?? null,
+                'title' => $validated['title'] ?? null,
+                'caption' => $validated['caption'] ?? null,
+                'description' => $validated['description'] ?? null,
                 'original_filename' => $originalName,
-                'mime_type'         => $contentType,
-                'size'              => strlen($binary),
+                'mime_type' => $contentType,
+                'size' => strlen($binary),
             ]);
 
             @unlink($tmpPath);
@@ -221,7 +222,7 @@ class MediaController extends Controller
                 return response()->json(['message' => $e->getMessage()], 422);
             }
 
-            return back()->withInput()->with('error', __('media.upload_failed') . ' ' . $e->getMessage());
+            return back()->withInput()->with('error', __('media.upload_failed').' '.$e->getMessage());
         }
     }
 
@@ -248,16 +249,16 @@ class MediaController extends Controller
     {
         try {
             $validated = $request->validate([
-                'alt'         => 'nullable|string|max:255',
-                'title'       => 'nullable|string|max:255',
-                'caption'     => 'nullable|string|max:500',
+                'alt' => 'nullable|string|max:255',
+                'title' => 'nullable|string|max:255',
+                'caption' => 'nullable|string|max:500',
                 'description' => 'nullable|string',
             ]);
 
             $media->update([
-                'alt'         => $validated['alt'] ?? null,
-                'title'       => $validated['title'] ?? null,
-                'caption'     => $validated['caption'] ?? null,
+                'alt' => $validated['alt'] ?? null,
+                'title' => $validated['title'] ?? null,
+                'caption' => $validated['caption'] ?? null,
                 'description' => $validated['description'] ?? null,
             ]);
 
@@ -271,7 +272,7 @@ class MediaController extends Controller
                 return response()->json(['message' => $e->getMessage()], 422);
             }
 
-            return back()->withInput()->with('error', __('media.update_failed') . ' ' . $e->getMessage());
+            return back()->withInput()->with('error', __('media.update_failed').' '.$e->getMessage());
         }
     }
 
@@ -295,7 +296,7 @@ class MediaController extends Controller
                 return response()->json(['message' => $e->getMessage()], 422);
             }
 
-            return back()->with('error', __('media.delete_failed') . ' ' . $e->getMessage());
+            return back()->with('error', __('media.delete_failed').' '.$e->getMessage());
         }
     }
 
@@ -317,15 +318,15 @@ class MediaController extends Controller
 
         $uploadContext = $meta['alt'] ?? $meta['title'] ?? 'media';
         $result = upload_file($file, [
-            'base_folder'   => 'Media',
-            'sub_folders'   => [date('Y'), date('m')],
-            'name_prefix'   => 'Media',
+            'base_folder' => 'Media',
+            'sub_folders' => [date('Y'), date('m')],
+            'name_prefix' => 'Media',
             'name_category' => $uploadContext,
         ]);
 
-        $filename  = $result['filename'];
+        $filename = $result['filename'];
         $extension = $result['extension'];
-        $folder    = $result['folder'];
+        $folder = $result['folder'];
 
         $width = null;
         $height = null;
@@ -338,29 +339,39 @@ class MediaController extends Controller
             $this->generateThumbnail($file->getRealPath(), $folder, $filename);
         }
 
-        return Media::create([
-            'user_id'           => auth()->id(),
-            'disk'              => 'public',
-            'directory'         => $folder,
-            'filename'          => $filename,
+        $media = Media::create([
+            'user_id' => auth()->id(),
+            'disk' => 'public',
+            'directory' => $folder,
+            'filename' => $filename,
             'original_filename' => $originalName,
-            'mime_type'         => $mimeType,
-            'extension'         => $extension,
-            'size'              => $meta['size'] ?? $file->getSize(),
-            'width'             => $width,
-            'height'            => $height,
-            'type'              => $type,
-            'alt'               => $meta['alt'] ?? null,
-            'title'             => $meta['title'] ?? null,
-            'caption'           => $meta['caption'] ?? null,
-            'description'       => $meta['description'] ?? null,
+            'mime_type' => $mimeType,
+            'extension' => $extension,
+            'size' => $meta['size'] ?? $file->getSize(),
+            'width' => $width,
+            'height' => $height,
+            'type' => $type,
+            'alt' => $meta['alt'] ?? null,
+            'title' => $meta['title'] ?? null,
+            'caption' => $meta['caption'] ?? null,
+            'description' => $meta['description'] ?? null,
         ]);
+
+        // Best-effort responsive variants (400/800/1600 + WebP/AVIF).
+        // Never blocks or fails the upload itself.
+        try {
+            app(ImageVariantService::class)->generateFor($media);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return $media;
     }
 
     /**
      * Download a remote file with SSRF / size / timeout guards.
      *
-     * @return array{0: string, 1: string}  [binary, contentType]
+     * @return array{0: string, 1: string} [binary, contentType]
      *
      * @throws \RuntimeException on any guard violation or transport failure
      */
@@ -407,7 +418,7 @@ class MediaController extends Controller
             throw new \RuntimeException(__('media.url_fetch_failed'));
         }
         if ($httpCode < 200 || $httpCode >= 300) {
-            throw new \RuntimeException(__('media.url_fetch_failed') . ' (HTTP ' . $httpCode . ')');
+            throw new \RuntimeException(__('media.url_fetch_failed').' (HTTP '.$httpCode.')');
         }
         if (strlen($body) > $maxBytes) {
             throw new \RuntimeException(__('media.url_too_large'));
@@ -421,7 +432,7 @@ class MediaController extends Controller
         // For non-SVG, trust the sniffed type; SVG is text/xml so keep header hint.
         if (isset($this->allowedMimes[$sniffed])) {
             $contentType = $sniffed;
-        } elseif ($sniffed === 'image/svg' ) {
+        } elseif ($sniffed === 'image/svg') {
             $contentType = 'image/svg+xml';
         }
 
@@ -444,17 +455,17 @@ class MediaController extends Controller
         int $maxBytes
     ): array {
         $options = [
-            CURLOPT_URL            => $url,
+            CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => false, // do not follow redirects (SSRF safety)
             CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_TIMEOUT        => 20,
-            CURLOPT_MAXFILESIZE    => $maxBytes,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_MAXFILESIZE => $maxBytes,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_USERAGENT      => 'SewaApartemenCMS-MediaImporter/1.0',
+            CURLOPT_USERAGENT => 'SewaApartemenCMS-MediaImporter/1.0',
             // Abort mid-stream if the response body exceeds the cap.
-            CURLOPT_NOPROGRESS     => false,
+            CURLOPT_NOPROGRESS => false,
             CURLOPT_PROGRESSFUNCTION => function ($res, $dlTotal, $dlNow) use ($maxBytes) {
                 return ($dlTotal > $maxBytes || $dlNow > $maxBytes) ? 1 : 0;
             },
@@ -466,10 +477,10 @@ class MediaController extends Controller
         // because there is no name for a hostile resolver to re-answer.
         if (! filter_var($host, FILTER_VALIDATE_IP)) {
             $target = filter_var($pinnedIp, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false
-                ? '[' . $pinnedIp . ']'
+                ? '['.$pinnedIp.']'
                 : $pinnedIp;
 
-            $options[CURLOPT_RESOLVE] = [$host . ':' . $port . ':' . $target];
+            $options[CURLOPT_RESOLVE] = [$host.':'.$port.':'.$target];
         }
 
         return $options;
@@ -640,7 +651,7 @@ class MediaController extends Controller
         $base = preg_replace('/[^A-Za-z0-9_\-]/', '-', $base);
         $base = trim($base, '-') ?: 'download';
 
-        return $base . '.' . $extension;
+        return $base.'.'.$extension;
     }
 
     /**
@@ -651,25 +662,25 @@ class MediaController extends Controller
     protected function toArray(Media $media): array
     {
         return [
-            'id'                => $media->id,
-            'url'               => $media->url,
-            'thumbnail_url'     => $media->thumbnail_url,
-            'filename'          => $media->filename,
+            'id' => $media->id,
+            'url' => $media->url,
+            'thumbnail_url' => $media->thumbnail_url,
+            'filename' => $media->filename,
             'original_filename' => $media->original_filename,
-            'mime_type'         => $media->mime_type,
-            'type'              => $media->type,
-            'size'              => $media->size,
-            'width'             => $media->width,
-            'height'            => $media->height,
-            'directory'         => $media->directory,
-            'alt'               => $media->alt,
-            'title'             => $media->title,
-            'caption'           => $media->caption,
-            'description'       => $media->description,
-            'uploaded_by'       => $media->user?->name,
-            'created_at'        => optional($media->created_at)->toDateTimeString(),
-            'update_url'        => route('admin.media.update', $media),
-            'destroy_url'       => route('admin.media.destroy', $media),
+            'mime_type' => $media->mime_type,
+            'type' => $media->type,
+            'size' => $media->size,
+            'width' => $media->width,
+            'height' => $media->height,
+            'directory' => $media->directory,
+            'alt' => $media->alt,
+            'title' => $media->title,
+            'caption' => $media->caption,
+            'description' => $media->description,
+            'uploaded_by' => $media->user?->name,
+            'created_at' => optional($media->created_at)->toDateTimeString(),
+            'update_url' => route('admin.media.update', $media),
+            'destroy_url' => route('admin.media.destroy', $media),
         ];
     }
 
@@ -713,12 +724,12 @@ class MediaController extends Controller
     protected function generateThumbnail(string $filePath, string $folder, string $filename): void
     {
         try {
-            $thumbnailDir = storage_path('app/public/' . $folder . '/thumbnails');
+            $thumbnailDir = storage_path('app/public/'.$folder.'/thumbnails');
             if (! file_exists($thumbnailDir)) {
                 mkdir($thumbnailDir, 0755, true);
             }
 
-            $thumbnailPath = $thumbnailDir . '/' . $filename;
+            $thumbnailPath = $thumbnailDir.'/'.$filename;
             $imageInfo = @getimagesize($filePath);
             if (! $imageInfo) {
                 return;
