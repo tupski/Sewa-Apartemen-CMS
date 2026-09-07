@@ -8,6 +8,7 @@ use App\Models\Tag;
 use App\Services\BlogPropertyService;
 use App\Services\SchemaService;
 use App\Services\SeoService;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -66,12 +67,7 @@ class BlogController extends Controller
 
         $sidebarData = $this->getSidebarData();
 
-        $relatedPosts = Post::published()
-            ->where('category_id', $post->category_id)
-            ->where('id', '!=', $post->id)
-            ->latest('published_at')
-            ->limit(3)
-            ->get();
+        $relatedPosts = $this->getRelatedPosts($post);
 
         // Ponytail: bila post punya seo metadata kustom, dipakai langsung;
         // fallback ke metaTags() dari title/excerpt bila kosong.
@@ -129,6 +125,48 @@ class BlogController extends Controller
         return '';
     }
 
+    /**
+     * Related posts for the article page: same category first, then a
+     * shared-tag fallback to fill up to $limit.
+     *
+     * Two bounded queries total:
+     *  1. published posts in the same category (existing behaviour),
+     *  2. published posts sharing at least one of the post's tags
+     *     (single `whereHas` against the post_tag pivot — no per-tag loop),
+     *     excluding the current post and everything already picked.
+     *
+     * The current post is always excluded; drafts never appear
+     * (`published()` scope on both queries); max $limit results.
+     *
+     * @return Collection<int, Post>
+     */
+    protected function getRelatedPosts(Post $post, int $limit = 3): Collection
+    {
+        $related = Post::published()
+            ->where('category_id', $post->category_id)
+            ->where('id', '!=', $post->id)
+            ->latest('published_at')
+            ->limit($limit)
+            ->get();
+
+        if ($related->count() >= $limit) {
+            return $related;
+        }
+
+        $excludeIds = $related->pluck('id')
+            ->push($post->id)
+            ->all();
+
+        $fallback = Post::published()
+            ->whereHas('tags', fn ($q) => $q->whereIn('tags.id', $post->tags->modelKeys()))
+            ->whereNotIn('id', $excludeIds)
+            ->latest('published_at')
+            ->take($limit - $related->count())
+            ->get();
+
+        return $related->concat($fallback)->values();
+    }
+
     public function category(string $slug)
     {
         $category = Category::where('slug', $slug)->firstOrFail();
@@ -141,10 +179,35 @@ class BlogController extends Controller
 
         $sidebarData = $this->getSidebarData();
 
-        $seo = SeoService::metaTags(
-            'Category: '.$category->name.' - Blog',
-            'Posts in category '.$category->name,
-            url('/blog/category/'.$category->slug),
+        // Archive landing-page SEO: description dari Category.description,
+        // fallback i18n; schema CollectionPage + BreadcrumbList. Admin dapat
+        // meng-override via System Pages (`blog.category`).
+        $description = $category->description
+            ?: __('blog.category_meta_description', ['name' => $category->name]);
+
+        $seo = SeoService::forSystemPage(
+            'blog.category',
+            __('blog.category_meta_title', ['name' => $category->name]),
+            $description,
+            route('blog.category', $category->slug),
+            ['name' => $category->name],
+            [
+                'jsonld' => [
+                    SchemaService::organization(),
+                    SchemaService::website(),
+                    SchemaService::collectionPage(
+                        $category->name,
+                        $description,
+                        route('blog.category', $category->slug),
+                        $this->listItems($posts),
+                    ),
+                    SchemaService::breadcrumbList([
+                        'Home' => url('/'),
+                        __('blog.title') => route('blog.index'),
+                        $category->name => route('blog.category', $category->slug),
+                    ]),
+                ],
+            ],
         );
 
         return view('blog.index', array_merge(compact('posts', 'category', 'seo'), $sidebarData));
@@ -162,13 +225,61 @@ class BlogController extends Controller
 
         $sidebarData = $this->getSidebarData();
 
-        $seo = SeoService::metaTags(
-            'Tag: '.$tag->name.' - Blog',
-            'Posts tagged '.$tag->name,
-            url('/blog/tag/'.$tag->slug),
+        // Description dari Tag.description (nullable), fallback i18n.
+        $description = $tag->description
+            ?: __('blog.tag_meta_description', ['name' => $tag->name]);
+
+        $seo = SeoService::forSystemPage(
+            'blog.tag',
+            __('blog.tag_meta_title', ['name' => $tag->name]),
+            $description,
+            route('blog.tag', $tag->slug),
+            ['name' => $tag->name],
+            [
+                'jsonld' => [
+                    SchemaService::organization(),
+                    SchemaService::website(),
+                    SchemaService::collectionPage(
+                        $tag->name,
+                        $description,
+                        route('blog.tag', $tag->slug),
+                        $this->listItems($posts),
+                    ),
+                    SchemaService::breadcrumbList([
+                        'Home' => url('/'),
+                        __('blog.title') => route('blog.index'),
+                        $tag->name => route('blog.tag', $tag->slug),
+                    ]),
+                ],
+            ],
         );
 
-        return view('blog.index', array_merge(compact('posts', 'tag', 'seo'), $sidebarData));
+        // Tag → property discovery via BlogPropertyService (Fase 1):
+        // location tags resolve ke city; tag lain fallback ke featured.
+        $tagProperties = app(BlogPropertyService::class)
+            ->propertiesForTag($tag, (int) config('blog.tag_properties_limit', 3));
+
+        return view('blog.index', array_merge(compact('posts', 'tag', 'seo', 'tagProperties'), $sidebarData));
+    }
+
+    /**
+     * ListItem map for the archive's CollectionPage.mainEntity, mirroring
+     * the blog index / property listing schema shape.
+     *
+     * @param  LengthAwarePaginator<int, Post>  $posts
+     * @return array<int, array{ '@type': string, position: int, url: string, name: string }>
+     */
+    protected function listItems($posts): array
+    {
+        return $posts->getCollection()
+            ->values()
+            ->map(fn (Post $item, int $index): array => [
+                '@type' => 'ListItem',
+                'position' => $index + 1,
+                'url' => route('blog.show', $item->slug),
+                'name' => $item->title,
+            ])
+            ->all();
     }
 
     protected function getSidebarData(): array

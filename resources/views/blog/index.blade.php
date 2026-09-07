@@ -13,6 +13,15 @@
                         {{ __('blog.title') }}
                     @endif
                 </h1>
+                @if(isset($tag))
+                    {{-- Tag description (admin-managed, nullable) — semantic
+                         archive header; escaped output. --}}
+                    @if($tag->description)
+                        <p class="mt-2 text-gray-600 dark:text-gray-300 max-w-3xl">{{ $tag->description }}</p>
+                    @endif
+                @elseif(isset($category) && $category->description)
+                    <p class="mt-2 text-gray-600 dark:text-gray-300 max-w-3xl">{{ $category->description }}</p>
+                @endif
             </div>
 
             <div class="flex flex-col lg:flex-row gap-8">
@@ -64,6 +73,22 @@
                             <p class="text-gray-500 dark:text-gray-400">{{ __('blog.no_posts') }}</p>
                             <a href="{{ route('blog.index') }}" class="text-blue-600 hover:text-blue-800 mt-2 inline-block">{{ __('blog.view_all') }}</a>
                         </div>
+                    @endif
+
+                    {{-- Tag → property discovery (BlogController passes
+                         $tagProperties; may be empty). --}}
+                    @if(isset($tagProperties) && $tagProperties->count() > 0)
+                        <section class="mt-8 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-700 p-6" aria-labelledby="tag-property-cta">
+                            <h2 id="tag-property-cta" class="text-xl font-bold text-gray-800 dark:text-white mb-1">
+                                {{ __('blog.cta_title_area', ['area' => $tag->name]) }}
+                            </h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ __('blog.cta_subtitle') }}</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                @foreach($tagProperties as $property)
+                                    @include('blog._property-card', ['property' => $property])
+                                @endforeach
+                            </div>
+                        </section>
                     @endif
                 </div>
 
