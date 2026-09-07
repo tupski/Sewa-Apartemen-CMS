@@ -57,7 +57,15 @@ class BlogController extends Controller
 
     public function show(string $slug)
     {
-        $post = Post::with(['category', 'tags', 'author', 'seo'])
+        // Public pillar/cluster: only published rows ever reach the view
+        // (draft pillar/cluster stay invisible without extra queries).
+        $post = Post::with([
+            'category', 'tags', 'author', 'seo',
+            'pillar' => fn ($q) => $q->published(),
+            'clusterPosts' => fn ($q) => $q->published()
+                ->orderBy('published_at')
+                ->limit((int) config('blog.cluster_posts_limit', 8)),
+        ])
             ->where('slug', $slug)
             ->firstOrFail();
 
@@ -67,7 +75,14 @@ class BlogController extends Controller
 
         $sidebarData = $this->getSidebarData();
 
-        $relatedPosts = $this->getRelatedPosts($post);
+        // Dedup related posts against the pillar/cluster modules: posts the
+        // visitor already sees in "part of guide" / "in this guide" sections
+        // are not repeated as related recommendations.
+        $relatedPosts = $this->dedupPillarRelated($this->getRelatedPosts($post), $post);
+
+        // Eager-loaded (published-constrained) pillar modules for the view.
+        $pillar = $post->pillar;
+        $clusterPosts = $post->clusterPosts;
 
         // Ponytail: bila post punya seo metadata kustom, dipakai langsung;
         // fallback ke metaTags() dari title/excerpt bila kosong.
@@ -102,7 +117,7 @@ class BlogController extends Controller
         $ctaAreaLabel = $this->ctaAreaLabel($post);
 
         return view('blog.show', array_merge(
-            compact('post', 'relatedPosts', 'seo', 'ctaProperties', 'ctaAreaLabel'),
+            compact('post', 'relatedPosts', 'seo', 'ctaProperties', 'ctaAreaLabel', 'pillar', 'clusterPosts'),
             $sidebarData
         ));
     }
@@ -165,6 +180,31 @@ class BlogController extends Controller
             ->get();
 
         return $related->concat($fallback)->values();
+    }
+
+    /**
+     * Related-post dedup for the pillar/cluster modules: drop related
+     * candidates the visitor already sees in the "part of guide" (pillar)
+     * or "in this guide" (cluster) sections. Collection-level only —
+     * no extra queries, related-post logic itself is untouched.
+     *
+     * @param  Collection<int, Post>  $relatedPosts
+     * @return Collection<int, Post>
+     */
+    protected function dedupPillarRelated(Collection $relatedPosts, Post $post): Collection
+    {
+        $excludedIds = collect([$post->pillar?->id])
+            ->merge($post->clusterPosts->modelKeys())
+            ->filter()
+            ->all();
+
+        if ($excludedIds === []) {
+            return $relatedPosts;
+        }
+
+        return $relatedPosts
+            ->reject(fn (Post $item) => in_array($item->id, $excludedIds))
+            ->values();
     }
 
     public function category(string $slug)

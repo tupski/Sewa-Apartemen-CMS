@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class Post extends Model
@@ -19,6 +20,7 @@ class Post extends Model
         'published_at',
         'user_id',
         'category_id',
+        'pillar_post_id',
         'featured_image',
     ];
 
@@ -41,6 +43,26 @@ class Post extends Model
         return $this->belongsToMany(Tag::class, 'post_tag');
     }
 
+    /**
+     * The pillar post this (cluster) article belongs to. Null = standalone
+     * post or a pillar itself. Self-references are prevented at validation;
+     * a deleted pillar nulls this column via the FK (nullOnDelete).
+     */
+    public function pillar()
+    {
+        return $this->belongsTo(Post::class, 'pillar_post_id');
+    }
+
+    /**
+     * Cluster articles that belong to this post as their pillar.
+     * Unconstrained base relationship (admin sees drafts too);
+     * public rendering filters published at the query site.
+     */
+    public function clusterPosts()
+    {
+        return $this->hasMany(Post::class, 'pillar_post_id');
+    }
+
     public function seo()
     {
         return $this->morphOne(SeoMetadata::class, 'seoable');
@@ -49,8 +71,8 @@ class Post extends Model
     public function scopePublished($query)
     {
         return $query->where('status', 'published')
-                     ->whereNotNull('published_at')
-                     ->where('published_at', '<=', now());
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now());
     }
 
     protected static function booted(): void
@@ -59,27 +81,27 @@ class Post extends Model
             if (empty($post->slug)) {
                 $post->slug = static::uniqueSlug($post->title);
             }
-            if ($post->status === 'published' && !$post->published_at) {
+            if ($post->status === 'published' && ! $post->published_at) {
                 $post->published_at = now();
             }
         });
 
         static::updating(function (Post $post) {
-            if ($post->isDirty('status') && $post->status === 'published' && !$post->published_at) {
+            if ($post->isDirty('status') && $post->status === 'published' && ! $post->published_at) {
                 $post->published_at = now();
             }
         });
 
         static::saved(function () {
-            \Illuminate\Support\Facades\Cache::forget('sitemap.xml');
-            \Illuminate\Support\Facades\Cache::forget('blog_sidebar');
-            \Illuminate\Support\Facades\Cache::forget('dashboard_stats');
+            Cache::forget('sitemap.xml');
+            Cache::forget('blog_sidebar');
+            Cache::forget('dashboard_stats');
         });
 
         static::deleted(function () {
-            \Illuminate\Support\Facades\Cache::forget('sitemap.xml');
-            \Illuminate\Support\Facades\Cache::forget('blog_sidebar');
-            \Illuminate\Support\Facades\Cache::forget('dashboard_stats');
+            Cache::forget('sitemap.xml');
+            Cache::forget('blog_sidebar');
+            Cache::forget('dashboard_stats');
         });
     }
 
@@ -89,8 +111,8 @@ class Post extends Model
         $original = $slug;
         $counter = 1;
 
-        while (static::where('slug', $slug)->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))->exists()) {
-            $slug = $original . '-' . $counter++;
+        while (static::where('slug', $slug)->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))->exists()) {
+            $slug = $original.'-'.$counter++;
         }
 
         return $slug;

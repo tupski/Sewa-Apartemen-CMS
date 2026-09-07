@@ -73,6 +73,36 @@
                         </div>
                     </article>
 
+                    {{-- Pillar discovery: this article is part of a guide. --}}
+                    @if(isset($pillar) && $pillar)
+                        <section class="mt-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800 p-6" aria-labelledby="pillar-heading">
+                            <p class="text-sm text-blue-700 dark:text-blue-300 font-medium mb-2">{{ __('blog.part_of_guide') }}</p>
+                            <h2 id="pillar-heading" class="text-xl font-bold text-gray-900 dark:text-white">
+                                <a href="{{ route('blog.show', $pillar->slug) }}"
+                                   class="hover:text-blue-700 dark:hover:text-blue-300 transition">
+                                    {{ $pillar->title }}
+                                </a>
+                            </h2>
+                        </section>
+                    @endif
+
+                    {{-- Cluster list: this article is the pillar of a guide. --}}
+                    @if(isset($clusterPosts) && $clusterPosts->count() > 0)
+                        <section class="mt-8 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-700 p-6" aria-labelledby="cluster-heading">
+                            <h2 id="cluster-heading" class="text-xl font-bold text-gray-800 dark:text-white mb-4">{{ __('blog.in_this_guide') }}</h2>
+                            <ul class="space-y-2">
+                                @foreach($clusterPosts as $clusterPost)
+                                    <li>
+                                        <a href="{{ route('blog.show', $clusterPost->slug) }}"
+                                           class="text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-200 hover:underline">
+                                            {{ $clusterPost->title }}
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </section>
+                    @endif
+
                     {{-- Property CTA — natural next step after the article.
                          BlogController passes $ctaProperties (may be empty). --}}
                     @if(isset($ctaProperties) && $ctaProperties->count() > 0)

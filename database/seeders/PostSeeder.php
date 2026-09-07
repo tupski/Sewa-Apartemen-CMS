@@ -292,6 +292,30 @@ class PostSeeder extends Seeder
             }
         }
 
+        // Editorial pillar → cluster assignments (Fase 5). Only applied when
+        // the cluster post still has no pillar (null) so manual admin edits
+        // survive re-seeding. Cluster: the "apartment basics" guide —
+        // tips-memilih is the comprehensive how-to-choose guide; the other
+        // articles cover its subtopics (price system, vs hotel, check-in,
+        // family suitability). No BSD-cluster seeding: no existing seeded
+        // article acts as a BSD hub guide — forcing one would misclassify
+        // reviews/culinary/transport posts editorially.
+        $pillarMap = [
+            'perbandingan-sewa-apartemen-vs-hotel-mana-lebih-hemat' => 'tips-memilih-apartemen-sewa-harian-jabodetabek',
+            'sistem-harga-transit-apartemen-jam-jaman' => 'tips-memilih-apartemen-sewa-harian-jabodetabek',
+            'panduan-check-in-apartemen-harian-persiapan' => 'tips-memilih-apartemen-sewa-harian-jabodetabek',
+            'apartemen-harian-ramah-keluarga-jabodetabek' => 'tips-memilih-apartemen-sewa-harian-jabodetabek',
+        ];
+
+        foreach ($pillarMap as $clusterSlug => $pillarSlug) {
+            $cluster = Post::where('slug', $clusterSlug)->first();
+            $pillarId = Post::where('slug', $pillarSlug)->value('id');
+
+            if ($cluster && $pillarId && $cluster->pillar_post_id === null) {
+                $cluster->update(['pillar_post_id' => $pillarId]);
+            }
+        }
+
         $this->command->info('PostSeeder: '.count($posts).' post berhasil di-seed.');
     }
 }

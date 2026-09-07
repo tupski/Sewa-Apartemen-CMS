@@ -25,4 +25,8 @@ return [
     'sidebar_properties_limit' => 3,
     'article_cta_limit' => 3,
     'tag_properties_limit' => 3,
+
+    // Pillar → cluster architecture (Fase 5): max cluster articles rendered
+    // in the "in this guide" list on the pillar article page.
+    'cluster_posts_limit' => 8,
 ];

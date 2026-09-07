@@ -47,8 +47,11 @@ class PostController extends Controller
         $categories = Category::orderBy('name')->get();
         $tags = Tag::orderBy('name')->get();
         $featuredMedia = null;
+        // Pillar candidates: every other post (drafts included — editorial
+        // preparation); the select also allows choosing none.
+        $pillarPosts = Post::orderBy('title')->get(['id', 'title']);
 
-        return view('admin.posts.create', compact('categories', 'tags', 'featuredMedia'));
+        return view('admin.posts.create', compact('categories', 'tags', 'featuredMedia', 'pillarPosts'));
     }
 
     public function store(Request $request)
@@ -63,6 +66,9 @@ class PostController extends Controller
             // nullable so legacy clients/tests that omit it still work (defaults to draft).
             'status' => 'nullable|in:draft,published',
             'category_id' => 'nullable|exists:categories,id',
+            // Editorial pillar link: optional, must be an existing post.
+            // (Self-reference is impossible at creation — the post has no id yet.)
+            'pillar_post_id' => 'nullable|integer|exists:posts,id|not_in:0',
             // Client enforces images only + 5MB, keep server-side rules as the trust boundary.
             'featured_image' => 'nullable|image|mimes:jpeg,png,webp,gif|max:5120',
             'featured_image_media_id' => 'nullable|integer|exists:media,id',
@@ -80,6 +86,8 @@ class PostController extends Controller
 
             $data = $validated;
             unset($data['featured_image_media_id'], $data['remove_featured_image']);
+            // Empty select submits '' — normalize to null for the nullable FK column.
+            $data['pillar_post_id'] = filled($data['pillar_post_id'] ?? null) ? (int) $data['pillar_post_id'] : null;
             $data['user_id'] = auth()->id();
             // Status is optional in the request; default to draft.
             $data['status'] = $data['status'] ?? 'draft';
@@ -138,8 +146,10 @@ class PostController extends Controller
         $tags = Tag::orderBy('name')->get();
         $postTags = $post->tags->pluck('name')->implode(', ');
         $featuredMedia = $this->mediaForPath($post->featured_image);
+        // Pillar candidates exclude the current post (self-reference).
+        $pillarPosts = Post::where('id', '!=', $post->id)->orderBy('title')->get(['id', 'title']);
 
-        return view('admin.posts.edit', compact('post', 'categories', 'tags', 'postTags', 'featuredMedia'));
+        return view('admin.posts.edit', compact('post', 'categories', 'tags', 'postTags', 'featuredMedia', 'pillarPosts'));
     }
 
     /**
@@ -160,6 +170,9 @@ class PostController extends Controller
             'excerpt' => 'nullable|string',
             'status' => 'nullable|in:draft,published',
             'category_id' => 'nullable|exists:categories,id',
+            // Editorial pillar link: optional, must be an existing post,
+            // never the post itself (self-reference).
+            'pillar_post_id' => 'nullable|integer|exists:posts,id|not_in:0,'.$post->id,
             'featured_image' => 'nullable|image|mimes:jpeg,png,webp,gif|max:5120',
             'featured_image_media_id' => 'nullable|integer|exists:media,id',
             'remove_featured_image' => 'nullable|boolean',
@@ -178,6 +191,8 @@ class PostController extends Controller
             $validated['content'] = SafeHtmlService::sanitize($validated['content'] ?? null);
             $data = $validated;
             unset($data['featured_image_media_id'], $data['remove_featured_image']);
+            // Empty select submits '' — normalize to null for the nullable FK column.
+            $data['pillar_post_id'] = filled($data['pillar_post_id'] ?? null) ? (int) $data['pillar_post_id'] : null;
 
             // Status is optional in the request; default to draft.
             $data['status'] = $data['status'] ?? 'draft';

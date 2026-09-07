@@ -45,6 +45,22 @@
             @error('category_id') <p class="text-red-500 text-sm mt-1">{{ $message }}</p> @enderror
         </div>
 
+        {{-- Pillar Article --}}
+        <div>
+            <label for="pillar_post_id" class="block text-sm font-medium text-gray-700 mb-2">{{ __('blog.pillar_article') }}</label>
+            <select name="pillar_post_id" id="pillar_post_id"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                <option value="">{{ __('blog.no_pillar') }}</option>
+                @foreach($pillarPosts ?? [] as $pillarPost)
+                    <option value="{{ $pillarPost->id }}" {{ old('pillar_post_id', $post->pillar_post_id ?? '') == $pillarPost->id ? 'selected' : '' }}>
+                        {{ $pillarPost->title }}
+                    </option>
+                @endforeach
+            </select>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('blog.pillar_help') }}</p>
+            @error('pillar_post_id') <p class="text-red-500 text-sm mt-1">{{ $message }}</p> @enderror
+        </div>
+
         {{-- Excerpt --}}
         <div>
             <label for="excerpt" class="block text-sm font-medium text-gray-700 mb-2">{{ __('Excerpt') }}</label>
