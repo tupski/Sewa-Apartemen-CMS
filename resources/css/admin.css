@@ -1,0 +1,12 @@
+/* Flux UI (admin) — pipeline Tailwind CSS v4 terpisah dari app.css (public, Tailwind v3).
+   Jangan menambahkan directive/utility Tailwind v3 di file ini. */
+@import 'tailwindcss4';
+@import '../../vendor/livewire/flux/dist/flux.css';
+
+/* Dark mode Flux memakai class .dark (bukan prefers-color-scheme) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Vendor & packages di-gitignore: sumber kelas Flux harus dideklarasikan eksplisit */
+@source '../vendor/livewire/flux/stubs/resources/views/flux';
+@source '../../packages/flux-pro/stubs/resources/views/flux';
+@source '../views/livewire';

@@ -28,6 +28,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SystemPageSeoController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\VoucherController;
+use App\Livewire\Flux\SmokeTest;
 use App\Models\Language;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -85,6 +86,9 @@ Route::post('/'.slug('slug_booking_status', 'booking/status').'/validate-voucher
 // Admin CMS Routes (require authentication + admin role)
 // The admin path prefix is configurable via admin "Slug & Path" (admin_prefix setting)
 Route::middleware(['auth', 'verified', 'admin'])->prefix(slug('admin_prefix', 'admin'))->name('admin.')->group(function () {
+
+    // Flux UI smoke test (Phase 0) — isolated Flux/Livewire admin page
+    Route::get('flux-setup', SmokeTest::class)->name('flux.setup');
 
     // Dashboard Calendar (AJAX for modal)
     Route::get('dashboard/calendar', [DashboardController::class, 'calendar'])->name('dashboard.calendar');
