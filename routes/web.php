@@ -28,6 +28,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SystemPageSeoController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\VoucherController;
+use App\Livewire\Flux\ShellDemo;
 use App\Livewire\Flux\SmokeTest;
 use App\Models\Language;
 use Illuminate\Http\Request;
@@ -89,6 +90,9 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix(slug('admin_prefix', 'a
 
     // Flux UI smoke test (Phase 0) — isolated Flux/Livewire admin page
     Route::get('flux-setup', SmokeTest::class)->name('flux.setup');
+
+    // Flux admin shell demo (Phase 1) — proves the shell end to end
+    Route::get('shell-demo', ShellDemo::class)->name('shell.demo');
 
     // Dashboard Calendar (AJAX for modal)
     Route::get('dashboard/calendar', [DashboardController::class, 'calendar'])->name('dashboard.calendar');

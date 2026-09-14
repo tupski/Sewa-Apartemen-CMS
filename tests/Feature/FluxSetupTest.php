@@ -89,7 +89,8 @@ class FluxSetupTest extends TestCase
             file_get_contents(base_path('packages/flux-pro/dist/manifest.json')),
             true
         )['/flux.js'];
-        $response->assertSee('/flux/flux.min.js?id='.$hash, false);
+        $file = config('app.debug') ? 'flux.js' : 'flux.min.js';
+        $response->assertSee('/flux/'.$file.'?id='.$hash, false);
 
         $fluxJs = $this->actingAs($user)->get('/flux/flux.min.js');
         $fluxJs->assertOk();

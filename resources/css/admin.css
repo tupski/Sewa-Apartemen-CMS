@@ -10,3 +10,49 @@
 @source '../vendor/livewire/flux/stubs/resources/views/flux';
 @source '../../packages/flux-pro/stubs/resources/views/flux';
 @source '../views/livewire';
+@source '../views/components/admin';
+
+/* Brand accent: biru Artivo yang sudah dipakai admin lama (bukan default zinc Flux).
+   Dipakai di active state sidebar + focus ring saja, bukan di semua elemen. */
+@theme {
+    --color-accent: #2563eb;
+    --color-accent-content: #2563eb;
+    --color-accent-foreground: #ffffff;
+}
+
+.dark {
+    --color-accent: #60a5fa;
+    --color-accent-content: #60a5fa;
+    --color-accent-foreground: #0f172a;
+}
+
+/* Font Awesome ikon slot di sidebar item Flux: flux memberi size-4, FA butuh
+   lebar tetap agar label tidak lompat saat ikonnya variatif. */
+[data-flux-sidebar-item] .svg-inline--fa {
+    width: 1rem;
+}
+
+/* UMD Livewire meng-assign window.Alpine tanpa x-cloak default; sembunyikan
+   elemen ber-cloak sebelum Alpine siap agar drawer/dropdown tidak berkedip. */
+[x-cloak] {
+    display: none !important;
+}
+
+/* Flux memakai focus:outline-hidden tanpa ring pengganti, yang menghapus focus
+   indicator bawaan browser. Kembalikan outline fokus yang terlihat (WCAG 2.4.7)
+   untuk SEMUA elemen interaktif di shell; hover/mouse tidak terpengaruh. */
+:where(a, button, input, select, textarea, [tabindex], summary):focus-visible {
+    outline: 2px solid var(--color-accent, #2563eb);
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
