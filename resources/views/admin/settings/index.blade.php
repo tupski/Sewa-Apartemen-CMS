@@ -7,7 +7,7 @@
     <div class="bg-white rounded-lg shadow-sm overflow-hidden">
         <div class="flex flex-col lg:flex-row">
             <!-- Sidebar Navigation -->
-            <aside class="w-full border-b border-gray-200 bg-gray-50">
+            <aside class="w-full lg:w-64 lg:shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 bg-gray-50">
                 <div class="p-4 border-b border-gray-200">
                     <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
                         <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -19,8 +19,8 @@
                     <p class="text-xs text-gray-500 mt-1">Configure your CMS</p>
                 </div>
 
-                <nav class="py-4 overflow-x-auto" role="navigation" aria-label="Settings groups">
-                    <ul class="flex min-w-max gap-1 px-3">
+                <nav class="py-4" role="navigation" aria-label="Settings groups">
+                    <ul class="space-y-1 px-3">
                         @php
                             $groups = [
                                 'general'         => ['icon' => 'cog', 'label' => 'General'],
@@ -40,12 +40,12 @@
                         @endphp
 
                         @foreach($groups as $slug => $info)
-                            <li class="shrink-0">
+                            <li>
                                 <a href="{{ route('admin.settings.index', ['group' => $slug]) }}"
-                                   class="flex items-center gap-3 px-3 py-2.5 border-b-2 whitespace-nowrap text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset
+                                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500
                                           {{ $activeGroup === $slug
-                                              ? 'border-blue-600 text-blue-700'
-                                              : 'border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900' }}"
+                                              ? 'bg-blue-50 text-blue-700'
+                                              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}"
                                    @if($activeGroup === $slug)
                                        aria-current="page"
                                    @endif>
