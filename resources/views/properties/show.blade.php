@@ -114,6 +114,11 @@
                 'name'     => $pp->place->name,
                 'category' => $pp->place->category,
                 'distance' => $pp->distance_formatted,
+                // Place details for the marker popup (see initPropertyMap in app.js).
+                'walking'  => $pp->walking_duration_formatted,
+                'address'  => $pp->place->address,
+                'website'  => $pp->place->website,
+                'phone'    => $pp->place->phone,
             ];
         }
     } else {
@@ -139,7 +144,7 @@
         'center'  => $hasMap
             ? [(float) $property->latitude, (float) $property->longitude]
             : (count($mapMarkers) ? [$mapMarkers[0]['lat'], $mapMarkers[0]['lng']] : [-2.5, 118.0]),
-        'mapKey'  => config('services.geoapify.map_key'),
+        'mapKey'  => \App\Services\GeoapifyService::mapKey(),
         'markers' => $mapMarkers,
     ];
 @endphp

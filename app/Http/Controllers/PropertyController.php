@@ -8,6 +8,7 @@ use App\Models\Amenity;
 use App\Models\Media;
 use App\Models\Property;
 use App\Models\PropertyPhoto;
+use App\Services\GeoapifyService;
 use App\Services\SafeHtmlService;
 use App\Services\SchemaService;
 use App\Services\SeoService;
@@ -15,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -869,15 +871,18 @@ class PropertyController extends Controller
     }
 
     /**
-     * Phase 5: Re-sync the persistent Geoapify POIs for a property (admin only).
+     * Re-sync the persistent Geoapify POIs for a property (admin only).
      *
-     * Clears the property's cached Geoapify payload and dispatches
-     * FetchNearbyPlacesJob. When the queue driver is `sync` the job runs inline
-     * before the response returns; otherwise it is queued for a worker.
+     * Runs the sync INLINE (FetchNearbyPlacesJob::dispatchSync) so the freshly
+     * fetched POIs are persisted and re-rendered in the same request — the admin
+     * never has to save again or reload to see the result. The job remains the
+     * only caller of GeoapifyService, so no external API call can happen on a
+     * page render.
      *
-     * Responds with JSON (message + freshly rendered POI table) when the admin
-     * form calls it via fetch(), so the edit page updates in place instead of
-     * navigating away. Plain requests still get the redirect-back + flash.
+     * Responds with JSON (message + counts + per-group status + freshly rendered
+     * POI table) when the admin form calls it via fetch(), so the edit page
+     * updates in place instead of navigating away. Plain requests still get the
+     * redirect-back + flash.
      */
     public function resyncNearbyPlaces(Request $request, Property $property)
     {
@@ -887,44 +892,167 @@ class PropertyController extends Controller
                 $request,
                 $property,
                 false,
-                __('Property must have coordinates set before syncing POI.')
+                __('Property must have coordinates set before syncing POI.'),
+                'missing_coordinates'
             );
         }
 
-        // Require the Geoapify API key to be configured.
-        if (empty(config('services.geoapify.key'))) {
+        // Require the Geoapify API key to be configured (Settings → Integrations).
+        if (! GeoapifyService::isConfigured()) {
             return $this->resyncResponse(
                 $request,
                 $property,
                 false,
-                'GEOAPIFY_API_KEY belum dikonfigurasi.'
+                __('Geoapify API key is not configured. Add it in Settings → Integrations.'),
+                'missing_api_key'
             );
         }
 
-        // Force a fresh fetch by clearing the cached payload for this property.
+        // Force a fresh fetch by clearing the cached payload for this property,
+        // and clear any previous sync result so the outcome we read back below
+        // can only come from THIS run.
         Cache::forget("geoapify_places_{$property->id}");
+        Cache::forget(FetchNearbyPlacesJob::resultCacheKey($property->id));
 
-        FetchNearbyPlacesJob::dispatch($property);
+        try {
+            FetchNearbyPlacesJob::dispatchSync($property);
+        } catch (\Throwable $e) {
+            // A database or unexpected provider failure must never surface as a
+            // 500: log the detail and report a short, actionable message instead.
+            Log::error('POI sync failed for property '.$property->id.': '.$e->getMessage());
+
+            return $this->resyncResponse(
+                $request,
+                $property,
+                false,
+                __('Unable to synchronize nearby places. Please check your Geoapify API key and try again.'),
+                'failed'
+            );
+        }
+
+        // dispatchSync runs the job in-process, but Laravel discards the job's
+        // return value — the job therefore caches its structured result, which is
+        // read back here. A null result means the job never ran (Queue::fake in
+        // tests, or a non-sync queue connection): fall back to the "queued"
+        // message and let the re-rendered table show the persisted rows.
+        $result = Cache::get(FetchNearbyPlacesJob::resultCacheKey($property->id));
+
+        if (! is_array($result)) {
+            return $this->resyncResponse(
+                $request,
+                $property,
+                true,
+                __('POI sync queued successfully.'),
+                null
+            );
+        }
 
         return $this->resyncResponse(
             $request,
             $property,
-            true,
-            __('POI sync queued successfully.')
+            $this->isSyncSuccessful($result),
+            $this->syncMessage($result),
+            $result['reason'] ?? null,
+            $result
         );
+    }
+
+    /**
+     * Whether a sync result should be presented as a success.
+     *
+     * A partial sync (some groups failed, others persisted) counts as successful
+     * but is flagged separately so the UI never claims total success.
+     *
+     * @param  array<string, mixed>  $result
+     */
+    protected function isSyncSuccessful(array $result): bool
+    {
+        $reason = $result['reason'] ?? null;
+
+        if ($reason === 'partial') {
+            return true;
+        }
+
+        return (bool) ($result['success'] ?? false);
+    }
+
+    /**
+     * Build the admin-facing message for a sync result.
+     *
+     * Raw provider errors are never surfaced: each failure reason maps to a
+     * short, actionable sentence.
+     *
+     * @param  array<string, mixed>  $result
+     */
+    protected function syncMessage(array $result): string
+    {
+        $reason = $result['reason'] ?? null;
+        $synced = (int) ($result['synced'] ?? 0);
+
+        switch ($reason) {
+            case 'missing_coordinates':
+                return __('Property must have coordinates set before syncing POI.');
+
+            case 'missing_api_key':
+                return __('Geoapify API key is not configured. Add it in Settings → Integrations.');
+
+            case 'busy':
+                return __('A POI synchronization is already running for this property. Please wait a moment.');
+
+            case 'route_failed':
+                return __('Unable to calculate walking times. Please check your Geoapify API key and try again.');
+
+            case 'partial':
+                return __(':count nearby places synchronized. Failed category: :groups.', [
+                    'count' => $synced,
+                    'groups' => implode(', ', $this->failedGroupLabels($result)),
+                ]);
+        }
+
+        if ($synced === 0) {
+            return __('No nearby places found within a 10-minute walk of this property.');
+        }
+
+        return __(':count nearby places synchronized.', ['count' => $synced]);
+    }
+
+    /**
+     * Display labels of the POI groups that failed during a sync.
+     *
+     * @param  array<string, mixed>  $result
+     * @return array<int, string>
+     */
+    protected function failedGroupLabels(array $result): array
+    {
+        $groups = $result['groups'] ?? [];
+
+        if (! is_array($groups)) {
+            return [];
+        }
+
+        return array_keys(array_filter(
+            $groups,
+            fn ($status): bool => is_array($status) && ($status['status'] ?? null) !== 'ok'
+        ));
     }
 
     /**
      * Build the resync response: JSON for fetch()/XHR callers, redirect-back otherwise.
      *
      * The JSON payload carries the re-rendered POI table so the caller can swap
-     * it into the edit form without a page navigation. Under the `sync` queue
-     * driver the job has already finished by the time this runs, so the table is
-     * up to date; with a real worker it renders the pre-sync rows and the admin
-     * reloads to see the result.
+     * it into the edit form without a page navigation. The sync runs inline, so
+     * the table reflects the rows that were just persisted.
+     *
+     * @param  array<string, mixed>|null  $result  Structured sync result, when available
      */
-    protected function resyncResponse(Request $request, Property $property, bool $success, string $message)
-    {
+    protected function resyncResponse(
+        Request $request,
+        Property $property,
+        bool $success,
+        string $message,
+        ?string $reason = null,
+        ?array $result = null
+    ) {
         if (! $request->expectsJson() && ! $request->ajax()) {
             return back()->with($success ? 'success' : 'error', $message);
         }
@@ -940,8 +1068,12 @@ class PropertyController extends Controller
 
         return response()->json([
             'success' => $success,
+            'partial' => ($reason ?? null) === 'partial',
+            'reason' => $reason,
             'message' => $message,
             'count' => $propertyPlaces->count(),
+            'walk_max_seconds' => GeoapifyService::WALK_MAX_SECONDS,
+            'groups' => is_array($result['groups'] ?? null) ? $result['groups'] : [],
             'html' => view('admin.properties._nearby-table', [
                 'propertyPlaces' => $propertyPlaces,
             ])->render(),

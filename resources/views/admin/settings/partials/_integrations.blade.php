@@ -3,6 +3,77 @@
 <p class="text-sm text-gray-500 mb-6">Configure external integrations and webhooks.</p>
 
 <div class="space-y-6">
+    {{-- Geoapify (Nearby Places / POI) --}}
+    <div class="border border-gray-200 rounded-lg p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h4 class="text-md font-semibold text-gray-700">Geoapify — Nearby Places (POI)</h4>
+
+            @if($settings['geoapify_api_key_configured'] ?? false)
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                    API key configured
+                </span>
+            @else
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                    Not configured
+                </span>
+            @endif
+        </div>
+
+        <p class="text-sm text-gray-500 mb-4">
+            Digunakan untuk mengambil Tempat Menarik (POI) di sekitar properti: pusat perbelanjaan,
+            rumah sakit, dan transportasi umum dalam radius 10 menit berjalan kaki.
+            Kunci hanya dipakai di sisi server dan tidak pernah dikirim ke browser.
+            Dapatkan kunci di
+            <a href="https://myprojects.geoapify.com/" target="_blank" rel="noopener noreferrer"
+               class="text-blue-600 hover:text-blue-800 underline">myprojects.geoapify.com</a>.
+        </p>
+
+        <div class="space-y-4">
+            <div>
+                <label for="geoapify_api_key" class="block text-sm font-medium text-gray-700 mb-2">
+                    Geoapify API Key (Places + Route Matrix)
+                </label>
+                <input type="password"
+                       name="geoapify_api_key"
+                       id="geoapify_api_key"
+                       value=""
+                       autocomplete="new-password"
+                       spellcheck="false"
+                       placeholder="{{ ($settings['geoapify_api_key_configured'] ?? false) ? '••••••••••••  (terisi — kosongkan untuk mempertahankan)' : 'Masukkan API key Geoapify' }}"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">
+                <p class="text-xs text-gray-500 mt-1">
+                    Kunci yang tersimpan tidak pernah ditampilkan kembali. Biarkan kosong untuk mempertahankan kunci yang ada.
+                </p>
+                @error('geoapify_api_key')
+                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div>
+                <label for="geoapify_map_key" class="block text-sm font-medium text-gray-700 mb-2">
+                    Geoapify Map Key (opsional, untuk tile peta)
+                </label>
+                <input type="password"
+                       name="geoapify_map_key"
+                       id="geoapify_map_key"
+                       value=""
+                       autocomplete="new-password"
+                       spellcheck="false"
+                       placeholder="{{ ($settings['geoapify_map_key_configured'] ?? false) ? '••••••••••••  (terisi — kosongkan untuk mempertahankan)' : 'Kosong = pakai API key di atas' }}"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">
+                <p class="text-xs text-gray-500 mt-1">
+                    Kunci ini <strong>terlihat oleh pengunjung</strong> di halaman properti (tile peta).
+                    Gunakan kunci terpisah yang dibatasi per domain/referrer. Biarkan kosong untuk memakai kunci di atas.
+                </p>
+                @error('geoapify_map_key')
+                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+        </div>
+    </div>
+
     {{-- Owner Notification Webhook --}}
     <div class="border border-gray-200 rounded-lg p-4">
         <h4 class="text-md font-semibold text-gray-700 mb-4">Owner Notification Webhook</h4>

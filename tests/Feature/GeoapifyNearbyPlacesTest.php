@@ -9,6 +9,7 @@ use App\Models\PropertyPlace;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\GeoapifyService;
+use App\Services\SettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
@@ -19,12 +20,13 @@ use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
- * Phase 7 — Geoapify persistent-POI pipeline.
+ * Geoapify persistent-POI pipeline.
  *
- * Covers GeoapifyService normalization/error handling, FetchNearbyPlacesJob
- * persistence + idempotency + caching, the admin resync/list endpoints, the
- * public property page rendering (including the "zero outbound HTTP on render"
- * guarantee), and the Place/PropertyPlace model behaviour.
+ * Covers GeoapifyService normalization/error handling, the Places + Route Matrix
+ * pipeline in FetchNearbyPlacesJob (persistence, walking-time filtering,
+ * idempotency, caching), the admin sync/list endpoints, the public property page
+ * rendering (including the "zero outbound HTTP on render" guarantee), and the
+ * Place/PropertyPlace model behaviour.
  *
  * NO test in this file performs a real network call: every test that can reach
  * Geoapify installs Http::fake() + Http::preventStrayRequests() first, and the
@@ -45,6 +47,10 @@ class GeoapifyNearbyPlacesTest extends TestCase
         parent::setUp();
 
         $this->user = User::factory()->create();
+
+        // SettingsService keeps a process-wide static cache; clear it so a key
+        // stored by another test can never leak into this one.
+        SettingsService::clearCache();
 
         // Dummy Geoapify config for every test. Never a real key.
         config()->set('services.geoapify.key', 'test-key');
@@ -79,12 +85,12 @@ class GeoapifyNearbyPlacesTest extends TestCase
     private function poiFeature(array $properties = [], ?array $coordinates = null): array
     {
         $props = array_merge([
-            'place_id' => 'gp-restaurant-1',
-            'name' => 'Warung Sederhana',
-            'categories' => ['catering.restaurant'],
+            'place_id' => 'gp-hospital-1',
+            'name' => 'RS Sehat Sentosa',
+            'categories' => ['healthcare.hospital'],
             'formatted' => 'Jl. Sudirman No. 1, Jakarta',
-            'website' => 'https://warung.example.test',
-            'contact' => ['phone' => '+62211234567'],
+            'website' => 'https://rs.example.test',
+            'contact' => ['phone' => '+622****4567'],
         ], $properties);
 
         // GeoJSON order is [longitude, latitude] — deliberately asymmetric so the
@@ -100,19 +106,60 @@ class GeoapifyNearbyPlacesTest extends TestCase
     }
 
     /**
-     * Install an Http fake returning the given GeoJSON features, and forbid any
-     * request that is not explicitly faked.
+     * Install an Http fake covering BOTH Geoapify endpoints used by the pipeline:
+     * the Places search and the Route Matrix walking-time calculation.
      *
-     * @param  array<int, array<string, mixed>>  $features
+     * @param  array<int, array<string, mixed>>  $features  Places API features
+     * @param  array<string, int|null>  $walkSeconds  place_id => routed walking seconds.
+     *                                                Defaults to 300s (5 min, inside the
+     *                                                10-minute budget) for every POI.
      */
-    private function fakeGeoapify(array $features): void
+    private function fakeGeoapify(array $features, array $walkSeconds = []): void
     {
         Http::preventStrayRequests();
+
+        // place_id => GeoJSON [lng, lat], so the matrix fake can resolve the
+        // targets it is asked about back to their place ids.
+        $coordinates = [];
+        foreach ($features as $feature) {
+            $coordinates[$feature['properties']['place_id']] = $feature['geometry']['coordinates'];
+        }
+
         Http::fake([
-            'api.geoapify.com/*' => Http::response([
+            'api.geoapify.com/v2/places*' => Http::response([
                 'type' => 'FeatureCollection',
                 'features' => $features,
             ], 200),
+
+            'api.geoapify.com/v1/routematrix*' => function ($request) use ($coordinates, $walkSeconds) {
+                $targets = $request->data()['targets'] ?? [];
+                $row = [];
+
+                foreach ($targets as $index => $target) {
+                    $placeId = null;
+                    [$lng, $lat] = $target['location'];
+
+                    foreach ($coordinates as $id => [$poiLng, $poiLat]) {
+                        if (abs($poiLng - $lng) < 1e-9 && abs($poiLat - $lat) < 1e-9) {
+                            $placeId = $id;
+                            break;
+                        }
+                    }
+
+                    $seconds = $placeId === null
+                        ? null
+                        : ($walkSeconds[$placeId] ?? 300);
+
+                    $row[] = [
+                        'distance' => $seconds === null ? null : (int) round($seconds * 1.3),
+                        'time' => $seconds,
+                        'source_index' => 0,
+                        'target_index' => $index,
+                    ];
+                }
+
+                return Http::response(['sources_to_targets' => [$row]], 200);
+            },
         ]);
     }
 
@@ -147,13 +194,13 @@ class GeoapifyNearbyPlacesTest extends TestCase
         $place = Place::create(array_merge([
             'geoapify_place_id' => 'gp-seeded-'.$seq,
             'name' => 'Seeded Place',
-            'category' => 'Restaurant/Food',
+            'category' => GeoapifyService::GROUP_HOSPITAL,
             'lat' => -6.205,
             'lng' => 106.805,
             'address' => 'Jl. Seeded No. 9',
             'website' => null,
             'phone' => null,
-            'raw_category' => 'catering.restaurant',
+            'raw_category' => 'healthcare.hospital',
             'fetched_at' => now(),
         ], $placeAttributes));
 
@@ -196,7 +243,7 @@ class GeoapifyNearbyPlacesTest extends TestCase
     {
         $this->fakeGeoapify([$this->poiFeature()]);
 
-        $pois = (new GeoapifyService)->fetchNearbyPlaces(-6.2, 106.8);
+        $pois = (new GeoapifyService)->searchGroup(GeoapifyService::GROUP_HOSPITAL, -6.2, 106.8);
 
         $this->assertCount(1, $pois);
 
@@ -214,13 +261,13 @@ class GeoapifyNearbyPlacesTest extends TestCase
             'phone',
         ], array_keys($poi));
 
-        $this->assertSame('gp-restaurant-1', $poi['geoapify_place_id']);
-        $this->assertSame('Warung Sederhana', $poi['name']);
-        $this->assertSame('catering.restaurant', $poi['raw_category']);
-        $this->assertSame('Restaurant/Food', $poi['category']);
+        $this->assertSame('gp-hospital-1', $poi['geoapify_place_id']);
+        $this->assertSame('RS Sehat Sentosa', $poi['name']);
+        $this->assertSame('healthcare.hospital', $poi['raw_category']);
+        $this->assertSame('Hospital/Health', $poi['category']);
         $this->assertSame('Jl. Sudirman No. 1, Jakarta', $poi['address']);
-        $this->assertSame('https://warung.example.test', $poi['website']);
-        $this->assertSame('+62211234567', $poi['phone']);
+        $this->assertSame('https://rs.example.test', $poi['website']);
+        $this->assertSame('+622****4567', $poi['phone']);
 
         // GeoJSON gave [106.81, -6.21]; lat/lng must be un-swapped.
         $this->assertSame(-6.21, $poi['lat']);
@@ -234,13 +281,13 @@ class GeoapifyNearbyPlacesTest extends TestCase
             $this->poiFeature(['place_id' => 'gp-no-name', 'name' => null]),
             // `name` present but empty.
             $this->poiFeature(['place_id' => 'gp-empty-name', 'name' => '']),
-            $this->poiFeature(['place_id' => 'gp-named', 'name' => 'Kopi Kenangan']),
+            $this->poiFeature(['place_id' => 'gp-named', 'name' => 'RS Bunda']),
         ]);
 
-        $pois = (new GeoapifyService)->fetchNearbyPlaces(-6.2, 106.8);
+        $pois = (new GeoapifyService)->searchGroup(GeoapifyService::GROUP_HOSPITAL, -6.2, 106.8);
 
         $this->assertCount(1, $pois);
-        $this->assertSame('Kopi Kenangan', $pois[0]['name']);
+        $this->assertSame('RS Bunda', $pois[0]['name']);
     }
 
     public function test_service_returns_empty_array_when_response_has_no_features_key(): void
@@ -250,7 +297,10 @@ class GeoapifyNearbyPlacesTest extends TestCase
             'api.geoapify.com/*' => Http::response(['type' => 'FeatureCollection'], 200),
         ]);
 
-        $this->assertSame([], (new GeoapifyService)->fetchNearbyPlaces(-6.2, 106.8));
+        $this->assertSame(
+            [],
+            (new GeoapifyService)->searchGroup(GeoapifyService::GROUP_HOSPITAL, -6.2, 106.8)
+        );
     }
 
     public function test_service_throws_on_401_and_does_not_retry(): void
@@ -261,7 +311,7 @@ class GeoapifyNearbyPlacesTest extends TestCase
         ]);
 
         try {
-            (new GeoapifyService)->fetchNearbyPlaces(-6.2, 106.8);
+            (new GeoapifyService)->searchGroup(GeoapifyService::GROUP_HOSPITAL, -6.2, 106.8);
             $this->fail('Expected a RuntimeException for HTTP 401.');
         } catch (\RuntimeException $e) {
             $this->assertSame('Geoapify API key invalid or quota exceeded', $e->getMessage());
@@ -281,7 +331,7 @@ class GeoapifyNearbyPlacesTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Geoapify returned invalid JSON');
 
-        (new GeoapifyService)->fetchNearbyPlaces(-6.2, 106.8);
+        (new GeoapifyService)->searchGroup(GeoapifyService::GROUP_HOSPITAL, -6.2, 106.8);
     }
 
     public function test_service_constructor_throws_when_api_key_is_missing(): void
@@ -289,7 +339,7 @@ class GeoapifyNearbyPlacesTest extends TestCase
         config()->set('services.geoapify.key', '');
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Geoapify API key is not configured. Set GEOAPIFY_API_KEY in .env');
+        $this->expectExceptionMessage('Geoapify API key is not configured. Add it in Settings → Integrations.');
 
         new GeoapifyService;
     }
@@ -301,7 +351,7 @@ class GeoapifyNearbyPlacesTest extends TestCase
 
         $this->fakeGeoapify([$this->poiFeature()]);
 
-        (new GeoapifyService)->fetchNearbyPlaces(-6.2, 106.8);
+        (new GeoapifyService)->searchGroup(GeoapifyService::GROUP_HOSPITAL, -6.2, 106.8);
 
         Http::assertSent(function ($request) {
             $url = urldecode($request->url());
@@ -317,9 +367,9 @@ class GeoapifyNearbyPlacesTest extends TestCase
     {
         $this->fakeGeoapify([
             $this->poiFeature([
-                'place_id' => 'gp-restaurant',
-                'name' => 'Bakmi Enak',
-                'categories' => ['catering.restaurant'],
+                'place_id' => 'gp-mall',
+                'name' => 'Grand Mall',
+                'categories' => ['commercial.shopping_mall'],
             ]),
             $this->poiFeature([
                 'place_id' => 'gp-unmapped',
@@ -328,17 +378,56 @@ class GeoapifyNearbyPlacesTest extends TestCase
             ]),
         ]);
 
-        $pois = (new GeoapifyService)->fetchNearbyPlaces(-6.2, 106.8);
+        $pois = (new GeoapifyService)->searchGroup(GeoapifyService::GROUP_SHOPPING, -6.2, 106.8);
 
         $this->assertCount(1, $pois);
-        $this->assertSame('Bakmi Enak', $pois[0]['name']);
-        $this->assertSame('Restaurant/Food', $pois[0]['category']);
+        $this->assertSame('Grand Mall', $pois[0]['name']);
+        $this->assertSame(GeoapifyService::GROUP_SHOPPING, $pois[0]['category']);
 
         // The mapped label must be a real NEARBY_CATEGORIES key.
-        $this->assertArrayHasKey('Restaurant/Food', Property::NEARBY_CATEGORIES);
+        $this->assertArrayHasKey(GeoapifyService::GROUP_SHOPPING, Property::NEARBY_CATEGORIES);
 
         // The unmapped category is dropped entirely.
         $this->assertNotContains('Random Apartment Block', array_column($pois, 'name'));
+    }
+
+    public function test_service_group_categories_are_the_verified_geoapify_identifiers(): void
+    {
+        // Pins the category identifiers verified against Geoapify's supported
+        // place categories, so an accidental edit cannot silently change which
+        // POI types are synchronized.
+        $this->assertSame([
+            'commercial.shopping_mall',
+            'commercial.department_store',
+            'commercial.marketplace',
+        ], GeoapifyService::POI_GROUPS[GeoapifyService::GROUP_SHOPPING]);
+
+        $this->assertSame(['healthcare.hospital'], GeoapifyService::POI_GROUPS[GeoapifyService::GROUP_HOSPITAL]);
+
+        $this->assertSame([
+            'public_transport.train',
+            'public_transport.subway',
+            'public_transport.light_rail',
+            'public_transport.monorail',
+            'public_transport.tram',
+            'public_transport.bus',
+            'public_transport.ferry',
+        ], GeoapifyService::POI_GROUPS[GeoapifyService::GROUP_TRANSPORT]);
+
+        // Every group label is a canonical nearby-place category.
+        foreach (array_keys(GeoapifyService::POI_GROUPS) as $group) {
+            $this->assertArrayHasKey($group, Property::NEARBY_CATEGORIES);
+        }
+    }
+
+    public function test_service_throws_for_an_unknown_group(): void
+    {
+        $this->fakeGeoapify([]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unknown POI group: NotAGroup');
+
+        (new GeoapifyService)->searchGroup('NotAGroup', -6.2, 106.8);
     }
 
     /* ===================================================================
@@ -350,27 +439,30 @@ class GeoapifyNearbyPlacesTest extends TestCase
         $property = $this->propertyWithCoords();
 
         $this->fakeGeoapify([
-            $this->poiFeature(['place_id' => 'gp-1', 'name' => 'Restoran Satu']),
+            $this->poiFeature(['place_id' => 'gp-1', 'name' => 'RS Sehat']),
             $this->poiFeature([
                 'place_id' => 'gp-2',
-                'name' => 'RS Sehat',
-                'categories' => ['healthcare.hospital'],
+                'name' => 'Grand Mall',
+                'categories' => ['commercial.shopping_mall'],
             ], [106.815, -6.215]),
         ]);
 
-        (new FetchNearbyPlacesJob($property))->handle();
+        $result = (new FetchNearbyPlacesJob($property))->handle();
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(2, $result['synced']);
 
         $this->assertDatabaseCount('places', 2);
         $this->assertDatabaseCount('property_places', 2);
 
         $this->assertDatabaseHas('places', [
             'geoapify_place_id' => 'gp-1',
-            'name' => 'Restoran Satu',
-            'category' => 'Restaurant/Food',
+            'name' => 'RS Sehat',
+            'category' => 'Hospital/Health',
         ]);
         $this->assertDatabaseHas('places', [
             'geoapify_place_id' => 'gp-2',
-            'category' => 'Hospital/Health',
+            'category' => 'Mall/Shopping',
         ]);
 
         foreach (PropertyPlace::all() as $pivot) {
@@ -378,6 +470,7 @@ class GeoapifyNearbyPlacesTest extends TestCase
             // enum('manual','geoapify') round-trips correctly on SQLite.
             $this->assertSame('geoapify', $pivot->source);
             $this->assertNotNull($pivot->distance_m);
+            $this->assertNotNull($pivot->walking_duration_s);
         }
     }
 
@@ -386,8 +479,12 @@ class GeoapifyNearbyPlacesTest extends TestCase
         $property = $this->propertyWithCoords();
 
         $this->fakeGeoapify([
-            $this->poiFeature(['place_id' => 'gp-1', 'name' => 'Restoran Satu']),
-            $this->poiFeature(['place_id' => 'gp-2', 'name' => 'Kafe Dua']),
+            $this->poiFeature(['place_id' => 'gp-1', 'name' => 'RS Sehat']),
+            $this->poiFeature([
+                'place_id' => 'gp-2',
+                'name' => 'Stasiun Tengah',
+                'categories' => ['public_transport.train'],
+            ]),
         ]);
 
         (new FetchNearbyPlacesJob($property))->handle();
@@ -407,11 +504,12 @@ class GeoapifyNearbyPlacesTest extends TestCase
 
         $stale = $this->seedPlace($property, [
             'geoapify_place_id' => 'gp-stale',
-            'name' => 'Closed Down Cafe',
+            'name' => 'Closed Down Mall',
+            'category' => GeoapifyService::GROUP_SHOPPING,
         ]);
 
         $this->fakeGeoapify([
-            $this->poiFeature(['place_id' => 'gp-fresh', 'name' => 'Still Open Cafe']),
+            $this->poiFeature(['place_id' => 'gp-fresh', 'name' => 'Still Open Hospital']),
         ]);
 
         (new FetchNearbyPlacesJob($property))->handle();
@@ -435,7 +533,7 @@ class GeoapifyNearbyPlacesTest extends TestCase
         );
 
         $this->fakeGeoapify([
-            $this->poiFeature(['place_id' => 'gp-fresh', 'name' => 'Fetched Cafe']),
+            $this->poiFeature(['place_id' => 'gp-fresh', 'name' => 'Fetched Hospital']),
         ]);
 
         (new FetchNearbyPlacesJob($property))->handle();
@@ -452,14 +550,15 @@ class GeoapifyNearbyPlacesTest extends TestCase
         $property = $this->propertyWithCoords();
 
         $this->fakeGeoapify([
-            $this->poiFeature(['place_id' => 'gp-1', 'name' => 'Cached Cafe']),
+            $this->poiFeature(['place_id' => 'gp-1', 'name' => 'Cached Hospital']),
         ]);
 
         (new FetchNearbyPlacesJob($property))->handle();
         // No Cache::forget() — the second run must hit the 24h cached payload.
         (new FetchNearbyPlacesJob($property))->handle();
 
-        Http::assertSentCount(1);
+        // Cold cache: one Places request per group (3) + one Route Matrix request.
+        Http::assertSentCount(4);
         $this->assertDatabaseCount('places', 1);
         $this->assertDatabaseCount('property_places', 1);
     }
@@ -475,7 +574,10 @@ class GeoapifyNearbyPlacesTest extends TestCase
         Http::preventStrayRequests();
         Http::fake();
 
-        (new FetchNearbyPlacesJob($property))->handle();
+        $result = (new FetchNearbyPlacesJob($property))->handle();
+
+        $this->assertFalse($result['success']);
+        $this->assertSame('missing_coordinates', $result['reason']);
 
         Http::assertNothingSent();
         $this->assertDatabaseCount('places', 0);
@@ -492,7 +594,10 @@ class GeoapifyNearbyPlacesTest extends TestCase
         Http::fake();
 
         // The job guards before constructing the service, so nothing is thrown.
-        (new FetchNearbyPlacesJob($property))->handle();
+        $result = (new FetchNearbyPlacesJob($property))->handle();
+
+        $this->assertFalse($result['success']);
+        $this->assertSame('missing_api_key', $result['reason']);
 
         Http::assertNothingSent();
         $this->assertDatabaseCount('places', 0);
@@ -508,8 +613,11 @@ class GeoapifyNearbyPlacesTest extends TestCase
             'api.geoapify.com/*' => Http::response('Internal Server Error', 500),
         ]);
 
-        // handle() catches the service's RuntimeException, logs it, and returns.
-        (new FetchNearbyPlacesJob($property))->handle();
+        // handle() records the per-group failure and returns; it never throws.
+        $result = (new FetchNearbyPlacesJob($property))->handle();
+
+        $this->assertFalse($result['success']);
+        $this->assertSame(0, $result['synced']);
 
         $this->assertDatabaseCount('places', 0);
         $this->assertDatabaseCount('property_places', 0);
@@ -525,7 +633,7 @@ class GeoapifyNearbyPlacesTest extends TestCase
 
         $this->fakeGeoapify([
             $this->poiFeature(
-                ['place_id' => 'gp-1km', 'name' => 'One Km Cafe'],
+                ['place_id' => 'gp-1km', 'name' => 'One Km Hospital'],
                 [106.8, -6.209]
             ),
         ]);
@@ -683,7 +791,7 @@ class GeoapifyNearbyPlacesTest extends TestCase
         $property = $this->propertyWithCoords();
         $this->seedPlace(
             $property,
-            ['name' => 'Persistent Warung', 'category' => 'Restaurant/Food'],
+            ['name' => 'Persistent Warung', 'category' => GeoapifyService::GROUP_HOSPITAL],
             ['distance_m' => 850]
         );
 
@@ -692,6 +800,63 @@ class GeoapifyNearbyPlacesTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('Persistent Warung', false);
         $response->assertSee('850m', false);
+    }
+
+    public function test_public_property_page_prefers_the_walking_distance_when_measured(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake();
+
+        $property = $this->propertyWithCoords();
+        $this->seedPlace(
+            $property,
+            [
+                'name' => 'Walked Hospital',
+                'category' => GeoapifyService::GROUP_HOSPITAL,
+                'address' => 'Jl. Detail No. 5, Jakarta',
+                'website' => 'https://walked.example.test',
+                'phone' => '+6221000111',
+            ],
+            ['distance_m' => 900, 'walking_distance_m' => 650, 'walking_duration_s' => 480]
+        );
+
+        $response = $this->get(route('properties.public.show', $property->slug));
+
+        $response->assertStatus(200);
+        $response->assertSee('650m', false);
+
+        // The map payload carries the full place details for the marker popup.
+        $payload = $this->extractMapData($response->getContent());
+        $poi = collect($payload['markers'])->firstWhere('type', 'poi');
+
+        $this->assertNotNull($poi, 'No POI marker in the map payload.');
+        $this->assertSame('Walked Hospital', $poi['name']);
+        $this->assertSame('650m', $poi['distance']);
+        $this->assertSame('8 '.__('min walk'), $poi['walking']);
+        $this->assertSame('Jl. Detail No. 5, Jakarta', $poi['address']);
+        $this->assertSame('https://walked.example.test', $poi['website']);
+        $this->assertSame('+6221000111', $poi['phone']);
+    }
+
+    public function test_map_payload_never_contains_the_geopify_api_key(): void
+    {
+        config()->set('services.geoapify.key', 'payload-secret-key');
+        config()->set('services.geoapify.map_key', 'payload-map-key');
+
+        Http::preventStrayRequests();
+        Http::fake();
+
+        $property = $this->propertyWithCoords();
+        $this->seedPlace($property, ['name' => 'Payload Hospital']);
+
+        $response = $this->get(route('properties.public.show', $property->slug));
+
+        $response->assertStatus(200);
+
+        // The payload may carry the browser map key (tiles need it) but never the
+        // server-side Places/Route-Matrix key.
+        $this->assertStringNotContainsString('payload-secret-key', $response->getContent());
+        $this->assertStringContainsString('payload-map-key', $response->getContent());
     }
 
     public function test_public_property_page_falls_back_to_manual_nearby_places(): void
@@ -791,6 +956,24 @@ class GeoapifyNearbyPlacesTest extends TestCase
         $this->assertNull($unknown->distance_formatted);
     }
 
+    public function test_walking_accessors_render_time_and_distance(): void
+    {
+        $property = $this->propertyWithCoords();
+
+        $pivot = $this->seedPlace(
+            $property,
+            ['name' => 'Walked Place'],
+            ['distance_m' => 900, 'walking_distance_m' => 650, 'walking_duration_s' => 480]
+        );
+
+        // 480s => 8 minutes.
+        $this->assertSame(8, $pivot->walking_minutes);
+        $this->assertSame('8 '.__('min walk'), $pivot->walking_duration_formatted);
+        $this->assertSame('650m', $pivot->walking_distance_formatted);
+        // distance_formatted prefers the measured walking distance.
+        $this->assertSame('650m', $pivot->distance_formatted);
+    }
+
     public function test_deleting_a_property_cascades_to_its_property_places(): void
     {
         // config('database.connections.sqlite.foreign_key_constraints') defaults to
@@ -859,7 +1042,7 @@ class GeoapifyNearbyPlacesTest extends TestCase
         $property = $this->propertyWithCoords();
 
         $this->fakeGeoapify([
-            $this->poiFeature(['place_id' => 'gp-locked', 'name' => 'Locked Out Cafe']),
+            $this->poiFeature(['place_id' => 'gp-locked', 'name' => 'Locked Out Hospital']),
         ]);
 
         // Simulate the in-flight sibling job by taking the lock first.
@@ -867,7 +1050,9 @@ class GeoapifyNearbyPlacesTest extends TestCase
         $this->assertTrue($lock->get(), 'The configured cache store must support atomic locks.');
 
         try {
-            (new FetchNearbyPlacesJob($property))->handle();
+            $result = (new FetchNearbyPlacesJob($property))->handle();
+
+            $this->assertSame('busy', $result['reason']);
 
             Http::assertNothingSent();
             $this->assertDatabaseCount('places', 0);
@@ -881,7 +1066,7 @@ class GeoapifyNearbyPlacesTest extends TestCase
         // not leaked, by the successful path.
         (new FetchNearbyPlacesJob($property))->handle();
 
-        Http::assertSentCount(1);
+        Http::assertSentCount(4);
         $this->assertDatabaseCount('places', 1);
         $this->assertTrue(Cache::lock("geoapify_sync_{$property->id}", 120)->get());
     }
@@ -901,7 +1086,7 @@ class GeoapifyNearbyPlacesTest extends TestCase
         ]);
 
         try {
-            (new GeoapifyService)->fetchNearbyPlaces(-6.2, 106.8);
+            (new GeoapifyService)->searchGroup(GeoapifyService::GROUP_HOSPITAL, -6.2, 106.8);
             $this->fail('Expected a RuntimeException for a connection failure.');
         } catch (\RuntimeException $e) {
             $this->assertSame('Geoapify API request failed: connection error', $e->getMessage());
@@ -933,9 +1118,10 @@ class GeoapifyNearbyPlacesTest extends TestCase
             $logged[] = $message->message;
         });
 
-        // Must not throw — the job catches the service's RuntimeException.
-        (new FetchNearbyPlacesJob($property))->handle();
+        // Must not throw — the job records the per-group failure and returns.
+        $result = (new FetchNearbyPlacesJob($property))->handle();
 
+        $this->assertFalse($result['success']);
         $this->assertDatabaseCount('places', 0);
         $this->assertDatabaseCount('property_places', 0);
         $this->assertNull(Cache::get("geoapify_places_{$property->id}"));

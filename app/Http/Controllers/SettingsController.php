@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Console\Commands\CheckForGitUpdates;
 use App\Services\BackupService;
+use App\Services\GeoapifyService;
 use App\Services\GitService;
 use App\Services\PostUpdateActionService;
 use App\Services\SettingsService;
@@ -57,6 +58,7 @@ class SettingsController extends Controller
         ],
         'integrations' => [
             'notification_webhook', 'notification_webhook_secret',
+            'geoapify_api_key', 'geoapify_map_key',
         ],
         'pricing' => [
             'weekend_days_mode', 'weekend_start_day', 'weekend_end_day',
@@ -172,6 +174,11 @@ class SettingsController extends Controller
         'integrations' => [
             'notification_webhook' => 'nullable|url|max:500',
             'notification_webhook_secret' => 'nullable|string|max:255',
+            // Geoapify credentials. Both are server-side secrets: the form never
+            // renders the stored value back (password inputs are always empty), and
+            // an empty submission means "keep the stored key" (see update()).
+            'geoapify_api_key' => 'nullable|string|max:255',
+            'geoapify_map_key' => 'nullable|string|max:255',
         ],
         'pricing' => [
             'weekend_days_mode' => 'nullable|string|in:sat_sun,fri_sun,custom',
@@ -354,6 +361,11 @@ class SettingsController extends Controller
             // Integrations
             'notification_webhook' => $this->settingsService->get('notification_webhook'),
             'notification_webhook_secret' => $this->settingsService->get('notification_webhook_secret'),
+            // Geoapify credentials. The RAW key is deliberately never handed to the
+            // view — only booleans describing whether each key is configured, so a
+            // secret can never leak into rendered HTML.
+            'geoapify_api_key_configured' => GeoapifyService::isConfigured(),
+            'geoapify_map_key_configured' => GeoapifyService::mapKey() !== null,
             // Pricing / Booking
             'weekend_days_mode' => $this->settingsService->get('weekend_days_mode', 'sat_sun'),
             'weekend_start_day' => $this->settingsService->get('weekend_start_day', '5'),
@@ -422,6 +434,25 @@ class SettingsController extends Controller
             }
 
             $data = $validator->validated();
+
+            // Secret fields are never rendered back into the form, so an empty
+            // submission means "leave the stored value alone" — without this, the
+            // settings form would silently wipe a working API key on every save.
+            if ($group === 'integrations') {
+                foreach (['geoapify_api_key', 'geoapify_map_key'] as $secret) {
+                    if (! array_key_exists($secret, $data)) {
+                        continue;
+                    }
+
+                    $value = is_string($data[$secret]) ? trim($data[$secret]) : '';
+
+                    if ($value === '') {
+                        unset($data[$secret]);
+                    } else {
+                        $data[$secret] = $value;
+                    }
+                }
+            }
 
             // Handle file uploads only for the general group
             if ($group === 'general') {

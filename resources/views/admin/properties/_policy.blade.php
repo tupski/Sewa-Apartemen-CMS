@@ -71,7 +71,7 @@
 
     <!-- Nearby Places / What's Around -->
     <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Tempat di Sekitar Properti <span class="text-gray-400 font-normal">(What's Around)</span></label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Nearby Places <span class="text-gray-400 font-normal">(manual — What's Around)</span></label>
         <p class="text-xs text-gray-500 mb-3">
             Tambahkan tempat-tempat di sekitar apartemen. Koordinat (lat/lng) digunakan untuk menampilkan pin di peta dan menghitung jarak otomatis — opsional, tapi direkomendasikan.
         </p>
@@ -148,6 +148,14 @@
             Tambah Tempat
         </button>
     </div>
+
+    {{-- Geoapify POI: the automatic half of the same feature. Rendered directly
+         beneath the manual list so "Nearby Places" and "Geoapify POI" are one
+         visually adjacent unit on both the create and edit screens. --}}
+    @include('admin.properties._nearby', [
+        'property' => $property ?? null,
+        'propertyPlaces' => $propertyPlaces ?? collect(),
+    ])
 </div>
 
 @once

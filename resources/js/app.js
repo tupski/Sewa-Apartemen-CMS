@@ -1835,8 +1835,20 @@ function initPropertyMap() {
             if (m.category) {
                 popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(String(m.category)) + '</span>';
             }
-            if (m.distance) {
-                popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(String(m.distance)) + '</span>';
+            // Walking time + distance on one line, e.g. "8 min walk · 650m".
+            var walkLine = [m.walking, m.distance].filter(Boolean).map(String).join(' \u00b7 ');
+            if (walkLine) {
+                popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(walkLine) + '</span>';
+            }
+            if (m.address) {
+                popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(String(m.address)) + '</span>';
+            }
+            // Only http(s) links — never render an arbitrary scheme from the payload.
+            if (m.website && /^https?:\/\//i.test(String(m.website))) {
+                popup += '<br><a href="' + escapeHtml(String(m.website)) + '" target="_blank" rel="noopener noreferrer" style="color:#2563eb;font-size:0.75rem">' + escapeHtml(String(m.website)) + '</a>';
+            }
+            if (m.phone) {
+                popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(String(m.phone)) + '</span>';
             }
         }
         marker.bindPopup(popup);

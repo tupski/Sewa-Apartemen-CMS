@@ -6,6 +6,18 @@
 
 **This document is the original design spec. The pipeline it describes is now implemented.** Everything below this section is the historical spec and is NOT authoritative. Where the spec and the code differ, **the code wins** (per [`AGENTS.md`](../AGENTS.md) §23).
 
+## ⚑ UPDATE 2026-09-15 — settings-based key, 3 POI groups, walking-time filtering
+
+Supersedes the "Shipped files" section below where they disagree:
+
+- **API key is now a CMS setting.** `geoapify_api_key` / `geoapify_map_key` live in **Settings → Integrations** (`SettingsController` group `integrations`), stored in the `settings` table. `GeoapifyService::apiKey()` / `mapKey()` resolve setting → `.env` → null; the key is never rendered (password field always submitted empty, blank submission keeps the stored value) and is server-side only.
+- **Only three POI groups are synced** (verified Geoapify category identifiers, see `GeoapifyService::POI_GROUPS`): Mall/Shopping (`commercial.shopping_mall`, `commercial.department_store`, `commercial.marketplace`), Hospital/Health (`healthcare.hospital`), Transportation (`public_transport.{train,subway,light_rail,monorail,tram,bus,ferry}`). The old broad restaurant/park/education set was removed.
+- **The 10-minute rule is now real walking time**, not a radius: candidates are deduplicated, then measured with the **Route Matrix API** (`POST /v1/routematrix`, `mode=walk`, batched at 1000 targets); only POIs with `time <= 600s` are persisted. `GeoapifyService::searchGroup()` + `walkingTimes()` replace `fetchNearbyPlaces()`.
+- **New pivot columns** `property_places.walking_distance_m` and `walking_duration_s` (migration `2026_09_15_000001_add_walking_metrics_to_property_places_table.php`). `distance_m` keeps its meaning (straight-line).
+- **The sync is synchronous and reports a result.** The controller calls `FetchNearbyPlacesJob::dispatchSync()`; the job caches its structured result under `geoapify_sync_result_{id}` (Laravel discards a synchronously dispatched job's return value). Per-group failures are isolated — a failed group keeps its previously synced rows — and the JSON response carries `success`, `partial`, `count`, `groups`, and the re-rendered grouped table.
+- **One card, two halves.** The Geoapify block is now rendered inside the same card as the manual nearby-places list (via `_policy.blade.php`), not as a separate section.
+- Tests: [`tests/Feature/GeoapifyNearbyPlacesTest.php`](../tests/Feature/GeoapifyNearbyPlacesTest.php) (pipeline + SEC-001..007) and [`tests/Feature/GeoapifyPoiSyncTest.php`](../tests/Feature/GeoapifyPoiSyncTest.php) (settings, walking filter, partial failure, create/edit flows).
+
 ## Shipped files
 
 **Migrations**
@@ -74,8 +86,8 @@ Any other UI refinement described in the spec's §21–§27 (category navigation
 
 ## Operational prerequisites
 
-1. **`GEOAPIFY_API_KEY` must be set in `.env`.** It is currently **blank**, so the job early-returns with a log warning and the map falls back to OSM tiles. Nothing will populate until a key is set.
-2. **A real queue driver plus a worker are required for async execution.** `.env` sets `QUEUE_CONNECTION=sync` while [`config/queue.php`](../config/queue.php) defaults to `database`. Under `sync` the job runs **inline during the admin resync request** — slower request, and `$tries`/`$backoff` never apply. Set e.g. `QUEUE_CONNECTION=database` and run `php artisan queue:work` for real background execution with retries.
+1. **A Geoapify API key must be configured** — either in **Settings → Integrations** (preferred, stored in `settings`) or as `GEOAPIFY_API_KEY` in `.env`. With neither, the job early-returns with a log warning, the sync button is disabled, and the map falls back to OSM tiles. (Superseded by the 2026-09-15 update above: the key is no longer env-only, and `.env` currently does hold a key.)
+2. **The admin sync runs inline by design** (`dispatchSync`), so no queue worker is required for it. There is still no automatic/scheduled POI refresh.
 
 Operator instructions: [`docs/geoapify-setup.md`](geoapify-setup.md). Agent rules: [`.agents/skills/nearby-places/SKILL.md`](../.agents/skills/nearby-places/SKILL.md).
 

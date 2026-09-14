@@ -224,11 +224,22 @@ class PropertyAdminFormFixesTest extends TestCase
         $response = $this->get(route('admin.properties.create'));
 
         $response->assertStatus(200);
-        $response->assertSee('Tempat Terdekat (Geoapify)', false);
+        // Both halves of the feature live in the same card: the manual list first,
+        // then the Geoapify POI block.
+        $response->assertSee('Nearby Places', false);
+        $response->assertSee(__('Geoapify POI'), false);
         $response->assertSee('id="poi-table-wrap"', false);
         // No property id yet, so syncing is explicitly unavailable — not faked.
         $response->assertSee('Simpan properti terlebih dahulu', false);
         $response->assertDontSee('data-url=', false);
+
+        $content = $response->getContent();
+
+        $this->assertLessThan(
+            strpos($content, 'id="geoapify-poi"'),
+            strpos($content, 'id="place-list"'),
+            'The Geoapify POI block must be rendered after the manual nearby-places list.'
+        );
     }
 
     public function test_create_page_nearby_section_does_not_add_a_second_form(): void
