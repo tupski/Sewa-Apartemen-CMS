@@ -73,19 +73,19 @@
                         <img src="{{ asset('storage/' . $adminSiteLogo) }}" alt="Logo"
                              class="h-8 w-auto max-w-[9rem] shrink-0 object-contain dark:brightness-0 dark:invert" :class="sidebarCollapsed ? 'lg:hidden' : ''">
                     @else
-                        <i class="fa-solid fa-building text-blue-400 shrink-0"></i>
+                        <i data-lucide="building-2" class="w-6 h-6 text-blue-400 shrink-0"></i>
                     @endif
                     <span :class="sidebarCollapsed ? 'lg:hidden' : ''" class="truncate text-white text-lg font-bold"></span>
                 </a>
                 <div class="flex items-center gap-1">
                     <!-- Collapse toggle (desktop) -->
-                    <button @click="sidebarCollapsed = !sidebarCollapsed" class="hidden lg:inline-flex text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1.5 transition" aria-label="Toggle sidebar" :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+                    <button @click="sidebarCollapsed = !sidebarCollapsed" class="hidden lg:inline-flex text-gray-400 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded-md p-1.5 transition" aria-label="Toggle sidebar" :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
                         <svg class="w-5 h-5 transition-transform duration-300" :class="sidebarCollapsed ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
                         </svg>
                     </button>
                     <!-- Close (mobile) -->
-                    <button @click="sidebarOpen = false" class="text-gray-400 hover:text-white lg:hidden focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1.5" aria-label="Close sidebar">
+                    <button @click="sidebarOpen = false" class="text-gray-400 hover:text-white lg:hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded-md p-1.5" aria-label="Close sidebar">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
@@ -298,7 +298,7 @@
             <header class="bg-white shadow-sm sticky top-0 z-40 dark:bg-gray-900 dark:border-b dark:border-gray-800">
                 <div class="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
                     <!-- Mobile menu button -->
-                    <button @click="sidebarOpen = true" class="text-gray-500 hover:text-gray-700 lg:hidden focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1 dark:text-gray-300 dark:hover:text-white" aria-label="Open sidebar menu">
+                    <button @click="sidebarOpen = true" class="text-gray-500 hover:text-gray-700 lg:hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded-md p-1 dark:text-gray-300 dark:hover:text-white" aria-label="Open sidebar menu">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
@@ -324,7 +324,7 @@
                     <div class="flex items-center space-x-3">
                         <!-- View Website button -->
                         <a href="{{ url('/') }}" target="_blank" rel="noopener"
-                           class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 transition"
+                           class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 transition"
                            aria-label="View Website" title="View Website">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
@@ -333,7 +333,7 @@
 
                         <!-- Calendar Button -->
                         <button @click="$dispatch('open-modal', { detail: 'calendar-modal' })"
-                                class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 transition"
+                                class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800 transition"
                                 aria-label="{{ __('admin.calendar') }}" title="{{ __('admin.calendar') }}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
@@ -408,7 +408,7 @@
                         <div x-data="{ dropdownOpen: false, cacheClearing: false }" class="relative">
                             <button @click="dropdownOpen = !dropdownOpen"
                                     data-testid="profile-menu-trigger"
-                                    class="flex items-center rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition"
+                                    class="flex items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 transition"
                                     aria-label="{{ __('admin.user_menu') }}"
                                     :aria-expanded="dropdownOpen"
                                     :title="'{{ $authUser?->name }}'">
@@ -467,7 +467,7 @@
                                         .catch(() => { cacheClearing = false; window.toast('{{ __('admin.clear_cache_failed') }}', 'error'); })"
                                         :disabled="cacheClearing"
                                         data-testid="clear-cache-button"
-                                        class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 transition disabled:opacity-50"
+                                        class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 transition disabled:opacity-50"
                                         aria-label="{{ __('admin.clear_cache') }}" title="{{ __('admin.clear_cache') }}">
                                         <svg x-show="!cacheClearing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 20l5-5m0 0l3.5-3.5M9 15l-2-2m2 2l2 2m-4.5-4.5L13 5.5a2.121 2.121 0 013 3L8.5 16m-4.5 4h6"/>
@@ -479,7 +479,7 @@
 
                                     <button @click="dark = !dark"
                                             data-testid="dark-mode-toggle"
-                                            class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 transition"
+                                            class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 transition"
                                             aria-label="{{ __('admin.toggle_dark_mode') }}"
                                             :title="dark ? '{{ __('admin.light_mode') }}' : '{{ __('admin.dark_mode') }}'">
                                         <svg x-show="!dark" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>

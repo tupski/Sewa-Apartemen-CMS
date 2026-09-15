@@ -155,7 +155,7 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
                                     <button type="button"
                                             onclick="toggleFeatured({{ $property->id }}, this)"
-                                            class="text-2xl focus:outline-none transition-colors duration-200"
+                                            class="inline-flex items-center justify-center min-h-[44px] min-w-[44px] text-2xl rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 transition-colors duration-200"
                                             title="{{ $property->is_featured ? 'Remove from featured' : 'Mark as featured' }}">
                                         <i class="{{ $property->is_featured ? 'fas text-yellow-400' : 'far text-gray-300 hover:text-yellow-400' }} fa-star"></i>
                                     </button>
@@ -163,7 +163,7 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end gap-2">
                                         <a href="{{ route('admin.properties.edit', $property) }}"
-                                           class="text-blue-600 hover:text-blue-900 px-2 py-1 rounded hover:bg-blue-50 transition"
+                                           class="inline-flex items-center justify-center min-h-[44px] min-w-[44px] text-blue-600 hover:text-blue-900 rounded hover:bg-blue-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                                            title="Edit">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
@@ -176,7 +176,7 @@
                                             @csrf
                                             @method('DELETE')
                                             <button type="button"
-                                                    class="rounded px-2 py-1 text-red-600 transition hover:bg-red-50 hover:text-red-900"
+                                                    class="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded text-red-600 transition hover:bg-red-50 hover:text-red-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
                                                     title="Delete"
                                                     aria-label="Delete {{ $property->name }}"
                                                     @click="$dispatch('open-confirm', { id: 'property-delete-modal-{{ $property->id }}', trigger: $el })">

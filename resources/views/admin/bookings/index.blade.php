@@ -144,13 +144,17 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end gap-2">
-                                        <a href="{{ route('admin.bookings.show', $booking) }}" class="text-blue-600 hover:text-blue-900" title="View">
+                                        <a href="{{ route('admin.bookings.show', $booking) }}"
+                                           class="inline-flex items-center justify-center min-h-[44px] min-w-[44px] text-blue-600 hover:text-blue-900 rounded hover:bg-blue-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                                           title="View">
                                             <i data-lucide="eye" class="w-5 h-5"></i>
                                         </a>
                                         @if($booking->status === 'pending')
                                             <form action="{{ route('admin.bookings.confirm', $booking) }}" method="POST" class="inline" onsubmit="return confirm('Confirm this booking?');">
                                                 @csrf @method('PATCH')
-                                                <button type="submit" class="text-green-600 hover:text-green-900" title="Confirm">
+                                                <button type="submit"
+                                                        class="inline-flex items-center justify-center min-h-[44px] min-w-[44px] text-green-600 hover:text-green-900 rounded hover:bg-green-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
+                                                        title="Confirm">
                                                     <i data-lucide="check-circle" class="w-5 h-5"></i>
                                                 </button>
                                             </form>
@@ -158,7 +162,9 @@
                                         @if($booking->status === 'confirmed')
                                             <form action="{{ route('admin.bookings.complete', $booking) }}" method="POST" class="inline" onsubmit="return confirm('Mark as completed?');">
                                                 @csrf @method('PATCH')
-                                                <button type="submit" class="text-green-600 hover:text-green-900" title="Complete">
+                                                <button type="submit"
+                                                        class="inline-flex items-center justify-center min-h-[44px] min-w-[44px] text-green-600 hover:text-green-900 rounded hover:bg-green-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
+                                                        title="Complete">
                                                     <i data-lucide="check-square" class="w-5 h-5"></i>
                                                 </button>
                                             </form>
@@ -166,7 +172,9 @@
                                         @if($booking->status !== 'cancelled' && $booking->status !== 'completed')
                                             <form action="{{ route('admin.bookings.cancel', $booking) }}" method="POST" class="inline" onsubmit="return confirm('Cancel this booking?');">
                                                 @csrf @method('PATCH')
-                                                <button type="submit" class="text-red-600 hover:text-red-900" title="Cancel">
+                                                <button type="submit"
+                                                        class="inline-flex items-center justify-center min-h-[44px] min-w-[44px] text-red-600 hover:text-red-900 rounded hover:bg-red-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                                                        title="Cancel">
                                                     <i data-lucide="x-circle" class="w-5 h-5"></i>
                                                 </button>
                                             </form>
