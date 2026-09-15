@@ -926,8 +926,10 @@ class GeoapifyNearbyPlacesTest extends TestCase
         $payload = $this->extractMapData($response->getContent());
 
         $this->assertSame([-6.2, 106.8], $payload['center']);
-        $this->assertSame(config('services.geoapify.map_key'), $payload['mapKey']);
-        $this->assertSame('test-map-key', $payload['mapKey']);
+        // The map key is no longer a standalone payload field — it only ever
+        // appears embedded inside the resolved style URL(s).
+        $this->assertArrayNotHasKey('mapKey', $payload);
+        $this->assertStringContainsString('test-map-key', (string) ($payload['styleUrl'] ?? ''));
 
         $types = array_column($payload['markers'], 'type');
         $this->assertContains('property', $types);

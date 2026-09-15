@@ -85,6 +85,10 @@
             var stored = localStorage.getItem('theme');
             var dark = stored ? stored === 'dark' : {{ $enableDark ? 'true' : 'false' }};
             if (dark) document.documentElement.classList.add('dark');
+            // Mirror the choice into a cookie so server-rendered features that
+            // depend on the theme (e.g. the map style) can read it on the next
+            // request — localStorage is invisible to Laravel.
+            document.cookie = 'theme=' + (dark ? 'dark' : 'light') + ';path=/;samesite=Lax;max-age=31536000';
         })();
     </script>
 

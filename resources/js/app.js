@@ -1789,12 +1789,15 @@ function initPropertyMap() {
     if (!center || center.length < 2) return;
 
     var markers = Array.isArray(data.markers) ? data.markers : [];
-    var mapKey  = data.mapKey || '';
-    // Configured style (resolved server-side for the active theme). When the
-    // style URL cannot resolve (keyless Geoapify style) fall back to OSM
-    // standard tiles — never invent a URL client-side.
+    // Configured style (resolved server-side for the active theme) + BOTH theme
+    // variants so a light/dark toggle can swap tiles instantly. When a URL
+    // cannot resolve (keyless Geoapify style) fall back to OSM standard tiles —
+    // never invent a URL client-side.
     var styleUrl = typeof data.styleUrl === 'string' && data.styleUrl ? data.styleUrl : null;
-    var styleKey = typeof data.styleKey === 'string' ? data.styleKey : '';
+    var styleUrls = {
+        light: typeof data.styleUrlLight === 'string' && data.styleUrlLight ? data.styleUrlLight : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        dark: typeof data.styleUrlDark === 'string' && data.styleUrlDark ? data.styleUrlDark : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    };
 
     el.dataset.mapInit = 'true';
 
@@ -1802,16 +1805,30 @@ function initPropertyMap() {
     var map = L.map(el, { scrollWheelZoom: false }).setView(center, 15);
 
     // Tiles: configured Geoapify style when available, OSM standard otherwise.
-    if (styleUrl) {
-        L.tileLayer(styleUrl, {
-            attribution: 'Powered by <a href="https://www.geoapify.com/">Geoapify</a> | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 20
-        }).addTo(map);
-    } else {
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19
-        }).addTo(map);
+    var tileLayer = L.tileLayer(styleUrl || styleUrls.light, {
+        attribution: styleUrl
+            ? 'Powered by <a href="https://www.geoapify.com/">Geoapify</a> | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: styleUrl ? 20 : 19
+    }).addTo(map);
+
+    // Theme-reactive style swap: the site toggle flips the `dark` class on
+    // <html> client-side, so watch it and exchange the tile layer in place —
+    // no reload, no provider request. The observer self-disconnects once the
+    // map element leaves the DOM (Turbo body-swap), so it never leaks.
+    if (typeof MutationObserver === 'function') {
+        var themeObserver = new MutationObserver(function () {
+            if (!el.isConnected) {
+                themeObserver.disconnect();
+                return;
+            }
+            var wantDark = document.documentElement.classList.contains('dark');
+            var nextUrl = wantDark ? styleUrls.dark : styleUrls.light;
+            if (nextUrl && tileLayer._url !== nextUrl) {
+                tileLayer.setUrl(nextUrl);
+            }
+        });
+        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     }
 
     var propertyIcon = L.divIcon({
@@ -1907,13 +1924,32 @@ function initPropertyMap() {
         });
 
         function applyFilter() {
+            var allLabel = filterWrap.dataset.allLabel || 'All';
             var active = [];
+            var activeCount = 0;
             filterWrap.querySelectorAll('.poi-filter-chip.is-active').forEach(function (chip) {
                 var label = chip.textContent;
-                if (label !== (filterWrap.dataset.allLabel || 'All')) active.push(label);
+                if (label === allLabel) return;
+                active.push(label);
+                activeCount++;
             });
 
-            var showAll = active.length === 0 || active.length === categories.length;
+            var chipCount = categories.length;
+            // "All" is purely a visual shortcut: it lights up when no specific
+            // chip (i.e. everything) or every chip is selected, and goes dark
+            // as soon as a real subset is chosen — state stays consistent.
+            var allChip = filterWrap.querySelector('.poi-filter-chip.is-active') === null
+                ? null
+                : Array.prototype.find.call(filterWrap.querySelectorAll('.poi-filter-chip'), function (chip) {
+                    return chip.textContent === allLabel;
+                });
+            if (allChip) {
+                var allOn = activeCount === 0 || activeCount === chipCount;
+                allChip.classList.toggle('is-active', allOn);
+                allChip.setAttribute('aria-pressed', allOn ? 'true' : 'false');
+            }
+
+            var showAll = activeCount === 0 || activeCount === chipCount;
             poiMarkers.forEach(function (pm) {
                 var visible = showAll || active.indexOf(pm.category) !== -1;
                 if (visible) {

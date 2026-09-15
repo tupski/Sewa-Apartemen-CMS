@@ -24,19 +24,26 @@ class MapSettingsService
     /**
      * Stable style key => [tile URL template, is_dark].
      *
-     * All six styles are served by Geoapify Raster Tiles v1 (the current map
+     * All styles are served by Geoapify Raster Tiles v1 (the current map
      * implementation uses Geoapify tiles when a map key is configured, OSM
-     * standard tiles otherwise). `osm-standard` is the keyless fallback.
+     * standard tiles otherwise). Style IDs verified against Geoapify's
+     * published catalogue (apidocs.geoapify.com/docs/maps/map-tiles/):
+     * osm-carto, osm-bright(+variants), klokantech-basic, positron(+variants),
+     * dark-matter(+variants). The requested names "MapTiler Basic" and
+     * "Fiord Color" are not Geoapify style IDs, so their stable internal keys
+     * map to the verified closest equivalents (klokantech-basic IS the
+     * Klokantech/MapTiler "Basic" style; dark-matter-dark-grey is the closest
+     * verified dark style to Fiord). `osm-standard` is the keyless fallback.
      *
      * @var array<string, array{url: string, dark: bool}>
      */
     public const STYLES = [
         'osm-openmaptiles' => ['url' => 'https://maps.geoapify.com/v1/tile/osm-carto/{z}/{x}/{y}.png', 'dark' => false],
-        'maptiler-basic' => ['url' => 'https://maps.geoapify.com/v1/tile/maptiler-basic/{z}/{x}/{y}.png', 'dark' => false],
+        'maptiler-basic' => ['url' => 'https://maps.geoapify.com/v1/tile/klokantech-basic/{z}/{x}/{y}.png', 'dark' => false],
         'osm-bright' => ['url' => 'https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}.png', 'dark' => false],
         'positron' => ['url' => 'https://maps.geoapify.com/v1/tile/positron/{z}/{x}/{y}.png', 'dark' => false],
         'dark-matter' => ['url' => 'https://maps.geoapify.com/v1/tile/dark-matter/{z}/{x}/{y}.png', 'dark' => true],
-        'fiord-color' => ['url' => 'https://maps.geoapify.com/v1/tile/fiord-color/{z}/{x}/{y}.png', 'dark' => true],
+        'fiord-color' => ['url' => 'https://maps.geoapify.com/v1/tile/dark-matter-dark-grey/{z}/{x}/{y}.png', 'dark' => true],
         'osm-standard' => ['url' => 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', 'dark' => false],
     ];
 

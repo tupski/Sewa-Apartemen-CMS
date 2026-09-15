@@ -121,8 +121,6 @@
                 'lng'      => (float) $pp->place->lng,
                 'type'     => 'poi',
                 'name'     => $pp->display_name,
-                'provider' => $pp->place->name,
-                'category' => $pp->place->category,
                 // DB-managed presentation config (never raw provider strings).
                 'cat_label' => \App\Models\PlaceCategory::labelForSlug($pp->place->category),
                 'cat_icon'  => \App\Models\PlaceCategory::iconForSlug($pp->place->category),
@@ -154,17 +152,21 @@
     $showDetailMap = $hasMap || count($mapMarkers) > 0;
 
     // Map payload consumed by the Leaflet initialiser in app.js. Rendered inside a
-    // <script type="application/json"> block (parsed as data, never executed) — the
-    // Geoapify map key is injected here from server config, never hardcoded in JS.
+    // <script type="application/json"> block (parsed as data, never executed). The
+    // Geoapify map key is embedded in the style URLs server-side — no raw key
+    // field is exposed separately, and no raw provider payload is included.
     $mapData = [
         'center'  => $hasMap
             ? [(float) $property->latitude, (float) $property->longitude]
             : (count($mapMarkers) ? [$mapMarkers[0]['lat'], $mapMarkers[0]['lng']] : [-2.5, 118.0]),
-        'mapKey'  => \App\Services\GeoapifyService::mapKey(),
-        // Configured style (resolved for the active theme) + its tile URL; when no
-        // URL resolves (keyless Geoapify style) the JS falls back to OSM standard.
+        // Resolved style for the theme at render time + BOTH theme variants so
+        // the client can swap tiles instantly on a light/dark toggle (no reload,
+        // no provider request — the keyless fallback resolves to null and the
+        // JS then uses OSM standard tiles).
         'styleKey' => $resolvedStyleKey,
         'styleUrl' => $resolvedStyleUrl,
+        'styleUrlLight' => \App\Services\MapSettingsService::styleUrl(\App\Services\MapSettingsService::lightStyle()),
+        'styleUrlDark' => \App\Services\MapSettingsService::styleUrl(\App\Services\MapSettingsService::darkStyle()),
         'markers' => $mapMarkers,
     ];
 @endphp

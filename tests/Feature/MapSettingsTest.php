@@ -72,6 +72,41 @@ class MapSettingsTest extends TestCase
         $this->assertSame('dark-matter', MapSettingsService::resolveStyle(true));
     }
 
+    public function test_requested_style_names_map_to_verified_geoapify_style_ids(): void
+    {
+        // "MapTiler Basic" and "Fiord Color" are NOT Geoapify style IDs (verified
+        // against the published catalogue) — the stable internal keys must map
+        // to verified-servable Geoapify equivalents, never 404ing URLs.
+        $this->assertStringContainsString(
+            '/tile/klokantech-basic/',
+            (string) MapSettingsService::STYLES['maptiler-basic']['url']
+        );
+        $this->assertStringContainsString(
+            '/tile/dark-matter-dark-grey/',
+            (string) MapSettingsService::STYLES['fiord-color']['url']
+        );
+
+        // Every Geoapify-hosted style in the catalogue must use a style ID
+        // from the verified published list.
+        $verified = [
+            'osm-carto', 'osm-bright', 'osm-bright-grey', 'osm-bright-smooth',
+            'klokantech-basic', 'osm-liberty', 'maptiler-3d', 'toner', 'toner-grey',
+            'positron', 'positron-blue', 'positron-red', 'dark-matter',
+            'dark-matter-brown', 'dark-matter-dark-grey', 'dark-matter-dark-purple',
+            'dark-matter-purple-roads', 'dark-matter-yellow-roads',
+        ];
+        foreach (MapSettingsService::STYLES as $style) {
+            if (! str_contains($style['url'], 'maps.geoapify.com')) {
+                continue;
+            }
+
+            $path = parse_url($style['url'], PHP_URL_PATH);
+            $this->assertMatchesRegularExpression('#^/v1/tile/([a-z0-9-]+)/#', (string) $path);
+            preg_match('#^/v1/tile/([a-z0-9-]+)/#', (string) $path, $m);
+            $this->assertContains($m[1], $verified, "Style URL uses unverified Geoapify ID: {$m[1]}");
+        }
+    }
+
     public function test_theme_mode_light_pins_the_light_style(): void
     {
         SettingsService::set('map_theme_mode', 'light', 'map');
@@ -158,6 +193,27 @@ class MapSettingsTest extends TestCase
         $this->assertNull(SettingsService::get('map_style_light'));
     }
 
+    public function test_map_settings_cannot_be_changed_by_a_non_admin(): void
+    {
+        // Guest → redirected to login, nothing stored.
+        $this->post(route('admin.settings.update', ['group' => 'map']), [
+            'map_theme_mode' => 'dark',
+            'map_style_light' => 'positron',
+            'map_style_dark' => 'dark-matter',
+        ])->assertRedirect(route('login'));
+
+        // Authenticated non-admin → forbidden.
+        $this->actingAs($this->user)
+            ->post(route('admin.settings.update', ['group' => 'map']), [
+                'map_theme_mode' => 'dark',
+                'map_style_light' => 'positron',
+                'map_style_dark' => 'dark-matter',
+            ])
+            ->assertForbidden();
+
+        $this->assertNull(SettingsService::get('map_theme_mode'));
+    }
+
     public function test_map_settings_page_renders_all_style_labels(): void
     {
         $this->authenticate();
@@ -229,6 +285,10 @@ class MapSettingsTest extends TestCase
         // referrer-restricted key) and the DB-managed marker config.
         $response->assertSee('positron', false);
         $response->assertSee('apiKey=referrer-restricted-key', false);
+        // No standalone key field, and no unused raw provider payload: the map
+        // key only ever appears embedded in a style URL.
+        $response->assertDontSee('"mapKey"', false);
+        $response->assertDontSee('"provider"', false);
         $response->assertSee('Rumah Sakit', false);
         $response->assertSee('fa-solid fa-hospital', false);
         $response->assertSee('#ef4444', false);
