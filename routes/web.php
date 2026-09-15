@@ -12,6 +12,7 @@ use App\Http\Controllers\BlogController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\GeocodeController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\NavigationController;
@@ -22,6 +23,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PromoRateController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\PropertyController;
+use App\Http\Controllers\PropertyPlaceController;
 use App\Http\Controllers\RedirectController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SeoController;
@@ -158,6 +160,16 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix(slug('admin_prefix', 'a
     // Nearby POI Category Management (embedded in the property create/edit screen)
     Route::post('place-categories', [PlaceCategoryController::class, 'update'])->name('place-categories.update');
     Route::delete('place-categories/{placeCategory}', [PlaceCategoryController::class, 'destroy'])->name('place-categories.destroy');
+
+    // Inline POI row edits (visibility toggle + custom name) — IDOR-guarded on
+    // the property/pivot pair; pivot is scoped to its own property or 404.
+    Route::patch('properties/{property}/places/{place}', [PropertyPlaceController::class, 'update'])
+        ->name('properties.places.update');
+
+    // Server-side geocoding proxy for the property map search (the browser
+    // never calls the provider directly and no credential is exposed).
+    Route::get('geocode', [GeocodeController::class, 'search'])
+        ->name('geocode.search')->middleware('throttle:20,1');
 
     // Amenity Management
     Route::resource('amenities', AmenityController::class);

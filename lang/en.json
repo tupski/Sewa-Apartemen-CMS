@@ -741,5 +741,22 @@
     "place_category.row_incomplete": "Every row needs a slug, an Indonesian name, and an English name.",
     "place_category.rows_share_slug": "Each Geoapify key may only be used once.",
     "place_category.slug_format": "Geoapify keys look like `airport` or `catering.cafe` (lowercase letters, digits, underscore, dot).",
-    "place_category.color_format": "Colors must be a hex value like #7c3aed."
+    "place_category.color_format": "Colors must be a hex value like #7c3aed.",
+    "poi_table.updated": "Place updated.",
+    "poi_table.update_failed": "Could not update the place.",
+    "Search place…": "Search place…",
+    "Filter by category": "Filter by category",
+    "Filter by visibility": "Filter by visibility",
+    "All categories": "All categories",
+    "All": "All",
+    "Visible on frontend": "Visible on frontend",
+    "Hidden": "Hidden",
+    "No places match the current filter.": "No places match the current filter.",
+    "Show": "Show",
+    "Hide": "Hide",
+    "Custom name (blank =": "Custom name (blank =",
+    "Custom name for": "Custom name for",
+    "geocode.search_failed": "Could not reach the location search service. Please try again later.",
+    "geocode.rate_limited": "Too many location searches. Please wait a moment and try again.",
+    "geocode.invalid_query": "Enter a search term of at least 2 characters."
 }

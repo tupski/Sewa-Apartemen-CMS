@@ -239,8 +239,10 @@ class PropertyController extends Controller
         // Phase 6: persistent Geoapify POIs (source = 'geoapify'), nearest-first.
         // These are DISTINCT from the manual `nearby_places` JSON above, which is
         // preserved as a fallback for properties that have not been synced.
+        // Only admin-visible rows are rendered on the frontend.
         $persistentPlaces = $property->propertyPlaces()
             ->where('source', 'geoapify')
+            ->where('show_on_frontend', true)
             ->with('place')
             ->orderBy('distance_m', 'asc')
             ->get();

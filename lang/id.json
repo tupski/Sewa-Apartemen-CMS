@@ -741,5 +741,22 @@
     "place_category.row_incomplete": "Setiap baris wajib punya slug, nama Indonesia, dan nama Inggris.",
     "place_category.rows_share_slug": "Setiap kunci Geoapify hanya boleh dipakai sekali.",
     "place_category.slug_format": "Format kunci Geoapify seperti `airport` atau `catering.cafe` (huruf kecil, angka, underscore, titik).",
-    "place_category.color_format": "Warna harus berupa nilai hex seperti #7c3aed."
+    "place_category.color_format": "Warna harus berupa nilai hex seperti #7c3aed.",
+    "poi_table.updated": "Tempat diperbarui.",
+    "poi_table.update_failed": "Gagal memperbarui tempat.",
+    "Search place…": "Cari tempat…",
+    "Filter by category": "Filter kategori",
+    "Filter by visibility": "Filter visibilitas",
+    "All categories": "Semua kategori",
+    "All": "Semua",
+    "Visible on frontend": "Tampil di frontend",
+    "Hidden": "Disembunyikan",
+    "No places match the current filter.": "Tidak ada tempat yang cocok dengan filter.",
+    "Show": "Tampilkan",
+    "Hide": "Sembunyikan",
+    "Custom name (blank =": "Nama kustom (kosong =",
+    "Custom name for": "Nama kustom untuk",
+    "geocode.search_failed": "Gagal menghubungi layanan pencarian lokasi. Coba lagi nanti.",
+    "geocode.rate_limited": "Terlalu banyak pencarian lokasi. Tunggu sejenak lalu coba lagi.",
+    "geocode.invalid_query": "Masukkan kata kunci pencarian minimal 2 karakter."
 }

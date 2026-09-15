@@ -554,11 +554,31 @@
         if (!q) return;
         searchBtn.disabled = true;
         searchBtn.innerHTML = 'Mencari…';
-        fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q=' + encodeURIComponent(q), {
-            headers: { 'Accept-Language': 'id,en' }
+        // Geocoding goes through the backend proxy (admin.geocode.search):
+        // the browser never calls the provider directly and no credential is
+        // exposed; the backend validates coordinates before they are returned.
+        fetch('{{ route('admin.geocode.search') }}?q=' + encodeURIComponent(q), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
         })
-        .then(function (r) { return r.json(); })
-        .then(function (data) { renderSearchResults(data); })
+        .then(function (r) {
+            return r.json().then(function (data) {
+                return { ok: r.ok, data: data };
+            }).catch(function () {
+                return { ok: false, data: {} };
+            });
+        })
+        .then(function (result) {
+            if (!result.ok) {
+                closeSearchDropdown();
+                alert(result.data.message || 'Gagal menghubungi layanan pencarian. Periksa koneksi internet.');
+            } else {
+                renderSearchResults(result.data.results || []);
+            }
+        })
         .catch(function () {
             closeSearchDropdown();
             alert('Gagal menghubungi layanan pencarian. Periksa koneksi internet.');
