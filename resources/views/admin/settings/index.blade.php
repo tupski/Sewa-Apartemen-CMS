@@ -34,6 +34,7 @@
                                 'email_templates' => ['icon' => 'file-lines', 'label' => 'Email Templates'],
                                 'captcha'         => ['icon' => 'shield-halved', 'label' => 'Security (CAPTCHA)'],
                                 'currency_api'    => ['icon' => 'arrows-left-right', 'label' => 'Currency API'],
+                                'map'             => ['icon' => 'map', 'label' => 'Map'],
                                 'version_control' => ['icon' => 'code-branch', 'label' => 'Version Control'],
                             ];
                             $activeGroup = $group ?? request()->query('group', 'general');
@@ -96,6 +97,7 @@
                             'email_templates'=> '_email_templates',
                             'captcha'        => '_captcha',
                             'currency_api'   => '_currency_api',
+                            'map'            => '_map',
                         ];
                         // Groups that render a standalone partial (no form wrapper)
                         $standaloneGroups = ['version_control'];

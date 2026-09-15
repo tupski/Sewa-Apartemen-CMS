@@ -50,6 +50,8 @@
             'source' => (string) $propertyPlace->source,
             'walking' => $propertyPlace->walking_duration_formatted,
             'walking_distance' => $propertyPlace->walking_distance_formatted ?? $propertyPlace->distance_formatted,
+            'driving' => $propertyPlace->driving_duration_formatted,
+            'motorcycle' => $propertyPlace->motorcycle_duration_formatted,
             'address' => \Illuminate\Support\Str::limit((string) ($propertyPlace->place->address ?? ''), 48),
         ];
     }
@@ -94,6 +96,8 @@
                     <th class="px-4 py-2">{{ __('Name') }}</th>
                     <th class="px-4 py-2">{{ __('Category') }}</th>
                     <th class="px-4 py-2">{{ __('Walking time') }}</th>
+                    <th class="px-4 py-2">{{ __('Driving time') }}</th>
+                    <th class="px-4 py-2">{{ __('Motorcycle time') }}</th>
                     <th class="px-4 py-2">{{ __('Address') }}</th>
                     <th class="px-4 py-2">{{ __('Source') }}</th>
                 </tr>
@@ -137,6 +141,10 @@
                         <td class="px-4 py-2 text-gray-600" x-text="row.category_display"></td>
                         <td class="px-4 py-2 text-gray-600 tabular-nums whitespace-nowrap"
                             x-text="(row.walking ?? '—')"></td>
+                        <td class="px-4 py-2 text-gray-600 tabular-nums whitespace-nowrap"
+                            x-text="(row.driving ?? '—')"></td>
+                        <td class="px-4 py-2 text-gray-600 tabular-nums whitespace-nowrap"
+                            x-text="(row.motorcycle ?? '—')"></td>
                         <td class="px-4 py-2 text-gray-500" x-text="row.address"></td>
                         <td class="px-4 py-2">
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"

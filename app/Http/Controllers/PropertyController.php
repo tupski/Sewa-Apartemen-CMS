@@ -991,6 +991,7 @@ class PropertyController extends Controller
     {
         $reason = $result['reason'] ?? null;
         $synced = (int) ($result['synced'] ?? 0);
+        $new = (int) ($result['new'] ?? 0);
 
         switch ($reason) {
             case 'missing_coordinates':
@@ -1016,7 +1017,10 @@ class PropertyController extends Controller
             return __('No nearby places found within a 15-minute walk of this property.');
         }
 
-        return __(':count nearby places synchronized.', ['count' => $synced]);
+        return __(':count nearby places synchronized (:new newly discovered).', [
+            'count' => $synced,
+            'new' => $new,
+        ]);
     }
 
     /**

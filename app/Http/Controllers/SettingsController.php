@@ -6,6 +6,7 @@ use App\Console\Commands\CheckForGitUpdates;
 use App\Services\BackupService;
 use App\Services\GeoapifyService;
 use App\Services\GitService;
+use App\Services\MapSettingsService;
 use App\Services\PostUpdateActionService;
 use App\Services\SettingsService;
 use Illuminate\Http\Request;
@@ -82,6 +83,9 @@ class SettingsController extends Controller
         ],
         'currency_api' => [
             'currency_api_url', 'currency_api_key', 'currency_target_list',
+        ],
+        'map' => [
+            'map_style_light', 'map_style_dark', 'map_theme_mode',
         ],
     ];
 
@@ -220,7 +224,26 @@ class SettingsController extends Controller
             'currency_api_key' => 'nullable|string|max:255',
             'currency_target_list' => 'nullable|string|max:255',
         ],
+        'map' => [
+            'map_style_light' => ['nullable', 'string', 'max:50'],
+            'map_style_dark' => ['nullable', 'string', 'max:50'],
+            'map_theme_mode' => ['nullable', 'string', 'in:follow,light,dark'],
+        ],
     ];
+
+    /**
+     * Rules that depend on runtime values are appended here (property
+     * expressions cannot be used in class constant arrays).
+     */
+    protected function dynamicGroupRules(): array
+    {
+        return [
+            'map' => [
+                'map_style_light' => ['sometimes', 'in:'.implode(',', array_keys(MapSettingsService::STYLES))],
+                'map_style_dark' => ['sometimes', 'in:'.implode(',', array_keys(MapSettingsService::STYLES))],
+            ],
+        ];
+    }
 
     /**
      * Groups that only render a read-only / action panel and therefore have no
@@ -257,6 +280,11 @@ class SettingsController extends Controller
                 'microsoft_clarity_id.regex' => __('settings.validation_clarity_id'),
                 'search_console_token.regex' => __('settings.validation_search_console_token'),
                 'google_maps_api_key.regex' => __('settings.validation_maps_api_key'),
+            ],
+            // Map style keys must exist in MapSettingsService::STYLES.
+            'map' => [
+                'map_style_light.in' => __('settings.map_style_invalid'),
+                'map_style_dark.in' => __('settings.map_style_invalid'),
             ],
         ];
     }
@@ -401,6 +429,10 @@ class SettingsController extends Controller
             'currency_api_url' => $this->settingsService->get('currency_api_url', ''),
             'currency_api_key' => $this->settingsService->get('currency_api_key', ''),
             'currency_target_list' => $this->settingsService->get('currency_target_list', 'USD,SGD,MYR,EUR,AUD,GBP,JPY'),
+            // Map
+            'map_style_light' => $this->settingsService->get('map_style_light', MapSettingsService::DEFAULT_STYLE),
+            'map_style_dark' => $this->settingsService->get('map_style_dark', 'dark-matter'),
+            'map_theme_mode' => $this->settingsService->get('map_theme_mode', 'follow'),
         ];
 
         return view('admin.settings.index', compact('settings', 'group'));
@@ -418,6 +450,10 @@ class SettingsController extends Controller
 
         try {
             $rules = $this->groupRules[$group] ?? [];
+            // Merge runtime-dependent rules (e.g. the map style allowlist).
+            foreach ($this->dynamicGroupRules()[$group] ?? [] as $field => $extraRules) {
+                $rules[$field] = array_merge((array) ($rules[$field] ?? []), $extraRules);
+            }
             $validator = Validator::make(
                 $request->all(),
                 $rules,

@@ -94,6 +94,15 @@
     }
     // Build the map marker set. Property marker first, then POIs (persistent if
     // available, else manual nearby places that carry coordinates).
+    // Dark mode currently active? Same precedence as the layout's pre-paint
+    // script: the `theme` cookie wins, else the site's enable_dark_mode default.
+    $storedTheme = request()->cookie('theme');
+    $isDarkTheme = $storedTheme !== null
+        ? $storedTheme === 'dark'
+        : (bool) \App\Services\SettingsService::get('enable_dark_mode', false);
+    $resolvedStyleKey = \App\Services\MapSettingsService::resolveStyle($isDarkTheme);
+    $resolvedStyleUrl = \App\Services\MapSettingsService::styleUrl($resolvedStyleKey);
+
     $mapMarkers = [];
     if ($hasMap) {
         $mapMarkers[] = [
@@ -107,14 +116,22 @@
         foreach ($persistentPlaces as $pp) {
             if (! $pp->place || $pp->place->lat === null || $pp->place->lng === null) { continue; }
             $mapMarkers[] = [
+                'id'       => $pp->id,
                 'lat'      => (float) $pp->place->lat,
                 'lng'      => (float) $pp->place->lng,
                 'type'     => 'poi',
-                'name'     => $pp->place->name,
+                'name'     => $pp->display_name,
+                'provider' => $pp->place->name,
                 'category' => $pp->place->category,
+                // DB-managed presentation config (never raw provider strings).
+                'cat_label' => \App\Models\PlaceCategory::labelForSlug($pp->place->category),
+                'cat_icon'  => \App\Models\PlaceCategory::iconForSlug($pp->place->category),
+                'cat_color' => \App\Models\PlaceCategory::resolveForSlug($pp->place->category)?->color,
                 'distance' => $pp->distance_formatted,
                 // Place details for the marker popup (see initPropertyMap in app.js).
                 'walking'  => $pp->walking_duration_formatted,
+                'driving'  => $pp->driving_duration_formatted,
+                'motorcycle' => $pp->motorcycle_duration_formatted,
                 'address'  => $pp->place->address,
                 'website'  => $pp->place->website,
                 'phone'    => $pp->place->phone,
@@ -144,6 +161,10 @@
             ? [(float) $property->latitude, (float) $property->longitude]
             : (count($mapMarkers) ? [$mapMarkers[0]['lat'], $mapMarkers[0]['lng']] : [-2.5, 118.0]),
         'mapKey'  => \App\Services\GeoapifyService::mapKey(),
+        // Configured style (resolved for the active theme) + its tile URL; when no
+        // URL resolves (keyless Geoapify style) the JS falls back to OSM standard.
+        'styleKey' => $resolvedStyleKey,
+        'styleUrl' => $resolvedStyleUrl,
         'markers' => $mapMarkers,
     ];
 @endphp
@@ -418,9 +439,14 @@
                                  hardcoded in JS. overflow-hidden guards against horizontal
                                  overflow on mobile. --}}
                             @if ($showDetailMap)
-                                <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-6">
+                                <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-3">
                                     <div id="property-map" class="w-full h-64 md:h-80 rounded-lg overflow-hidden"></div>
                                 </div>
+                                {{-- Category filter chips — populated client-side from the
+                                     DB-managed labels carried by the markers (no network). --}}
+                                <div id="poi-category-filter" class="flex flex-wrap gap-2 mb-2"
+                                     data-all-label="{{ __('prop.poi_filter_all') }}"
+                                     aria-label="{{ __('prop.poi_filter_label') }}"></div>
                                 <script type="application/json" id="map-data">{!! json_encode($mapData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
                             @endif
 

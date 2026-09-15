@@ -1790,15 +1790,20 @@ function initPropertyMap() {
 
     var markers = Array.isArray(data.markers) ? data.markers : [];
     var mapKey  = data.mapKey || '';
+    // Configured style (resolved server-side for the active theme). When the
+    // style URL cannot resolve (keyless Geoapify style) fall back to OSM
+    // standard tiles — never invent a URL client-side.
+    var styleUrl = typeof data.styleUrl === 'string' && data.styleUrl ? data.styleUrl : null;
+    var styleKey = typeof data.styleKey === 'string' ? data.styleKey : '';
 
     el.dataset.mapInit = 'true';
 
     // scrollWheelZoom disabled to avoid hijacking page scroll on mobile.
     var map = L.map(el, { scrollWheelZoom: false }).setView(center, 15);
 
-    // Prefer Geoapify tiles when a key is configured; fall back to OSM otherwise.
-    if (mapKey) {
-        L.tileLayer('https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}.png?apiKey=' + encodeURIComponent(mapKey), {
+    // Tiles: configured Geoapify style when available, OSM standard otherwise.
+    if (styleUrl) {
+        L.tileLayer(styleUrl, {
             attribution: 'Powered by <a href="https://www.geoapify.com/">Geoapify</a> | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             maxZoom: 20
         }).addTo(map);
@@ -1814,13 +1819,24 @@ function initPropertyMap() {
         html: '<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:#ef4444;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);transform:rotate(-45deg)"></div>',
         iconSize: [28, 28], iconAnchor: [14, 28], popupAnchor: [0, -30]
     });
-    var poiIcon = L.divIcon({
-        className: '',
-        html: '<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;background:#f97316;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.3);transform:rotate(-45deg)"></div>',
-        iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -24]
-    });
 
-    // escapeHtml() is defined above — reuse it so DB-sourced names are safe in popups.
+    // POI markers are category-specific: the DB-managed category colour (passed
+    // per marker) with a Font Awesome glyph; a safe pin fallback when the
+    // category has no icon configured.
+    function poiIcon(m) {
+        var color = /^#[0-9a-fA-F]{6}$/.test(String(m.cat_color || '')) ? m.cat_color : '#f97316';
+        var glyph = String(m.cat_icon || '');
+        var inner = /^[\w\s-]+$/.test(glyph) && glyph.indexOf('fa-') === 0
+            ? '<i class="' + escapeHtml(glyph) + '" style="font-size:11px;color:#fff" aria-hidden="true"></i>'
+            : '';
+        return L.divIcon({
+            className: '',
+            html: '<div style="width:24px;height:24px;border-radius:50% 50% 50% 0;background:' + escapeHtml(color) + ';border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.3);transform:rotate(-45deg);display:flex;align-items:center;justify-content:center">' + inner + '</div>',
+            iconSize: [24, 24], iconAnchor: [12, 24], popupAnchor: [0, -26]
+        });
+    }
+
+    var poiMarkers = [];
     var bounds = [];
     markers.forEach(function (m) {
         var lat = parseFloat(m.lat);
@@ -1828,34 +1844,94 @@ function initPropertyMap() {
         if (isNaN(lat) || isNaN(lng)) return;
 
         var isProperty = m.type === 'property';
-        var marker = L.marker([lat, lng], { icon: isProperty ? propertyIcon : poiIcon }).addTo(map);
+        var marker = L.marker([lat, lng], { icon: isProperty ? propertyIcon : poiIcon(m) }).addTo(map);
 
-        var popup = '<strong>' + escapeHtml(String(m.name || '')) + '</strong>';
-        if (!isProperty) {
-            if (m.category) {
-                popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(String(m.category)) + '</span>';
-            }
-            // Walking time + distance on one line, e.g. "8 min walk · 650m".
-            var walkLine = [m.walking, m.distance].filter(Boolean).map(String).join(' \u00b7 ');
-            if (walkLine) {
-                popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(walkLine) + '</span>';
-            }
-            if (m.address) {
-                popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(String(m.address)) + '</span>';
-            }
-            // Only http(s) links — never render an arbitrary scheme from the payload.
-            if (m.website && /^https?:\/\//i.test(String(m.website))) {
-                popup += '<br><a href="' + escapeHtml(String(m.website)) + '" target="_blank" rel="noopener noreferrer" style="color:#2563eb;font-size:0.75rem">' + escapeHtml(String(m.website)) + '</a>';
-            }
-            if (m.phone) {
-                popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(String(m.phone)) + '</span>';
-            }
+        if (isProperty) {
+            marker.bindPopup('<strong>' + escapeHtml(String(m.name || '')) + '</strong>');
+            marker.openPopup();
+        } else {
+            marker.bindPopup(buildPoiPopup(m));
+            poiMarkers.push({ marker: marker, category: String(m.cat_label || m.category || '') });
         }
-        marker.bindPopup(popup);
-        if (isProperty) marker.openPopup();
 
         bounds.push([lat, lng]);
     });
+
+    function buildPoiPopup(m) {
+        var popup = '<strong>' + escapeHtml(String(m.name || '')) + '</strong>';
+        if (m.cat_label) {
+            popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(String(m.cat_label)) + '</span>';
+        }
+        // Travel info: walking · driving · motorcycle, whichever is measured.
+        var travelLine = [m.walking, m.driving, m.motorcycle, m.distance].filter(Boolean).map(String).join(' \u00b7 ');
+        if (travelLine) {
+            popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(travelLine) + '</span>';
+        }
+        if (m.address) {
+            popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(String(m.address)) + '</span>';
+        }
+        // Only http(s) links — never render an arbitrary scheme from the payload.
+        if (m.website && /^https?:\/\//i.test(String(m.website))) {
+            popup += '<br><a href="' + escapeHtml(String(m.website)) + '" target="_blank" rel="noopener noreferrer" style="color:#2563eb;font-size:0.75rem">' + escapeHtml(String(m.website)) + '</a>';
+        }
+        if (m.phone) {
+            popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(String(m.phone)) + '</span>';
+        }
+        return popup;
+    }
+
+    // ── Category filter chips ───────────────────────────────────────
+    // Categories come from the DB-managed labels carried per marker (server
+    // rendered) — never a hardcoded list. Pure marker toggling: no network.
+    var filterWrap = document.getElementById('poi-category-filter');
+    if (filterWrap && poiMarkers.length) {
+        var categories = [];
+        poiMarkers.forEach(function (pm) {
+            if (pm.category && categories.indexOf(pm.category) === -1) categories.push(pm.category);
+        });
+
+        var allBtn = document.createElement('button');
+        allBtn.type = 'button';
+        allBtn.className = 'poi-filter-chip is-active';
+        allBtn.textContent = filterWrap.dataset.allLabel || 'All';
+        allBtn.setAttribute('aria-pressed', 'true');
+        filterWrap.appendChild(allBtn);
+
+        categories.forEach(function (cat) {
+            var chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'poi-filter-chip';
+            chip.textContent = cat;
+            chip.setAttribute('aria-pressed', 'false');
+            filterWrap.appendChild(chip);
+        });
+
+        function applyFilter() {
+            var active = [];
+            filterWrap.querySelectorAll('.poi-filter-chip.is-active').forEach(function (chip) {
+                var label = chip.textContent;
+                if (label !== (filterWrap.dataset.allLabel || 'All')) active.push(label);
+            });
+
+            var showAll = active.length === 0 || active.length === categories.length;
+            poiMarkers.forEach(function (pm) {
+                var visible = showAll || active.indexOf(pm.category) !== -1;
+                if (visible) {
+                    if (!map.hasLayer(pm.marker)) pm.marker.addTo(map);
+                } else if (map.hasLayer(pm.marker)) {
+                    map.removeLayer(pm.marker);
+                }
+            });
+        }
+
+        filterWrap.addEventListener('click', function (e) {
+            var chip = e.target.closest('.poi-filter-chip');
+            if (!chip) return;
+            chip.classList.toggle('is-active');
+            chip.setAttribute('aria-pressed', chip.classList.contains('is-active') ? 'true' : 'false');
+            applyFilter();
+        });
+    }
 
     if (bounds.length > 1) {
         map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
