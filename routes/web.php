@@ -24,6 +24,7 @@ use App\Http\Controllers\PromoRateController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\PropertyController;
 use App\Http\Controllers\PropertyPlaceController;
+use App\Http\Controllers\PropertyUnitTypeController;
 use App\Http\Controllers\RedirectController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SeoController;
@@ -165,6 +166,12 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix(slug('admin_prefix', 'a
     // the property/pivot pair; pivot is scoped to its own property or 404.
     Route::patch('properties/{property}/places/{place}', [PropertyPlaceController::class, 'update'])
         ->name('properties.places.update');
+
+    // Unit-type metadata (per property, canonical unit_type keys) — the row is
+    // IDOR-guarded to its own property; availability stays in properties.unit_types.
+    Route::post('properties/{property}/unit-types', [PropertyUnitTypeController::class, 'store'])->name('properties.unit-types.store');
+    Route::post('properties/{property}/unit-types/reorder', [PropertyUnitTypeController::class, 'reorder'])->name('properties.unit-types.reorder');
+    Route::delete('properties/{property}/unit-types/{unitType}', [PropertyUnitTypeController::class, 'destroy'])->name('properties.unit-types.destroy');
 
     // Server-side geocoding proxy for the property map search (the browser
     // never calls the provider directly and no credential is exposed).

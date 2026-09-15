@@ -137,9 +137,18 @@ class Property extends Model
     }
 
     /**
-     * Human label for a room type key.
+     * Structured metadata rows for this property's unit types (one per
+     * canonical unit_type key present in `unit_types`).
      */
-    public function typeLabel(string $type): string
+    public function unitTypeMetadata()
+    {
+        return $this->hasMany(PropertyUnitType::class)->ordered();
+    }
+
+    /**
+     * Human label for a unit-type key (safe to call statically).
+     */
+    public static function typeLabel(string $type): string
     {
         return self::UNIT_TYPES[$type] ?? ucfirst(str_replace('-', ' ', $type));
     }

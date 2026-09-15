@@ -256,6 +256,7 @@
                     </div>
                     <div class="p-6">
                         @include('admin.properties._pricing', ['property' => $property ?? null])
+                        @include('admin.properties._unit-types', ['property' => $property ?? null])
                     </div>
                 </div>
 
