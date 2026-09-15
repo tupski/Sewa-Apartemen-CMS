@@ -179,6 +179,9 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix(slug('admin_prefix', 'a
         ->name('geocode.search')->middleware('throttle:20,1');
 
     // Amenity Management
+    // 'options' must be declared BEFORE the resource so it is not matched as
+    // an {amenity} wildcard by the resource's show route.
+    Route::get('amenities/options', [AmenityController::class, 'options'])->name('amenities.options');
     Route::resource('amenities', AmenityController::class);
     Route::patch('amenities/{amenity}/status', [AmenityController::class, 'updateStatus'])->name('amenities.status');
 

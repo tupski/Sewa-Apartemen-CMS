@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\AmenityRequest;
 use App\Models\Amenity;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 class AmenityController extends Controller
@@ -41,9 +42,70 @@ class AmenityController extends Controller
 
         $amenities = $query->orderBy('category')
             ->orderBy('name')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         return view('admin.amenities.index', compact('amenities'));
+    }
+
+    /**
+     * Paginated amenity options (JSON) for the property-form picker.
+     *
+     * Returns a small fixed page (20) of active amenities with only the
+     * columns the picker renders, so the browser never downloads the full
+     * dataset. `has_more` tells the frontend whether another page exists;
+     * existence is detected by over-fetching one row instead of COUNT(*).
+     */
+    public function options(Request $request)
+    {
+        // Inline validation with a JSON response: like GeocodeController, this
+        // endpoint is fetch()-only and `validate()` would redirect-with-errors
+        // for requests that are not flagged AJAX.
+        $validator = Validator::make($request->all(), [
+            'search' => ['nullable', 'string', 'max:255'],
+            'page' => ['nullable', 'integer', 'min:1', 'max:1000'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Parameter pencarian tidak valid.',
+            ], 422);
+        }
+
+        $validated = $validator->validated();
+
+        $perPage = 20;
+        $page = max(1, (int) ($validated['page'] ?? 1));
+
+        $query = Amenity::query()->where('is_active', true);
+
+        if (! empty($validated['search'])) {
+            // Escape LIKE wildcards so a literal '%' searches for '%'.
+            // Case-insensitivity comes from the DB collation
+            // (utf8mb4_unicode_ci on MySQL; LIKE is ASCII-case-insensitive on SQLite).
+            $query->where('name', 'like', '%'.addcslashes($validated['search'], '%_\\').'%');
+        }
+
+        $rows = $query->orderBy('category')
+            ->orderBy('name')
+            ->offset(($page - 1) * $perPage)
+            ->limit($perPage + 1)
+            ->get(['id', 'name', 'icon', 'category']);
+
+        $hasMore = $rows->count() > $perPage;
+
+        return response()->json([
+            'success' => true,
+            'data' => $rows->take($perPage)->map(fn (Amenity $a): array => [
+                'id' => $a->id,
+                'name' => $a->name,
+                'icon' => $a->icon_class,
+                'category' => $a->category,
+            ])->values(),
+            'page' => $page,
+            'has_more' => $hasMore,
+        ]);
     }
 
     /**

@@ -385,34 +385,8 @@
                     </div>
                 </div>
 
-                {{-- ── Amenities card ── --}}
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-                    <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
-                        <div class="w-1 h-5 bg-purple-500 rounded-full"></div>
-                        <h3 class="text-sm font-semibold text-gray-900">Fasilitas (Amenities)</h3>
-                    </div>
-                    <div class="p-5">
-                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
-                            @forelse($amenities as $amenity)
-                                <label class="flex items-center gap-2 p-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition">
-                                    <input type="checkbox"
-                                           name="amenities[]"
-                                           value="{{ $amenity->id }}"
-                                           class="h-4 w-4 text-blue-600 rounded focus:ring-blue-500 shrink-0">
-                                    @if($amenity->icon)
-                                        <i class="{{ $amenity->icon }} w-4 text-center text-gray-500 shrink-0"></i>
-                                    @endif
-                                    <span class="text-xs text-gray-700 leading-tight">{{ $amenity->name }}</span>
-                                </label>
-                            @empty
-                                <div class="col-span-3 py-4 text-center text-sm text-gray-500">
-                                    Belum ada fasilitas.<br>
-                                    <a href="{{ route('admin.amenities.create') }}" class="text-blue-600 underline text-xs">Tambah fasilitas</a>
-                                </div>
-                            @endforelse
-                        </div>
-                    </div>
-                </div>
+                {{-- ── Amenities card (server-side search + load-more picker) ── --}}
+                @include('admin.properties._amenities')
 
             </div>{{-- /sidebar --}}
 

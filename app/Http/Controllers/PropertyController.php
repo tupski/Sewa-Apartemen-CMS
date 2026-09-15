@@ -384,13 +384,18 @@ class PropertyController extends Controller
      */
     public function create()
     {
-        $amenities = Amenity::where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        // The amenity picker fetches options from admin.amenities.options
+        // (server-side search + load-more). Only previously submitted ids
+        // (old input after a validation failure) are resolved here — never
+        // the full dataset.
+        $amenitiesSelected = collect();
+        if (is_array(old('amenities'))) {
+            $amenitiesSelected = Amenity::whereIn('id', old('amenities'))->orderBy('name')->get();
+        }
 
         $mediaImages = Media::where('type', 'image')->latest()->limit(60)->get();
 
-        return view('admin.properties.create', compact('amenities', 'mediaImages'));
+        return view('admin.properties.create', compact('amenitiesSelected', 'mediaImages'));
     }
 
     /**
@@ -465,13 +470,18 @@ class PropertyController extends Controller
             ? $property->propertyPlaces
             : collect();
 
-        $amenities = Amenity::where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        // The picker streams active amenities from the options endpoint;
+        // only the selection needs server-rendered rows (bounded by the
+        // property's own pivot or old input after a validation failure).
+        if (is_array(old('amenities'))) {
+            $amenitiesSelected = Amenity::whereIn('id', old('amenities'))->orderBy('name')->get();
+        } else {
+            $amenitiesSelected = $property->amenities->sortBy('name')->values();
+        }
 
         $mediaImages = Media::where('type', 'image')->latest()->limit(60)->get();
 
-        return view('admin.properties.edit', compact('property', 'amenities', 'mediaImages', 'propertyPlaces'));
+        return view('admin.properties.edit', compact('property', 'amenitiesSelected', 'mediaImages', 'propertyPlaces'));
     }
 
     /**

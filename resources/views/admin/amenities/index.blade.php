@@ -21,19 +21,21 @@
 
     <!-- Filters -->
     <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-        <form method="GET" action="{{ route('admin.amenities.index') }}" class="flex flex-col md:flex-row gap-4">
-            <!-- Search -->
+        <form method="GET" action="{{ route('admin.amenities.index') }}" id="amenity-filter-form" x-data class="flex flex-col md:flex-row gap-4">
+            <!-- Search (server-side; submits on debounce, select changes, or Enter) -->
             <div class="flex-1">
                 <input type="text"
                        name="search"
                        placeholder="Search by name..."
                        value="{{ request('search') }}"
+                       @input="clearTimeout(window.__amTimer); window.__amTimer = setTimeout(() => $el.form.requestSubmit(), 400)"
                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
             </div>
 
             <!-- Category Filter -->
             <div class="w-full md:w-48">
                 <select name="category"
+                        @change="$el.form.requestSubmit()"
                         class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                     <option value="">All Categories</option>
                     <option value="property" {{ request('category') == 'property' ? 'selected' : '' }}>Property</option>
@@ -44,6 +46,7 @@
             <!-- Status Filter -->
             <div class="w-full md:w-48">
                 <select name="is_active"
+                        @change="$el.form.requestSubmit()"
                         class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                     <option value="">All Status</option>
                     <option value="1" {{ request('is_active') == '1' ? 'selected' : '' }}>Active</option>
@@ -165,22 +168,36 @@
                 {{ $amenities->links() }}
             </div>
         @else
-            <!-- Empty State -->
+            <!-- Empty / No-results State -->
+            @php $hasFilters = request()->hasAny(['search', 'category', 'is_active']); @endphp
             <div class="text-center py-12">
                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
                 </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No amenities found</h3>
-                <p class="mt-1 text-sm text-gray-500">Get started by creating a new amenity.</p>
-                <div class="mt-6">
-                    <a href="{{ route('admin.amenities.create') }}"
-                       class="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        Create New Amenity
-                    </a>
-                </div>
+                @if($hasFilters)
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No amenities match your filters</h3>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Try a different search term or reset the filters.
+                    </p>
+                    <div class="mt-6">
+                        <a href="{{ route('admin.amenities.index') }}"
+                           class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition">
+                            Reset Filters
+                        </a>
+                    </div>
+                @else
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No amenities found</h3>
+                    <p class="mt-1 text-sm text-gray-500">Get started by creating a new amenity.</p>
+                    <div class="mt-6">
+                        <a href="{{ route('admin.amenities.create') }}"
+                           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Create New Amenity
+                        </a>
+                    </div>
+                @endif
             </div>
         @endif
     </div>

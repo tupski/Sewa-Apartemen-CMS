@@ -2009,6 +2009,130 @@ document.addEventListener('DOMContentLoaded', initScrollTop);
 document.addEventListener('turbo:load', initPropertyMap);
 document.addEventListener('DOMContentLoaded', initPropertyMap);
 
+// ─── Amenity picker (admin property forms) ─────────────────────────────────
+// Server-side search + load-more against `admin.amenities.options` so the
+// browser never downloads the whole amenity dataset. Selection lives in a
+// Map keyed by id (id -> {name, icon, category}); hidden `amenities[]`
+// inputs are re-rendered from it via x-for, so the form contract (plain
+// checkbox-array POST, validated by PropertyRequest `amenities.*`) is
+// unchanged. Registered before Alpine.start() so nodes already in the DOM
+// on first render resolve the component.
+Alpine.data('amenityPicker', (config = {}) => ({
+    url: config.url ?? '',
+    q: '',
+    items: [],
+    selected: new Map(Object.entries(config.selected ?? {}).map(([id, v]) => [String(id), v])),
+    page: 1,
+    hasMore: false,
+    loading: false,
+    loadingMore: false,
+    error: '',
+    initialized: false,
+    timer: null,
+    controller: null,
+    reqId: 0,
+
+    get selectedItems() {
+        return [...this.selected.values()];
+    },
+
+    get selectedIds() {
+        return [...this.selected.keys()];
+    },
+
+    init() {
+        this.fetchPage(1);
+    },
+
+    // Debounced search: resets to page 1 so pagination never strands a stale
+    // offset against a new result set.
+    onSearch() {
+        clearTimeout(this.timer);
+        this.timer = setTimeout(() => this.fetchPage(1), 300);
+    },
+
+    toggle(item) {
+        const key = String(item.id);
+        if (this.selected.has(key)) {
+            this.selected.delete(key);
+        } else {
+            this.selected.set(key, { id: item.id, name: item.name, icon: item.icon || '', category: item.category });
+        }
+        this.selected = new Map(this.selected); // reactivity nudge for x-for
+    },
+
+    unselect(id) {
+        this.selected.delete(String(id));
+        this.selected = new Map(this.selected);
+    },
+
+    isSelected(item) {
+        return this.selected.has(String(item.id));
+    },
+
+    loadMore() {
+        if (!this.hasMore || this.loading || this.loadingMore) {
+            return;
+        }
+        this.fetchPage(this.page + 1);
+    },
+
+    fetchPage(page) {
+        this.controller?.abort();
+        this.controller = new AbortController();
+        const req = ++this.reqId;
+        const isAppend = page > 1;
+        isAppend ? (this.loadingMore = true) : (this.loading = true);
+        this.error = '';
+
+        const params = new URLSearchParams();
+        if (page > 1) {
+            params.set('page', String(page));
+        }
+        if (this.q.trim() !== '') {
+            params.set('search', this.q.trim());
+        }
+
+        fetch(`${this.url}?${params.toString()}`, {
+            headers: { Accept: 'application/json' },
+            signal: this.controller.signal,
+        })
+            .then((r) => {
+                if (!r.ok) {
+                    throw new Error('HTTP ' + r.status);
+                }
+                return r.json();
+            })
+            .then((data) => {
+                if (req !== this.reqId) {
+                    return;
+                }
+                this.items = isAppend ? this.items.concat(data.data) : data.data;
+                this.page = data.page;
+                this.hasMore = data.has_more;
+                this.initialized = true;
+            })
+            .catch((err) => {
+                if (err.name === 'AbortError') {
+                    return;
+                }
+                if (req !== this.reqId) {
+                    return;
+                }
+                this.error = 'Gagal memuat daftar fasilitas.';
+                if (!isAppend) {
+                    this.items = [];
+                }
+            })
+            .finally(() => {
+                if (req === this.reqId) {
+                    this.loading = false;
+                    this.loadingMore = false;
+                }
+            });
+    },
+}));
+
 // ponytail: Alpine.start() one-time app-level, sengaja dibiarkan di sini — TIDAK di `turbo:load`.
 // Aman: Alpine memakai MutationObserver pada document (lifecycle.js, startObservingMutations),
 // sehingga node baru dari Turbo body-swap ter-init otomatis via onElAdded -> initTree.
