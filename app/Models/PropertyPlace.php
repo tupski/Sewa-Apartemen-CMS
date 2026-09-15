@@ -15,9 +15,15 @@ class PropertyPlace extends Model
         'property_id',
         'place_id',
         'source',
+        'show_on_frontend',
+        'custom_name',
         'distance_m',
         'walking_distance_m',
         'walking_duration_s',
+        'driving_distance_m',
+        'driving_duration_s',
+        'motorcycle_distance_m',
+        'motorcycle_duration_s',
         'sort_order',
     ];
 
@@ -30,6 +36,11 @@ class PropertyPlace extends Model
         'distance_m' => 'integer',
         'walking_distance_m' => 'integer',
         'walking_duration_s' => 'integer',
+        'driving_distance_m' => 'integer',
+        'driving_duration_s' => 'integer',
+        'motorcycle_distance_m' => 'integer',
+        'motorcycle_duration_s' => 'integer',
+        'show_on_frontend' => 'boolean',
     ];
 
     /**
@@ -46,6 +57,20 @@ class PropertyPlace extends Model
     public function place()
     {
         return $this->belongsTo(Place::class);
+    }
+
+    /**
+     * The presentation name: admin custom name wins over the provider name.
+     */
+    public function getDisplayNameAttribute(): string
+    {
+        $custom = trim((string) $this->custom_name);
+
+        if ($custom !== '') {
+            return $custom;
+        }
+
+        return (string) ($this->place->name ?? '');
     }
 
     /**
@@ -74,11 +99,7 @@ class PropertyPlace extends Model
      */
     public function getWalkingMinutesAttribute(): ?int
     {
-        if ($this->walking_duration_s === null) {
-            return null;
-        }
-
-        return (int) max(1, (int) ceil($this->walking_duration_s / 60));
+        return self::durationMinutes($this->walking_duration_s);
     }
 
     /**
@@ -86,9 +107,61 @@ class PropertyPlace extends Model
      */
     public function getWalkingDurationFormattedAttribute(): ?string
     {
-        $minutes = $this->walking_minutes;
+        return self::formatDuration($this->walking_duration_s, 'min walk');
+    }
 
-        return $minutes === null ? null : $minutes.' '.__('min walk');
+    /**
+     * Human-readable driving distance, or null when unmeasured.
+     */
+    public function getDrivingDistanceFormattedAttribute(): ?string
+    {
+        return self::formatMetres($this->driving_distance_m);
+    }
+
+    /**
+     * Human-readable driving time ("12 min drive"), or null when unmeasured.
+     */
+    public function getDrivingDurationFormattedAttribute(): ?string
+    {
+        return self::formatDuration($this->driving_duration_s, 'min drive');
+    }
+
+    /**
+     * Human-readable motorcycle distance, or null when unmeasured.
+     */
+    public function getMotorcycleDistanceFormattedAttribute(): ?string
+    {
+        return self::formatMetres($this->motorcycle_distance_m);
+    }
+
+    /**
+     * Human-readable motorcycle time ("9 min ride"), or null when unmeasured.
+     */
+    public function getMotorcycleDurationFormattedAttribute(): ?string
+    {
+        return self::formatDuration($this->motorcycle_duration_s, 'min ride');
+    }
+
+    /**
+     * Duration seconds → whole minutes (rounded up), null-safe.
+     */
+    private static function durationMinutes(?int $seconds): ?int
+    {
+        if ($seconds === null) {
+            return null;
+        }
+
+        return (int) max(1, (int) ceil($seconds / 60));
+    }
+
+    /**
+     * Format seconds as "<n> <unit>" using the localized "min" fragment.
+     */
+    private static function formatDuration(?int $seconds, string $suffix): ?string
+    {
+        $minutes = self::durationMinutes($seconds);
+
+        return $minutes === null ? null : $minutes.' '.__($suffix);
     }
 
     /**

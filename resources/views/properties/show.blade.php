@@ -92,7 +92,6 @@
         $cat = $pp->place->category ?: 'Others';
         $persistentGroups[$cat][] = $pp;
     }
-
     // Build the map marker set. Property marker first, then POIs (persistent if
     // available, else manual nearby places that carry coordinates).
     $mapMarkers = [];
@@ -457,17 +456,18 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     @foreach ($persistentGroups as $category => $items)
                                         @php
-                                            $catEmoji = \App\Models\Property::NEARBY_CATEGORIES[$category] ?? '📌';
+                                            $catIcon = \App\Models\PlaceCategory::iconForSlug($category);
+                                            $catLabel = \App\Models\PlaceCategory::labelForSlug($category);
                                         @endphp
                                         <div>
                                             <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide mb-3 flex items-center gap-2">
-                                                <span class="text-base leading-none" aria-hidden="true">{{ $catEmoji }}</span>
-                                                {{ $category }}
+                                                <span class="text-base leading-none" aria-hidden="true">@if($catIcon)<i class="{{ $catIcon }}"></i>@else📌@endif</span>
+                                                {{ $catLabel }}
                                             </h3>
                                             <ul class="space-y-2.5">
                                                 @foreach ($items as $pp)
                                                     <li class="flex items-start justify-between text-sm gap-3">
-                                                        <span class="text-gray-700 dark:text-gray-300">{{ $pp->place->name ?? '' }}</span>
+                                                        <span class="text-gray-700 dark:text-gray-300">{{ $pp->display_name }}</span>
                                                         @if (!empty($pp->distance_formatted))
                                                             <span class="text-gray-500 dark:text-gray-400 text-xs shrink-0 tabular-nums">{{ $pp->distance_formatted }}</span>
                                                         @endif

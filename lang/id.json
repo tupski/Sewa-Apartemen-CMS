@@ -16,7 +16,6 @@
     "Save the property first (with the map location) to sync POIs from Geoapify.": "Simpan properti terlebih dahulu (dengan lokasi di peta) untuk menyinkronkan POI dari Geoapify.",
     "Save the property after changing the map pin, then resync POIs.": "Simpan properti setelah mengubah pin peta, lalu sinkronkan ulang POI.",
     "Geoapify POI": "POI Geoapify",
-    "Automatically find nearby shopping, healthcare, and transportation places using Geoapify.": "Temukan otomatis tempat perbelanjaan, kesehatan, dan transportasi di sekitar properti menggunakan Geoapify.",
     "Geoapify API: configured": "API Geoapify: terkonfigurasi",
     "Geoapify API: not configured": "API Geoapify: belum dikonfigurasi",
     "Sync Nearby POI": "Sinkronkan POI Terdekat",
@@ -25,11 +24,8 @@
     "Geoapify API key is not configured.": "API key Geoapify belum dikonfigurasi.",
     "Configure it in Settings → Integrations.": "Konfigurasikan di Pengaturan → Integrasi.",
     "Geoapify API key is not configured. Add it in Settings → Integrations.": "API key Geoapify belum dikonfigurasi. Tambahkan di Pengaturan → Integrasi.",
-    "Only places reachable in under :minutes minutes of walking are kept (routed walking time, not straight-line distance).": "Hanya tempat yang dapat dicapai kurang dari :minutes menit berjalan kaki yang disimpan (waktu tempuh rute nyata, bukan jarak garis lurus).",
     "No nearby places have been synchronized yet.": "Belum ada tempat terdekat yang disinkronkan.",
-    "No nearby places found within a 10-minute walk of this property.": "Tidak ada tempat terdekat dalam radius 10 menit berjalan kaki dari properti ini.",
     ":count nearby places synchronized.": ":count tempat terdekat berhasil disinkronkan.",
-    ":count nearby places synchronized. Failed category: :groups.": ":count tempat terdekat berhasil disinkronkan. Kategori gagal: :groups.",
     "A POI synchronization is already running for this property. Please wait a moment.": "Sinkronisasi POI untuk properti ini sedang berjalan. Mohon tunggu sebentar.",
     "Unable to calculate walking times. Please check your Geoapify API key and try again.": "Tidak dapat menghitung waktu jalan kaki. Periksa API key Geoapify lalu coba lagi.",
     "Searching for nearby places…": "Mencari tempat sekitar…",
@@ -324,7 +320,6 @@
     "restore.confirm_body": "Backup berisi data yang akan menimpa data yang sudah ada. Tindakan ini tidak dapat dibatalkan. Apakah Anda yakin ingin melanjutkan?",
     "restore.cancel": "Batal",
     "restore.overwrite": "Timpa",
-
     "slug_settings.title": "Pengaturan Slug & Path",
     "slug_settings.heading": "Pengaturan Slug & Path",
     "slug_settings.subtitle": "Edit URL path untuk setiap halaman publik dan path login admin.",
@@ -341,7 +336,6 @@
     "slug_settings.route_cache_hint": "Setelah mengubah <strong>Path Login Admin</strong>, jalankan <code>php artisan route:clear</code> lalu akses admin via path baru.",
     "slug_settings.save": "Simpan Slug",
     "slug_settings.saved": "Slug berhasil disimpan. Jalankan php artisan route:clear jika terjadi masalah routing.",
-
     "navigation.title": "Judul",
     "navigation.link_type": "Tipe Tautan",
     "navigation.type_url": "Tautan URL",
@@ -370,7 +364,6 @@
     "Slug": "Slug",
     "URL-friendly version. Leave empty to auto-generate from the title.": "Versi ramah URL. Biarkan kosong untuk otomatis dibuat dari judul.",
     "auto-generated from title": "otomatis dibuat dari judul",
-    "Category": "Kategori",
     "None": "Tidak Ada",
     "Add new category": "Tambah kategori baru",
     "Excerpt": "Ringkasan",
@@ -493,7 +486,6 @@
     "lang.no_keys": "Tidak ada kunci terjemahan.",
     "lang.invalid_payload": "Data yang dikirim tidak valid. Terjemahan tidak disimpan.",
     "lang.write_failed": "Gagal menulis berkas terjemahan. Periksa izin berkas.",
-
     "blog.title": "Blog",
     "blog.category_label": "Kategori: :name",
     "blog.tag_label": "Tag: :name",
@@ -521,7 +513,6 @@
     "blog.cta_title_area": "Apartemen Tersedia di :area",
     "blog.cta_subtitle": "Lihat detail, harga, dan lakukan pemesanan langsung.",
     "blog.sidebar_properties": "Properti Populer",
-
     "booking.success_heading": "Permintaan Pemesanan Terkirim!",
     "booking.success_desc": "Permintaan pemesanan Anda telah diterima. Kami akan segera menghubungi Anda.",
     "booking.details": "Detail Pemesanan",
@@ -574,7 +565,6 @@
     "booking.type_daily": "Harian",
     "booking.type_weekly": "Mingguan",
     "booking.type_monthly": "Bulanan",
-
     "prop.rooms_heading": "Tipe Kamar Tersedia",
     "prop.rent_hourly": "Sewa per Jam",
     "prop.rent_nightly": "Sewa per Malam",
@@ -588,7 +578,6 @@
     "prop.book_apartment": "Pesan Apartemen",
     "prop.view_all_photos": "Lihat Semua Foto",
     "prop.wa_ask_message": "Halo, saya ingin bertanya tentang :property",
-
     "bkf.room_type": "Tipe Kamar",
     "bkf.select_room_type": "Pilih tipe kamar",
     "bkf.checkin_date": "Tanggal Check-in",
@@ -725,5 +714,11 @@
     "git.checking": "Memeriksa…",
     "git.check_updates_available": "Tersedia :count commit baru dari remote.",
     "git.check_updates_up_to_date": "Kode sudah terkini.",
-    "git.check_updates_failed": "Pemeriksaan pembaruan gagal. Periksa log aplikasi."
+    "git.check_updates_failed": "Pemeriksaan pembaruan gagal. Periksa log aplikasi.",
+    "Tidak ada tempat terdekat dalam radius 15 menit berjalan kaki dari properti ini.": "Tidak ada tempat terdekat dalam radius 15 menit berjalan kaki dari properti ini.",
+    ":count tempat terdekat berhasil disinkronkan. Kategori gagal: :categories.": ":count tempat terdekat berhasil disinkronkan. Kategori gagal: :categories.",
+    "Automatically find nearby places using Geoapify, grouped by your configured categories.": "Temukan otomatis tempat di sekitar properti menggunakan Geoapify, dikelompokkan sesuai kategori yang Anda atur.",
+    "Only places reachable within the travel budgets are kept (routed travel time, not straight-line distance): walk up to :walk_minutes min / :walk_meters m, car up to :drive_minutes min / :drive_meters m, motorcycle up to :moto_minutes min / :moto_meters m.": "Hanya tempat yang masih dalam batas waktu tempuh yang disimpan (waktu tempuh rute nyata, bukan jarak garis lurus): jalan kaki maksimal :walk_minutes menit / :walk_meters m, mobil maksimal :drive_minutes menit / :drive_meters m, sepeda motor maksimal :moto_minutes menit / :moto_meters m.",
+    "min drive": "menit berkendara",
+    "min ride": "menit naik motor"
 }

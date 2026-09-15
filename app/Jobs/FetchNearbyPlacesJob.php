@@ -22,19 +22,19 @@ use RuntimeException;
  * The single owner of the Geoapify POI pipeline for one property:
  *
  *   coordinates
- *     -> per-group Places search (shopping / hospital / transportation)
+ *     -> per-category Places search (all active place_categories slugs)
  *     -> deduplicate candidates by Geoapify place id
- *     -> Route Matrix walking times (mode=walk)
- *     -> keep only POIs whose routed walking time is <= 10 minutes
+ *     -> per-mode Route Matrix (walk / drive / motorcycle) with budget filters
  *     -> upsert `places` + `property_places`
  *     -> return a structured result for the admin UI
  *
  * IMPORTANT: this job is the ONLY caller of GeoapifyService, and it is only
  * dispatched from the admin POI sync action — never from a page render.
  *
- * handle() returns a result array (Laravel's synchronous dispatch returns it to
- * the caller), so the admin endpoint can report exact counts and per-group
- * failures without a second round trip.
+ * Presentation overrides (custom_name / show_on_frontend) on existing pivot
+ * rows are PRESERVED: the sync never overwrites or deletes an association just
+ * because the provider stopped returning the POI (only genuinely stale rows
+ * from successfully-searched categories are replaced).
  */
 class FetchNearbyPlacesJob implements ShouldQueue
 {
@@ -80,14 +80,20 @@ class FetchNearbyPlacesJob implements ShouldQueue
     /**
      * The number of seconds the job may run before it is killed.
      */
-    public int $timeout = 120;
+    public int $timeout = 300;
 
     /**
      * @param  Property  $property  The property to fetch nearby places for.
      *                              SerializesModels handles lazy serialization.
+     * @param  bool  $measureMotorcycle  Geoapify Route Matrix has no dedicated
+     *                                   motorcycle profile — it is approximated
+     *                                   with driving routes. When false, the
+     *                                   motorcycle mode is skipped entirely and
+     *                                   its columns stay NULL (no fabricated data).
      */
     public function __construct(
         protected Property $property,
+        protected bool $measureMotorcycle = true,
     ) {}
 
     /**
@@ -96,10 +102,11 @@ class FetchNearbyPlacesJob implements ShouldQueue
      * @return array{
      *     success: bool,
      *     reason: string|null,
-     *     groups: array<string, array{status: string, found: int, kept: int, error: string|null}>,
+     *     categories: array<string, array{status: string, found: int, kept: int, error: string|null}>,
      *     found: int,
      *     synced: int,
-     *     walk_max_seconds: int
+     *     new: int,
+     *     budgets: array<string, array{seconds: int, metres: int}>
      * }
      */
     public function handle(): array
@@ -127,10 +134,11 @@ class FetchNearbyPlacesJob implements ShouldQueue
      * @return array{
      *     success: bool,
      *     reason: string|null,
-     *     groups: array<string, array{status: string, found: int, kept: int, error: string|null}>,
+     *     categories: array<string, array{status: string, found: int, kept: int, error: string|null}>,
      *     found: int,
      *     synced: int,
-     *     walk_max_seconds: int
+     *     new: int,
+     *     budgets: array<string, array{seconds: int, metres: int}>
      * }
      */
     private function run(): array
@@ -162,7 +170,7 @@ class FetchNearbyPlacesJob implements ShouldQueue
         // implement LockProvider, so Cache::lock() is a real atomic lock here.
         // A second concurrent sync for the same property early-returns instead of
         // making a duplicate paid upstream call.
-        $lock = Cache::lock("geoapify_sync_{$property->id}", 120);
+        $lock = Cache::lock("geoapify_sync_{$property->id}", 300);
 
         if (! $lock->get()) {
             Log::info(
@@ -180,11 +188,19 @@ class FetchNearbyPlacesJob implements ShouldQueue
     }
 
     /**
-     * Fetch, walk-filter and persist the POIs for a property.
+     * Fetch, filter and persist the POIs for a property.
      *
      * Always invoked while the per-property sync lock is held (see handle()).
      *
-     * @return array{success: bool, reason: string|null, groups: array<string, array{status: string, found: int, kept: int, error: string|null}>, found: int, synced: int, walk_max_seconds: int}
+     * @return array{
+     *     success: bool,
+     *     reason: string|null,
+     *     categories: array<string, array{status: string, found: int, kept: int, error: string|null}>,
+     *     found: int,
+     *     synced: int,
+     *     new: int,
+     *     budgets: array<string, array{seconds: int, metres: int}>
+     * }
      */
     private function syncPlaces(Property $property): array
     {
@@ -196,100 +212,128 @@ class FetchNearbyPlacesJob implements ShouldQueue
         // --- Cache check (24-hour TTL) ---
         $cached = Cache::get($cacheKey);
 
-        if (is_array($cached) && isset($cached['pois'], $cached['groups'], $cached['found'])) {
+        if (is_array($cached) && isset($cached['pois'], $cached['categories'], $cached['found'])) {
             /** @var array<int, array<string, mixed>> $pois */
             $pois = $cached['pois'];
-            /** @var array<string, array{status: string, found: int, kept: int, error: string|null}> $groupStatus */
-            $groupStatus = $cached['groups'];
+            /** @var array<string, array{status: string, found: int, kept: int, error: string|null}> $categoryStatus */
+            $categoryStatus = $cached['categories'];
             $found = (int) $cached['found'];
         } else {
             $search = $this->searchCandidates($property, $lat, $lng);
 
-            // A route-calculation failure means no candidate can be validated
-            // against the 10-minute walking rule, so nothing is persisted and the
-            // existing rows are left untouched.
+            // A walk-route failure means no candidate can be validated against the
+            // walking budget, so nothing is persisted and existing rows are left
+            // untouched.
             if ($search['reason'] === 'route_failed') {
-                return $this->failedResult('route_failed', $search['groups'], $search['found']);
+                return $this->failedResult('route_failed', $search['categories'], $search['found']);
             }
 
             $pois = $search['pois'];
-            $groupStatus = $search['groups'];
+            $categoryStatus = $search['categories'];
             $found = $search['found'];
 
-            // Cache only a complete, walk-filtered result. Failures are never cached.
-            if ($search['failed_groups'] === []) {
+            // Cache only a complete, budget-filtered result. Failures are never cached.
+            if ($search['failed_categories'] === []) {
                 Cache::put($cacheKey, [
                     'pois' => $pois,
-                    'groups' => $groupStatus,
+                    'categories' => $categoryStatus,
                     'found' => $found,
                 ], self::CACHE_TTL_SECONDS);
             }
         }
 
-        $synced = $this->persist($property, $pois, $groupStatus, $lat, $lng);
+        $persist = $this->persist($property, $pois, $categoryStatus, $lat, $lng);
 
-        $failedGroups = array_keys(array_filter(
-            $groupStatus,
+        $failedCategories = array_keys(array_filter(
+            $categoryStatus,
             fn (array $status): bool => $status['status'] !== 'ok'
         ));
 
         Log::info(
-            "FetchNearbyPlacesJob: synced {$synced} of {$found} candidates for property {$property->id}"
-            .($failedGroups === [] ? '' : ' (failed groups: '.implode(', ', $failedGroups).')')
+            "FetchNearbyPlacesJob: synced {$persist['synced']} of {$found} candidates for property {$property->id}"
+            .($failedCategories === [] ? '' : ' (failed categories: '.implode(', ', $failedCategories).')')
         );
 
         return [
-            'success' => $failedGroups === [],
-            'reason' => $failedGroups === [] ? null : 'partial',
-            'groups' => $groupStatus,
+            'success' => $failedCategories === [],
+            'reason' => $failedCategories === [] ? null : 'partial',
+            'categories' => $categoryStatus,
             'found' => $found,
-            'synced' => $synced,
-            'walk_max_seconds' => GeoapifyService::WALK_MAX_SECONDS,
+            'synced' => $persist['synced'],
+            'new' => $persist['new'],
+            'budgets' => $this->budgetPayload(),
         ];
     }
 
     /**
-     * Search every POI group, deduplicate the candidates, then apply the
-     * 10-minute walking-time filter using real routed travel times.
+     * The reachability budgets used by this sync, for the admin UI.
      *
-     * A failure in one group never discards the other groups' results.
-     *
-     * @return array{pois: array<int, array<string, mixed>>, groups: array<string, array{status: string, found: int, kept: int, error: string|null}>, found: int, failed_groups: array<int, string>, reason: string|null}
+     * @return array<string, array{seconds: int, metres: int}>
      */
-    private function searchCandidates(Property $property, float $lat, float $lng): array
+    private function budgetPayload(): array
+    {
+        $budgets = [];
+
+        foreach (GeoapifyService::MODES as $mode) {
+            [$seconds, $metres] = GeoapifyService::MODE_BUDGETS[$mode];
+
+            if ($mode === 'motorcycle' && ! $this->measureMotorcycle) {
+                continue;
+            }
+
+            $budgets[$mode] = ['seconds' => $seconds, 'metres' => $metres];
+        }
+
+        return $budgets;
+    }
+
+    /**
+     * Search POI categories, deduplicate candidates, then apply the
+     * per-mode routed-travel budgets (walk / drive / motorcycle).
+     *
+     * A failure in one category never discards the other categories' results.
+     *
+     * @param  array<int, string>|null  $categorySlugs  Explicit category slugs to
+     *                                                  search; defaults to all
+     *                                                  active DB categories.
+     * @return array{pois: array<int, array<string, mixed>>, categories: array<string, array{status: string, found: int, kept: int, error: string|null}>, found: int, failed_categories: array<int, string>, reason: string|null}
+     */
+    private function searchCandidates(Property $property, float $lat, float $lng, ?array $categorySlugs = null): array
     {
         $service = new GeoapifyService;
 
-        $groupStatus = [];
+        $categoryStatus = [];
         $candidates = [];
         $found = 0;
-        $failedGroups = [];
+        $failedCategories = [];
 
-        foreach (array_keys(GeoapifyService::POI_GROUPS) as $group) {
+        $slugs = $categorySlugs ?? GeoapifyService::activeCategorySlugs();
+
+        foreach ($slugs as $slug) {
             try {
-                $groupPois = $service->searchGroup($group, $lat, $lng);
+                $categoryPois = $service->searchCategory($slug, $lat, $lng);
             } catch (RuntimeException $e) {
                 // SEC-005: the service already strips URLs/keys from its messages.
                 Log::error(
-                    "FetchNearbyPlacesJob: group '{$group}' failed for property {$property->id} — {$e->getMessage()}"
+                    "FetchNearbyPlacesJob: category '{$slug}' failed for property {$property->id} — {$e->getMessage()}"
                 );
 
-                $groupStatus[$group] = ['status' => 'failed', 'found' => 0, 'kept' => 0, 'error' => $e->getMessage()];
-                $failedGroups[] = $group;
+                $categoryStatus[$slug] = ['status' => 'failed', 'found' => 0, 'kept' => 0, 'error' => $e->getMessage()];
+                $failedCategories[] = $slug;
 
                 continue;
             }
 
-            $groupStatus[$group] = ['status' => 'ok', 'found' => count($groupPois), 'kept' => 0, 'error' => null];
-            $found += count($groupPois);
+            $categoryStatus[$slug] = ['status' => 'ok', 'found' => count($categoryPois), 'kept' => 0, 'error' => null];
+            $found += count($categoryPois);
 
-            foreach ($groupPois as $poi) {
+            foreach ($categoryPois as $poi) {
                 if (empty($poi['geoapify_place_id'])) {
                     continue;
                 }
 
                 // Deduplicate: the same venue can be returned by more than one
-                // category (e.g. a mall that is also a department store).
+                // category (e.g. a museum that is also a tourism POI).
                 $candidates[$poi['geoapify_place_id']] = $poi;
             }
         }
@@ -297,52 +341,102 @@ class FetchNearbyPlacesJob implements ShouldQueue
         if ($candidates === []) {
             return [
                 'pois' => [],
-                'groups' => $groupStatus,
+                'categories' => $categoryStatus,
                 'found' => $found,
-                'failed_groups' => $failedGroups,
+                'failed_categories' => $failedCategories,
                 'reason' => null,
             ];
         }
 
-        // --- Walking-time filtering (ACTUAL routed travel time, not distance) ---
-        try {
-            $walking = $service->walkingTimes($lat, $lng, array_values($candidates));
-        } catch (RuntimeException $e) {
-            Log::error(
-                "FetchNearbyPlacesJob: route matrix failed for property {$property->id} — {$e->getMessage()}"
-            );
+        // --- Per-mode routed-travel filtering (ACTUAL routed values, not distance) ---
+        $targets = array_values($candidates);
+        $measured = [];
 
-            return [
-                'pois' => [],
-                'groups' => $groupStatus,
-                'found' => $found,
-                'failed_groups' => $failedGroups,
-                'reason' => 'route_failed',
-            ];
+        foreach (GeoapifyService::MODES as $mode) {
+            // Provider limitation: Geoapify Route Matrix has no dedicated motorcycle
+            // profile. When disabled, the columns stay NULL instead of being filled
+            // with a fabricated driving approximation.
+            if ($mode === 'motorcycle' && ! $this->measureMotorcycle) {
+                continue;
+            }
+
+            try {
+                $measured[$mode] = $service->matrixTimes($mode, $lat, $lng, $targets);
+            } catch (RuntimeException $e) {
+                Log::error(
+                    "FetchNearbyPlacesJob: {$mode} route matrix failed for property {$property->id} — {$e->getMessage()}"
+                );
+
+                // Walk is the primary filter: without it no candidate qualifies.
+                if ($mode === 'walk') {
+                    return [
+                        'pois' => [],
+                        'categories' => $categoryStatus,
+                        'found' => $found,
+                        'failed_categories' => $failedCategories,
+                        'reason' => 'route_failed',
+                    ];
+                }
+
+                // Non-walk failure degrades gracefully: those columns stay NULL.
+                continue;
+            }
         }
 
         $kept = [];
 
-        foreach ($candidates as $placeId => $poi) {
-            $walk = $walking[$placeId] ?? null;
+        [$walkMaxSeconds, $walkMaxMetres] = GeoapifyService::MODE_BUDGETS['walk'];
+        [$driveMaxSeconds, $driveMaxMetres] = GeoapifyService::MODE_BUDGETS['drive'];
+        [$motoMaxSeconds, $motoMaxMetres] = GeoapifyService::MODE_BUDGETS['motorcycle'];
 
-            // Unreachable on foot, or over the 10-minute walking budget.
-            if ($walk === null || $walk['seconds'] === null || $walk['seconds'] > GeoapifyService::WALK_MAX_SECONDS) {
+        foreach ($candidates as $placeId => $poi) {
+            $walk = $measured['walk'][$placeId] ?? null;
+
+            // Unreachable on foot, or outside the walking budget.
+            if ($walk === null || $walk['seconds'] === null
+                || $walk['seconds'] > $walkMaxSeconds
+                || ($walk['metres'] !== null && $walk['metres'] > $walkMaxMetres)) {
                 continue;
             }
 
             $poi['walking_duration_s'] = $walk['seconds'];
             $poi['walking_distance_m'] = $walk['metres'];
+
+            $drive = $measured['drive'][$placeId] ?? null;
+            if ($drive !== null && $drive['seconds'] !== null
+                && $drive['seconds'] <= $driveMaxSeconds
+                && ($drive['metres'] === null || $drive['metres'] <= $driveMaxMetres)) {
+                $poi['driving_duration_s'] = $drive['seconds'];
+                $poi['driving_distance_m'] = $drive['metres'];
+            } else {
+                $poi['driving_duration_s'] = null;
+                $poi['driving_distance_m'] = null;
+            }
+
+            $moto = $measured['motorcycle'][$placeId] ?? null;
+            if ($moto !== null && $moto['seconds'] !== null
+                && $moto['seconds'] <= $motoMaxSeconds
+                && ($moto['metres'] === null || $moto['metres'] <= $motoMaxMetres)) {
+                $poi['motorcycle_duration_s'] = $moto['seconds'];
+                $poi['motorcycle_distance_m'] = $moto['metres'];
+            } else {
+                $poi['motorcycle_duration_s'] = null;
+                $poi['motorcycle_distance_m'] = null;
+            }
+
             $kept[$placeId] = $poi;
 
-            $groupStatus[$poi['category']]['kept']++;
+            $categoryKey = $poi['category'];
+            if (isset($categoryStatus[$categoryKey])) {
+                $categoryStatus[$categoryKey]['kept']++;
+            }
         }
 
         return [
             'pois' => array_values($kept),
-            'groups' => $groupStatus,
+            'categories' => $categoryStatus,
             'found' => $found,
-            'failed_groups' => $failedGroups,
+            'failed_categories' => $failedCategories,
             'reason' => null,
         ];
     }
@@ -350,22 +444,27 @@ class FetchNearbyPlacesJob implements ShouldQueue
     /**
      * Upsert the surviving POIs and remove stale Geoapify rows.
      *
+     * Presentation overrides (`custom_name`, `show_on_frontend`) on existing
+     * pivot rows are never overwritten — only the measured travel data and the
+     * raw place record are refreshed.
+     *
      * @param  array<int, array<string, mixed>>  $pois
-     * @param  array<string, array{status: string, found: int, kept: int, error: string|null}>  $groupStatus
-     * @return int number of persisted pivot rows
+     * @param  array<string, array{status: string, found: int, kept: int, error: string|null}>  $categoryStatus
+     * @return array{synced: int, new: int}
      */
-    private function persist(Property $property, array $pois, array $groupStatus, float $lat, float $lng): int
+    private function persist(Property $property, array $pois, array $categoryStatus, float $lat, float $lng): array
     {
-        // Groups that could not be searched keep their existing rows: a partial
+        // Categories that could not be searched keep their existing rows: a partial
         // failure must not destroy data that was collected successfully before.
-        $protectedGroups = array_keys(array_filter(
-            $groupStatus,
+        $protectedCategories = array_keys(array_filter(
+            $categoryStatus,
             fn (array $status): bool => $status['status'] !== 'ok'
         ));
 
         $syncedPlaceIds = [];
+        $newCount = 0;
 
-        DB::transaction(function () use ($property, $pois, $lat, $lng, &$syncedPlaceIds): void {
+        DB::transaction(function () use ($property, $pois, $lat, $lng, &$syncedPlaceIds, &$newCount): void {
             foreach ($pois as $poi) {
                 // Guard: skip POIs without a Geoapify place ID.
                 if (empty($poi['geoapify_place_id'])) {
@@ -387,9 +486,17 @@ class FetchNearbyPlacesJob implements ShouldQueue
                     ]
                 );
 
-                $syncedPlaceIds[] = $place->id;
+                $existing = PropertyPlace::query()
+                    ->where('property_id', $property->id)
+                    ->where('place_id', $place->id)
+                    ->first();
 
-                PropertyPlace::updateOrCreate(
+                $isNew = $existing === null;
+
+                // updateOrCreate with an override-safe payload: the presentation
+                // columns are deliberately ABSENT so a re-sync can never clobber
+                // the admin's custom name or show/hide choice.
+                $pivot = PropertyPlace::updateOrCreate(
                     [
                         'property_id' => $property->id,
                         'place_id' => $place->id,
@@ -404,51 +511,70 @@ class FetchNearbyPlacesJob implements ShouldQueue
                         ),
                         'walking_distance_m' => $poi['walking_distance_m'] ?? null,
                         'walking_duration_s' => $poi['walking_duration_s'] ?? null,
+                        'driving_distance_m' => $poi['driving_distance_m'] ?? null,
+                        'driving_duration_s' => $poi['driving_duration_s'] ?? null,
+                        'motorcycle_distance_m' => $poi['motorcycle_distance_m'] ?? null,
+                        'motorcycle_duration_s' => $poi['motorcycle_duration_s'] ?? null,
                     ]
                 );
+
+                $syncedPlaceIds[] = $place->id;
+
+                if ($isNew) {
+                    $newCount++;
+                }
             }
         });
 
-        // Replacement synchronization, scoped to the groups that actually ran.
+        // Replacement synchronization, scoped to the categories that actually ran.
         // Manual rows (source = 'manual') are never touched.
-        if ($protectedGroups !== array_keys($groupStatus)) {
+        if ($protectedCategories !== array_keys($categoryStatus)) {
             $stale = PropertyPlace::where('property_id', $property->id)
                 ->where('source', 'geoapify')
                 ->whereNotIn('place_id', $syncedPlaceIds === [] ? [0] : $syncedPlaceIds);
 
-            if ($protectedGroups !== []) {
-                $stale->whereHas('place', fn ($query) => $query->whereNotIn('category', $protectedGroups));
+            if ($protectedCategories !== []) {
+                $stale->whereHas('place', fn ($query) => $query->whereNotIn('category', $protectedCategories));
             }
 
             $stale->delete();
         }
 
-        return count($syncedPlaceIds);
+        return ['synced' => count($syncedPlaceIds), 'new' => $newCount];
     }
 
     /**
      * A result array describing a sync that could not run at all.
      *
-     * @param  array<string, array{status: string, found: int, kept: int, error: string|null}>  $groups
-     * @return array{success: bool, reason: string, groups: array<string, array{status: string, found: int, kept: int, error: string|null}>, found: int, synced: int, walk_max_seconds: int}
+     * @param  array<string, array{status: string, found: int, kept: int, error: string|null}>  $categories
+     * @return array{
+     *     success: bool,
+     *     reason: string,
+     *     categories: array<string, array{status: string, found: int, kept: int, error: string|null}>,
+     *     found: int,
+     *     synced: int,
+     *     new: int,
+     *     budgets: array<string, array{seconds: int, metres: int}>
+     * }
      */
-    private function failedResult(string $reason, array $groups = [], int $found = 0): array
+    private function failedResult(string $reason, array $categories = [], int $found = 0): array
     {
         return [
             'success' => false,
             'reason' => $reason,
-            'groups' => $groups,
+            'categories' => $categories,
             'found' => $found,
             'synced' => 0,
-            'walk_max_seconds' => GeoapifyService::WALK_MAX_SECONDS,
+            'new' => 0,
+            'budgets' => $this->budgetPayload(),
         ];
     }
 
     /**
      * Compute the Haversine great-circle distance between two WGS-84 coordinates.
      *
-     * Kept as a straight-line reference value; the 10-minute rule is applied to
-     * the routed walking time instead (see walkingTimes()).
+     * Kept as a straight-line reference value; the budget rule is applied to
+     * the routed travel times instead (see matrixTimes()).
      *
      * @param  float  $lat1  Latitude of point 1 in decimal degrees.
      * @param  float  $lng1  Longitude of point 1 in decimal degrees.

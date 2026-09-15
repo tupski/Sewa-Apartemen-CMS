@@ -6,6 +6,7 @@ use App\Http\Requests\PropertyRequest;
 use App\Jobs\FetchNearbyPlacesJob;
 use App\Models\Amenity;
 use App\Models\Media;
+use App\Models\PlaceCategory;
 use App\Models\Property;
 use App\Models\PropertyPhoto;
 use App\Services\GeoapifyService;
@@ -1003,37 +1004,40 @@ class PropertyController extends Controller
                 return __('Unable to calculate walking times. Please check your Geoapify API key and try again.');
 
             case 'partial':
-                return __(':count nearby places synchronized. Failed category: :groups.', [
+                return __(':count nearby places synchronized. Failed category: :categories.', [
                     'count' => $synced,
-                    'groups' => implode(', ', $this->failedGroupLabels($result)),
+                    'categories' => implode(', ', $this->failedCategoryLabels($result)),
                 ]);
         }
 
         if ($synced === 0) {
-            return __('No nearby places found within a 10-minute walk of this property.');
+            return __('No nearby places found within a 15-minute walk of this property.');
         }
 
         return __(':count nearby places synchronized.', ['count' => $synced]);
     }
 
     /**
-     * Display labels of the POI groups that failed during a sync.
+     * Display labels of the place categories that failed during a sync.
      *
      * @param  array<string, mixed>  $result
      * @return array<int, string>
      */
-    protected function failedGroupLabels(array $result): array
+    protected function failedCategoryLabels(array $result): array
     {
-        $groups = $result['groups'] ?? [];
+        $categories = $result['categories'] ?? [];
 
-        if (! is_array($groups)) {
+        if (! is_array($categories)) {
             return [];
         }
 
-        return array_keys(array_filter(
-            $groups,
-            fn ($status): bool => is_array($status) && ($status['status'] ?? null) !== 'ok'
-        ));
+        return array_map(
+            fn (string $slug): string => PlaceCategory::labelForSlug($slug),
+            array_keys(array_filter(
+                $categories,
+                fn ($status): bool => is_array($status) && ($status['status'] ?? null) !== 'ok'
+            ))
+        );
     }
 
     /**
@@ -1072,8 +1076,8 @@ class PropertyController extends Controller
             'reason' => $reason,
             'message' => $message,
             'count' => $propertyPlaces->count(),
-            'walk_max_seconds' => GeoapifyService::WALK_MAX_SECONDS,
-            'groups' => is_array($result['groups'] ?? null) ? $result['groups'] : [],
+            'budgets' => is_array($result['budgets'] ?? null) ? $result['budgets'] : [],
+            'categories' => is_array($result['categories'] ?? null) ? $result['categories'] : [],
             'html' => view('admin.properties._nearby-table', [
                 'propertyPlaces' => $propertyPlaces,
             ])->render(),

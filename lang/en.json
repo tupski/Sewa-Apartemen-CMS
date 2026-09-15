@@ -16,7 +16,6 @@
     "Save the property first (with the map location) to sync POIs from Geoapify.": "Save the property first (with the map location) to sync POIs from Geoapify.",
     "Save the property after changing the map pin, then resync POIs.": "Save the property after changing the map pin, then resync POIs.",
     "Geoapify POI": "Geoapify POI",
-    "Automatically find nearby shopping, healthcare, and transportation places using Geoapify.": "Automatically find nearby shopping, healthcare, and transportation places using Geoapify.",
     "Geoapify API: configured": "Geoapify API: configured",
     "Geoapify API: not configured": "Geoapify API: not configured",
     "Sync Nearby POI": "Sync Nearby POI",
@@ -25,11 +24,8 @@
     "Geoapify API key is not configured.": "Geoapify API key is not configured.",
     "Configure it in Settings → Integrations.": "Configure it in Settings → Integrations.",
     "Geoapify API key is not configured. Add it in Settings → Integrations.": "Geoapify API key is not configured. Add it in Settings → Integrations.",
-    "Only places reachable in under :minutes minutes of walking are kept (routed walking time, not straight-line distance).": "Only places reachable in under :minutes minutes of walking are kept (routed walking time, not straight-line distance).",
     "No nearby places have been synchronized yet.": "No nearby places have been synchronized yet.",
-    "No nearby places found within a 10-minute walk of this property.": "No nearby places found within a 10-minute walk of this property.",
     ":count nearby places synchronized.": ":count nearby places synchronized.",
-    ":count nearby places synchronized. Failed category: :groups.": ":count nearby places synchronized. Failed category: :groups.",
     "A POI synchronization is already running for this property. Please wait a moment.": "A POI synchronization is already running for this property. Please wait a moment.",
     "Unable to calculate walking times. Please check your Geoapify API key and try again.": "Unable to calculate walking times. Please check your Geoapify API key and try again.",
     "Searching for nearby places…": "Searching for nearby places…",
@@ -324,7 +320,6 @@
     "restore.confirm_body": "The backup contains data that will overwrite existing records. This action cannot be undone. Are you sure you want to continue?",
     "restore.cancel": "Cancel",
     "restore.overwrite": "Overwrite / Timpa",
-
     "slug_settings.title": "Slug & Path Settings",
     "slug_settings.heading": "Slug & Path Settings",
     "slug_settings.subtitle": "Edit URL paths for public pages and admin login path.",
@@ -341,7 +336,6 @@
     "slug_settings.route_cache_hint": "After changing <strong>Admin Login Path</strong>, run <code>php artisan route:clear</code> then access admin via the new path.",
     "slug_settings.save": "Save Slugs",
     "slug_settings.saved": "Slug settings saved successfully. Run php artisan route:clear if routing issues occur.",
-
     "navigation.title": "Title",
     "navigation.link_type": "Link Type",
     "navigation.type_url": "URL Link",
@@ -370,7 +364,6 @@
     "Slug": "Slug",
     "URL-friendly version. Leave empty to auto-generate from the title.": "URL-friendly version. Leave empty to auto-generate from the title.",
     "auto-generated from title": "auto-generated from title",
-    "Category": "Category",
     "None": "None",
     "Add new category": "Add new category",
     "Excerpt": "Excerpt",
@@ -493,7 +486,6 @@
     "lang.no_keys": "No translation keys found.",
     "lang.invalid_payload": "Invalid data submitted. Translations were not saved.",
     "lang.write_failed": "Failed to write the translation file. Check file permissions.",
-
     "blog.title": "Blog",
     "blog.category_label": "Category: :name",
     "blog.tag_label": "Tag: :name",
@@ -521,7 +513,6 @@
     "blog.cta_title_area": "Apartments Available in :area",
     "blog.cta_subtitle": "View details, pricing, and book directly.",
     "blog.sidebar_properties": "Popular Properties",
-
     "booking.success_heading": "Booking Request Submitted!",
     "booking.success_desc": "Your booking request has been received. We will contact you shortly.",
     "booking.details": "Booking Details",
@@ -574,7 +565,6 @@
     "booking.type_daily": "Daily",
     "booking.type_weekly": "Weekly",
     "booking.type_monthly": "Monthly",
-
     "prop.rooms_heading": "Available Room Types",
     "prop.rent_hourly": "Hourly Rental",
     "prop.rent_nightly": "Nightly Rental",
@@ -588,7 +578,6 @@
     "prop.book_apartment": "Book Apartment",
     "prop.view_all_photos": "View All Photos",
     "prop.wa_ask_message": "Hello, I would like to ask about :property",
-
     "bkf.room_type": "Room Type",
     "bkf.select_room_type": "Select room type",
     "bkf.checkin_date": "Check-in Date",
@@ -725,5 +714,11 @@
     "git.checking": "Checking…",
     "git.check_updates_available": ":count new commit(s) available from remote.",
     "git.check_updates_up_to_date": "Code is up to date.",
-    "git.check_updates_failed": "Update check failed. Check the application log."
+    "git.check_updates_failed": "Update check failed. Check the application log.",
+    "No nearby places found within a 15-minute walk of this property.": "No nearby places found within a 15-minute walk of this property.",
+    ":count nearby places synchronized. Failed category: :categories.": ":count nearby places synchronized. Failed category: :categories.",
+    "Automatically find nearby places using Geoapify, grouped by your configured categories.": "Automatically find nearby places using Geoapify, grouped by your configured categories.",
+    "Only places reachable within the travel budgets are kept (routed travel time, not straight-line distance): walk up to :walk_minutes min / :walk_meters m, car up to :drive_minutes min / :drive_meters m, motorcycle up to :moto_minutes min / :moto_meters m.": "Only places reachable within the travel budgets are kept (routed travel time, not straight-line distance): walk up to :walk_minutes min / :walk_meters m, car up to :drive_minutes min / :drive_meters m, motorcycle up to :moto_minutes min / :moto_meters m.",
+    "min drive": "min drive",
+    "min ride": "min ride"
 }

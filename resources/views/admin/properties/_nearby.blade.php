@@ -15,7 +15,10 @@
     $geoapifyMapKey = \App\Services\GeoapifyService::mapKey();
     $settingsUrl = route('admin.settings.index', ['group' => 'integrations']);
     $canSync = $exists && $hasCoords && $hasApiKey;
-    $walkMinutes = (int) (\App\Services\GeoapifyService::WALK_MAX_SECONDS / 60);
+    // Reachability budgets shown to the admin (routed travel times, not radii).
+    [$walkSeconds, $walkMetres] = \App\Services\GeoapifyService::MODE_BUDGETS['walk'];
+    [$driveSeconds, $driveMetres] = \App\Services\GeoapifyService::MODE_BUDGETS['drive'];
+    [$motoSeconds, $motoMetres] = \App\Services\GeoapifyService::MODE_BUDGETS['motorcycle'];
     // SEC-003: the browser map key falls back to the server Places key. When they
     // are identical the Places key is shipped to every browser that loads a
     // property page, so surface that to the operator.
@@ -28,7 +31,7 @@
         <div>
             <h4 class="text-base font-semibold text-gray-800">{{ __('Geoapify POI') }}</h4>
             <p class="text-sm text-gray-500 mt-1">
-                {{ __('Automatically find nearby shopping, healthcare, and transportation places using Geoapify.') }}
+                {{ __('Automatically find nearby places using Geoapify, grouped by your configured categories.') }}
             </p>
         </div>
 
@@ -123,7 +126,14 @@
     <div id="poi-resync-message" class="mt-3 hidden rounded-md px-4 py-3 text-sm" role="status" aria-live="polite"></div>
 
     <p class="text-xs text-gray-400 mt-3">
-        {{ __('Only places reachable in under :minutes minutes of walking are kept (routed walking time, not straight-line distance).', ['minutes' => $walkMinutes]) }}
+        {{ __('Only places reachable within the travel budgets are kept (routed travel time, not straight-line distance): walk up to :walk_minutes min / :walk_meters m, car up to :drive_minutes min / :drive_meters m, motorcycle up to :moto_minutes min / :moto_meters m.', [
+            'walk_minutes' => (int) ceil($walkSeconds / 60),
+            'walk_meters' => number_format($walkMetres, 0, ',', '.'),
+            'drive_minutes' => (int) ceil($driveSeconds / 60),
+            'drive_meters' => number_format($driveMetres, 0, ',', '.'),
+            'moto_minutes' => (int) ceil($motoSeconds / 60),
+            'moto_meters' => number_format($motoMetres, 0, ',', '.'),
+        ]) }}
     </p>
 
     {{-- Synchronized POIs — replaced wholesale by the sync response --}}

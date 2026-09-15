@@ -5,24 +5,47 @@
     // Extracted so the sync action can re-render JUST this table and swap it into
     // #poi-table-wrap without a page navigation.
     //
-    // The three synchronized groups (shopping / hospital / transportation) are
-    // always listed in a stable order; anything else that is persisted for the
-    // property (manual rows, POIs from an older category set) is collected under
-    // "Others" so nothing that exists in the database is hidden.
+    // Groups come from the DB-managed place_categories catalogue (localized
+    // labels, display order = sort_order). A place's raw category slug matches
+    // its row exact-or-child-prefix (`public_transport.train.station` lands under
+    // `public_transport`); anything unmatched (manual rows, POIs from an older
+    // category set) is collected under "Others" so nothing in the DB is hidden.
     $propertyPlaces = $propertyPlaces ?? collect();
 
-    $grouped = [];
-    foreach (\App\Services\GeoapifyService::GROUP_ORDER as $groupLabel) {
-        $grouped[$groupLabel] = [];
-    }
+    $orderedCategories = \App\Models\PlaceCategory::query()
+        ->orderBy('sort_order')->orderBy('id')->get();
 
+    $grouped = [];   // slug => rows, in catalogue order
+    foreach ($orderedCategories as $category) {
+        $grouped[$category->slug] = [];
+    }
     $others = [];
 
     foreach ($propertyPlaces as $propertyPlace) {
-        $category = $propertyPlace->place->category ?? null;
+        $raw = $propertyPlace->place->category ?? null;
+        $slug = null;
 
-        if ($category !== null && array_key_exists($category, $grouped)) {
-            $grouped[$category][] = $propertyPlace;
+        if (is_string($raw) && $raw !== '') {
+            foreach ($orderedCategories as $category) {
+                if ($raw === $category->slug || str_starts_with($raw, $category->slug.'.')) {
+                    $slug = $category->slug;
+                    break;
+                }
+            }
+
+            if ($slug === null) {
+                $top = strtok($raw, '.');
+                foreach ($orderedCategories as $category) {
+                    if ($category->slug === $top) {
+                        $slug = $top;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($slug !== null) {
+            $grouped[$slug][] = $propertyPlace;
         } else {
             $others[] = $propertyPlace;
         }
@@ -48,12 +71,12 @@
                 </tr>
             </thead>
 
-            @foreach($grouped as $groupLabel => $rows)
+            @foreach($grouped as $groupSlug => $rows)
                 @if($rows !== [])
                     <tbody class="divide-y divide-gray-100">
                         <tr class="bg-gray-50">
                             <th colspan="5" class="px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                                {{ $groupLabel }}
+                                {{ \App\Models\PlaceCategory::labelForSlug($groupSlug) }}
                                 <span class="ml-1 font-normal normal-case text-gray-400">({{ count($rows) }})</span>
                             </th>
                         </tr>

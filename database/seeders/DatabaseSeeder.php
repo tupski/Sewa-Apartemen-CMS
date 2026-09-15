@@ -22,11 +22,12 @@ class DatabaseSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
 
-        // Run role seeder, setting seeder, and amenity master data
+        // Run role seeder, setting seeder, amenity + POI category master data
         $this->call([
             RoleSeeder::class,
             SettingSeeder::class,
             AmenitySeeder::class,
+            PlaceCategorySeeder::class,
             BlogCategorySeeder::class,
             PropertySeeder::class,
             PostSeeder::class,

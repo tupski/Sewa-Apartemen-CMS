@@ -22,7 +22,7 @@ use Tests\TestCase;
  * The companion file GeoapifyNearbyPlacesTest covers the pipeline internals and
  * the security hardening (SEC-001..007); this file pins the operator-facing
  * requirements: a key configured from Settings, POIs synced from the property
- * screen, the 10-minute WALKING-TIME rule, and graceful degradation.
+ * screen, the 15-minute WALKING-TIME budget, and graceful degradation.
  *
  * Every test fakes both Geoapify endpoints (Places + Route Matrix). No test ever
  * performs a real network call or uses a real API key.
@@ -393,7 +393,7 @@ class GeoapifyPoiSyncTest extends TestCase
 
         $place = Place::firstOrFail();
         $this->assertSame('RS Sehat', $place->name);
-        $this->assertSame('Hospital/Health', $place->category);
+        $this->assertSame('healthcare.hospital', $place->category);
         $this->assertNotNull($place->fetched_at);
 
         $pivot = PropertyPlace::firstOrFail();
@@ -427,17 +427,17 @@ class GeoapifyPoiSyncTest extends TestCase
     }
 
     /* ===================================================================
-     | 7/8 — The 10-minute WALKING-TIME rule
+     | 7/8 — The 15-minute WALKING-TIME budget
      * =================================================================== */
 
-    public function test_pois_over_ten_minutes_walking_are_excluded(): void
+    public function test_pois_over_the_walking_budget_are_excluded(): void
     {
         $this->authenticate();
         $this->configureApiKey();
 
         $property = $this->propertyWithCoords();
 
-        // 601s is one second past the 10-minute budget. Both POIs sit at
+        // 901s is one second past the 15-minute walking budget. Both POIs sit at
         // effectively the same spot (a few centimetres apart, so the fake can
         // still tell the two matrix targets apart), which means only a real
         // travel-time rule — not a distance rule — can separate them.
@@ -445,7 +445,7 @@ class GeoapifyPoiSyncTest extends TestCase
             $this->feature(['place_id' => 'gp-far', 'name' => 'RS Terlalu Jauh'], [106.81, -6.21]),
             $this->feature(['place_id' => 'gp-near', 'name' => 'RS Dekat'], [106.8100002, -6.2100002]),
         ], [
-            'gp-far' => 601,
+            'gp-far' => 901,
             'gp-near' => 300,
         ]);
 
@@ -556,14 +556,14 @@ class GeoapifyPoiSyncTest extends TestCase
 
         $property = $this->propertyWithCoords();
 
-        // The Places endpoint succeeds for shopping + healthcare and fails for
+        // The Places endpoint succeeds for cafe + healthcare and fails for
         // every public_transport category.
         $this->fakeGeoapify(
             [
                 $this->feature([
-                    'place_id' => 'gp-mall',
-                    'name' => 'Grand Mall',
-                    'categories' => ['commercial.shopping_mall'],
+                    'place_id' => 'gp-cafe',
+                    'name' => 'Kopi Kiosk',
+                    'categories' => ['catering.cafe'],
                 ]),
                 $this->feature(['place_id' => 'gp-hospital', 'name' => 'RS Sehat']),
             ],
@@ -579,9 +579,9 @@ class GeoapifyPoiSyncTest extends TestCase
                     'type' => 'FeatureCollection',
                     'features' => [
                         $this->feature([
-                            'place_id' => 'gp-mall',
-                            'name' => 'Grand Mall',
-                            'categories' => ['commercial.shopping_mall'],
+                            'place_id' => 'gp-cafe',
+                            'name' => 'Kopi Kiosk',
+                            'categories' => ['catering.cafe'],
                         ]),
                         $this->feature(['place_id' => 'gp-hospital', 'name' => 'RS Sehat']),
                     ],
@@ -599,13 +599,14 @@ class GeoapifyPoiSyncTest extends TestCase
             'count' => 2,
         ]);
 
-        // The message names the failed group (locale-independent assertions).
-        $this->assertStringContainsString(GeoapifyService::GROUP_TRANSPORT, $response->json('message'));
+        // The message names the failed category (locale-independent assertions;
+        // no place_categories rows are seeded here, so the raw slug is shown).
+        $this->assertStringContainsString('public_transport', $response->json('message'));
         $this->assertStringContainsString('2', $response->json('message'));
-        $this->assertSame('failed', $response->json('groups.'.GeoapifyService::GROUP_TRANSPORT.'.status'));
+        $this->assertSame('failed', $response->json('categories.public_transport.status'));
 
-        // The two successful groups are persisted.
-        $this->assertDatabaseHas('places', ['geoapify_place_id' => 'gp-mall']);
+        // The two successful categories are persisted.
+        $this->assertDatabaseHas('places', ['geoapify_place_id' => 'gp-cafe']);
         $this->assertDatabaseHas('places', ['geoapify_place_id' => 'gp-hospital']);
         $this->assertSame(2, PropertyPlace::where('property_id', $property->id)->count());
     }
@@ -622,7 +623,7 @@ class GeoapifyPoiSyncTest extends TestCase
         $transportPlace = Place::create([
             'geoapify_place_id' => 'gp-old-station',
             'name' => 'Stasiun Lama',
-            'category' => GeoapifyService::GROUP_TRANSPORT,
+            'category' => 'public_transport',
             'lat' => -6.205,
             'lng' => 106.805,
             'fetched_at' => now(),
@@ -635,19 +636,19 @@ class GeoapifyPoiSyncTest extends TestCase
             'distance_m' => 600,
         ]);
 
-        // Only the shopping group succeeds; healthcare and transportation fail.
+        // Only the tourism category succeeds; healthcare and transportation fail.
         Http::preventStrayRequests();
         Http::fake([
             'api.geoapify.com/v2/places*' => function ($request) {
                 $categories = $request->data()['categories'] ?? '';
 
-                if (str_contains($categories, 'commercial.shopping_mall')) {
+                if (str_contains($categories, 'tourism')) {
                     return Http::response([
                         'type' => 'FeatureCollection',
                         'features' => [$this->feature([
                             'place_id' => 'gp-mall-2',
-                            'name' => 'Mall Baru',
-                            'categories' => ['commercial.shopping_mall'],
+                            'name' => 'Wisata Baru',
+                            'categories' => ['tourism'],
                         ])],
                     ], 200);
                 }
@@ -729,7 +730,7 @@ class GeoapifyPoiSyncTest extends TestCase
 
         $property = $this->propertyWithCoords();
 
-        // A previously synced POI that is now farther than 10 minutes on foot.
+        // A previously synced POI that is now farther than 15 minutes on foot.
         $stalePlace = Place::create([
             'geoapify_place_id' => 'gp-stale',
             'name' => 'RS Lama',
@@ -792,7 +793,7 @@ class GeoapifyPoiSyncTest extends TestCase
         $response->assertStatus(200);
         $response->assertJson(['success' => true, 'count' => 0]);
         $this->assertSame(
-            __('No nearby places found within a 10-minute walk of this property.'),
+            __('No nearby places found within a 15-minute walk of this property.'),
             $response->json('message')
         );
 

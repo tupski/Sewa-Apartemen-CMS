@@ -42,4 +42,24 @@ class Place extends Model
     {
         return $this->hasMany(PropertyPlace::class);
     }
+
+    /**
+     * The Artivo-managed category row matching this place's category slug.
+     *
+     * Matches the exact slug first; a raw child key (`public_transport.train`)
+     * resolves to its parent row (`public_transport`) as a fallback.
+     */
+    public function placeCategory()
+    {
+        return $this->belongsTo(PlaceCategory::class, 'category', 'slug')
+            ->orWhere('slug', strtok((string) $this->category, '.'));
+    }
+
+    /**
+     * Localized category display label (DB-driven, never the raw provider key).
+     */
+    public function categoryLabel(): string
+    {
+        return PlaceCategory::labelForSlug($this->category);
+    }
 }

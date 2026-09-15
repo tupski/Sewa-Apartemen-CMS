@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Jobs\FetchNearbyPlacesJob;
 use App\Models\Place;
+use App\Models\PlaceCategory;
 use App\Models\Property;
 use App\Models\PropertyPlace;
 use App\Models\Role;
@@ -57,6 +58,27 @@ class GeoapifyNearbyPlacesTest extends TestCase
         config()->set('services.geoapify.map_key', 'test-map-key');
         config()->set('services.geoapify.radius', 2000);
         config()->set('services.geoapify.max_results', 20);
+
+        $this->seedCategories();
+    }
+
+    /**
+     * Seed a small, deterministic category fixture (instead of the full 20)
+     * so pipeline tests issue a predictable, low number of Places requests.
+     *
+     * Requests per sync: 4 Places (one per category) + 3 Route Matrix
+     * (walk / drive / motorcycle) = 7.
+     */
+    protected function seedCategories(): void
+    {
+        foreach ([
+            ['slug' => 'healthcare.hospital', 'name_id' => 'Rumah Sakit', 'name_en' => 'Hospital', 'icon' => 'fa-solid fa-hospital', 'color' => '#ef4444', 'sort_order' => 0],
+            ['slug' => 'commercial.shopping_mall', 'name_id' => 'Mal', 'name_en' => 'Shopping Mall', 'icon' => 'fa-solid fa-bag-shopping', 'color' => '#f59e0b', 'sort_order' => 1],
+            ['slug' => 'public_transport', 'name_id' => 'Transportasi Umum', 'name_en' => 'Public Transport', 'icon' => 'fa-solid fa-train-subway', 'color' => '#7c3aed', 'sort_order' => 2],
+            ['slug' => 'public_transport.train', 'name_id' => 'Stasiun Kereta', 'name_en' => 'Train Station', 'icon' => 'fa-solid fa-train', 'color' => '#7c3aed', 'sort_order' => 3],
+        ] as $category) {
+            PlaceCategory::firstOrCreate(['slug' => $category['slug']], $category);
+        }
     }
 
     /* ===================================================================
@@ -458,11 +480,11 @@ class GeoapifyNearbyPlacesTest extends TestCase
         $this->assertDatabaseHas('places', [
             'geoapify_place_id' => 'gp-1',
             'name' => 'RS Sehat',
-            'category' => 'Hospital/Health',
+            'category' => 'healthcare.hospital',
         ]);
         $this->assertDatabaseHas('places', [
             'geoapify_place_id' => 'gp-2',
-            'category' => 'Mall/Shopping',
+            'category' => 'commercial.shopping_mall',
         ]);
 
         foreach (PropertyPlace::all() as $pivot) {
@@ -557,8 +579,9 @@ class GeoapifyNearbyPlacesTest extends TestCase
         // No Cache::forget() — the second run must hit the 24h cached payload.
         (new FetchNearbyPlacesJob($property))->handle();
 
-        // Cold cache: one Places request per group (3) + one Route Matrix request.
-        Http::assertSentCount(4);
+        // Cold cache: one Places request per category (4) + one Route Matrix
+        // request per mode (walk / drive / motorcycle) = 7.
+        Http::assertSentCount(7);
         $this->assertDatabaseCount('places', 1);
         $this->assertDatabaseCount('property_places', 1);
     }
@@ -1066,7 +1089,7 @@ class GeoapifyNearbyPlacesTest extends TestCase
         // not leaked, by the successful path.
         (new FetchNearbyPlacesJob($property))->handle();
 
-        Http::assertSentCount(4);
+        Http::assertSentCount(7);
         $this->assertDatabaseCount('places', 1);
         $this->assertTrue(Cache::lock("geoapify_sync_{$property->id}", 120)->get());
     }
