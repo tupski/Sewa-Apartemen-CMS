@@ -16,6 +16,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\NavigationController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\PlaceCategoryController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PromoRateController;
@@ -153,6 +154,10 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix(slug('admin_prefix', 'a
     // SEC-001: throttled — every resync clears the 24h cache and forces a paid
     // Geoapify call, so cap it at 5 attempts per 10 minutes.
     Route::post('properties/{property}/resync-nearby-places', [PropertyController::class, 'resyncNearbyPlaces'])->name('properties.resync-nearby-places')->middleware('throttle:5,10');
+
+    // Nearby POI Category Management (embedded in the property create/edit screen)
+    Route::post('place-categories', [PlaceCategoryController::class, 'update'])->name('place-categories.update');
+    Route::delete('place-categories/{placeCategory}', [PlaceCategoryController::class, 'destroy'])->name('place-categories.destroy');
 
     // Amenity Management
     Route::resource('amenities', AmenityController::class);

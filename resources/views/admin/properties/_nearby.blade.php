@@ -140,6 +140,100 @@
     <div id="poi-table-wrap" class="mt-4">
         @include('admin.properties._nearby-table', ['propertyPlaces' => $propertyPlaces])
     </div>
+
+    {{-- ── Category management ───────────────────────────────────────── --}}
+    {{-- The Artivo-managed catalogue the sync iterates. Rows are edited
+         client-side and saved in bulk; the slug (Geoapify key) is immutable
+         for existing rows so the sync match keys never drift. --}}
+    @php
+        $managedCategories = \App\Models\PlaceCategory::query()
+            ->orderBy('sort_order')->orderBy('id')->get()
+            ->map(fn ($c) => [
+                'id' => $c->id, 'slug' => $c->slug, 'name_id' => $c->name_id,
+                'name_en' => $c->name_en, 'icon' => $c->icon, 'color' => $c->color,
+                'is_active' => $c->is_active, 'sort_order' => $c->sort_order,
+            ])->values()->all();
+    @endphp
+    <div id="place-category-manager"
+         class="mt-4 border border-gray-200 rounded-md"
+         x-data="placeCategoryManager(@json($managedCategories), '{{ route('admin.place-categories.update') }}', '{{ route('admin.place-categories.destroy', '__ID__') }}')"
+         x-cloak>
+        <button type="button" class="w-full flex items-center justify-between px-4 py-3 text-left text-sm font-semibold text-gray-700 hover:bg-gray-50 rounded-t-md"
+                @click="open = !open" :aria-expanded="open.toString()">
+            <span class="flex items-center gap-2">
+                <i class="fa-solid fa-layer-group text-gray-400" aria-hidden="true"></i>
+                {{ __('Manage categories') }}
+                <span class="font-normal text-gray-400" x-text="'(' + rows.length + ')'"></span>
+            </span>
+            <svg :class="open ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </button>
+
+        <div x-show="open" class="px-4 pb-4 border-t border-gray-100">
+            <p class="text-xs text-gray-400 mt-3">
+                {{ __('Slug is the Geoapify category key used for the sync — it cannot be changed after creation. Labels are shown to guests per language.') }}
+            </p>
+
+            <div class="hidden md:grid grid-cols-12 gap-2 mt-3 text-xs font-medium text-gray-500 uppercase tracking-wide px-1">
+                <span class="col-span-3">{{ __('Geoapify key (slug)') }}</span>
+                <span class="col-span-2">{{ __('Indonesian name') }}</span>
+                <span class="col-span-2">{{ __('English name') }}</span>
+                <span class="col-span-2">{{ __('Icon class') }}</span>
+                <span class="col-span-1">{{ __('Color') }}</span>
+                <span class="col-span-1">{{ __('Active') }}</span>
+                <span class="col-span-1"></span>
+            </div>
+
+            <div class="space-y-2 mt-2">
+                <template x-for="(cat, index) in rows" :key="cat.id ?? 'new-' + index">
+                    <div class="grid grid-cols-2 md:grid-cols-12 gap-2 items-center bg-gray-50/60 rounded-md p-2">
+                        <input type="text" x-model="cat.slug" :disabled="!!cat.id" maxlength="64"
+                               class="col-span-2 md:col-span-3 rounded-md border-gray-300 text-sm disabled:bg-gray-100 disabled:text-gray-500"
+                               :aria-label="'{{ __('Geoapify key (slug)') }} ' + (index + 1)" placeholder="catering.cafe">
+                        <input type="text" x-model="cat.name_id" maxlength="100" required
+                               class="col-span-1 md:col-span-2 rounded-md border-gray-300 text-sm"
+                               :aria-label="'{{ __('Indonesian name') }} ' + (index + 1)" placeholder="Kafe">
+                        <input type="text" x-model="cat.name_en" maxlength="100" required
+                               class="col-span-1 md:col-span-2 rounded-md border-gray-300 text-sm"
+                               :aria-label="'{{ __('English name') }} ' + (index + 1)" placeholder="Cafe">
+                        <input type="text" x-model="cat.icon" maxlength="100"
+                               class="col-span-1 md:col-span-2 rounded-md border-gray-300 text-sm"
+                               :aria-label="'{{ __('Icon class') }} ' + (index + 1)" placeholder="fa-solid fa-mug-hot">
+                        <input type="color" x-model="cat.color"
+                               class="col-span-1 md:col-span-1 h-[38px] w-full rounded-md border-gray-300 p-0.5"
+                               :aria-label="'{{ __('Color') }} ' + (index + 1)">
+                        <label class="col-span-1 md:col-span-1 flex items-center justify-center gap-1.5 text-xs text-gray-600">
+                            <input type="checkbox" x-model="cat.is_active" class="rounded border-gray-300"
+                                   :aria-label="'{{ __('Active') }} ' + (index + 1)">
+                        </label>
+                        <button type="button" @click="removeRow(index)"
+                                class="col-span-2 md:col-span-1 justify-self-end text-gray-400 hover:text-red-600"
+                                :aria-label="'{{ __('Remove') }} ' + (cat.slug || index + 1)">
+                            <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </template>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 mt-3">
+                <button type="button" @click="addRow"
+                        class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">
+                    <i class="fa-solid fa-plus text-xs" aria-hidden="true"></i>
+                    {{ __('Add category') }}
+                </button>
+                <button type="button" @click="save" :disabled="saving"
+                        class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md bg-gray-800 text-white hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg x-show="saving" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    {{ __('Save categories') }}
+                </button>
+                <span x-show="message" x-text="message" class="text-xs"
+                      :class="ok ? 'text-green-700' : 'text-red-700'" role="status" aria-live="polite"></span>
+            </div>
+        </div>
+    </div>
 </div>
 
 @push('scripts')
@@ -312,5 +406,131 @@ window.propertyPoiResync = function (btn) {
     lngInput.addEventListener('input', updateSyncState);
     updateSyncState();
 })();
+
+// Category manager — bulk save + safe delete of the POI category catalogue.
+// A single global (idempotent across Turbo body-swaps, like propertyPoiResync).
+window.placeCategoryManager = function (initialRows, updateUrl, destroyUrlTemplate) {
+    'use strict';
+
+    return {
+        open: false,
+        saving: false,
+        message: '',
+        ok: true,
+        rows: initialRows,
+
+        headers: function () {
+            return {
+                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            };
+        },
+
+        applyResponse: function (data) {
+            if (data && Array.isArray(data.categories)) {
+                this.rows = data.categories;
+            }
+            this.message = data.message || '';
+            this.ok = !!data.success;
+        },
+
+        addRow: function () {
+            this.rows.push({
+                id: null,
+                slug: '',
+                name_id: '',
+                name_en: '',
+                icon: '',
+                color: '#7c3aed',
+                is_active: true,
+                sort_order: this.rows.length,
+            });
+        },
+
+        removeRow: function (index) {
+            var self = this;
+            var row = this.rows[index];
+
+            if (!row) return;
+
+            // Unsaved rows are removed client-side only.
+            if (!row.id) {
+                this.rows.splice(index, 1);
+                return;
+            }
+
+            var url = destroyUrlTemplate.replace('__ID__', row.id);
+
+            fetch(url, {
+                method: 'DELETE',
+                headers: self.headers(),
+                credentials: 'same-origin',
+            })
+                .then(function (res) {
+                    return res.json().then(function (data) {
+                        return { ok: res.ok, data: data };
+                    }).catch(function () {
+                        return { ok: false, data: {} };
+                    });
+                })
+                .then(function (result) {
+                    self.applyResponse(result.data);
+
+                    if (result.ok) {
+                        self.rows = result.data.categories || self.rows;
+                    }
+                })
+                .catch(function () {
+                    self.ok = false;
+                    self.message = '{{ __('place_category.delete_failed') }}';
+                });
+        },
+
+        save: function () {
+            var self = this;
+
+            if (this.saving) return;
+
+            for (var i = 0; i < this.rows.length; i++) {
+                if (!String(this.rows[i].slug || '').trim()
+                    || !String(this.rows[i].name_id || '').trim()
+                    || !String(this.rows[i].name_en || '').trim()) {
+                    this.ok = false;
+                    this.message = '{{ __('place_category.row_incomplete') }}';
+                    return;
+                }
+            }
+
+            this.saving = true;
+            this.message = '';
+
+            fetch(updateUrl, {
+                method: 'POST',
+                headers: self.headers(),
+                credentials: 'same-origin',
+                body: JSON.stringify({ categories: this.rows }),
+            })
+                .then(function (res) {
+                    return res.json().then(function (data) {
+                        return { ok: res.ok, data: data };
+                    }).catch(function () {
+                        return { ok: false, data: {} };
+                    });
+                })
+                .then(function (result) {
+                    self.applyResponse(result.data);
+                })
+                .catch(function () {
+                    self.ok = false;
+                    self.message = '{{ __('place_category.save_failed') }}';
+                })
+                .finally(function () {
+                    self.saving = false;
+                });
+        },
+    };
+};
 </script>
 @endpush
