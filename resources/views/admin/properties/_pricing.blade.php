@@ -487,33 +487,10 @@
         confirm-form-id="promo-delete-form" />
 @endif
 
+{{-- Promo JS rides inside the @if($property?->exists) opened above the promo
+     markup — promos only exist once the property has been saved. --}}
 @push('scripts')
 <script>
-    (function () {
-        var checks = document.querySelectorAll('.type-check');
-        var tables = document.getElementById('price-tables');
-        var empty  = document.getElementById('price-empty');
-
-        // Show the price tables only while at least one room type is ticked, and
-        // show the "tick a room type" hint otherwise.
-        function syncVisibility() {
-            var anyChecked = Array.prototype.some.call(checks, function (c) { return c.checked; });
-            if (tables) tables.classList.toggle('hidden', !anyChecked);
-            if (empty)  empty.classList.toggle('hidden', anyChecked);
-        }
-
-        checks.forEach(function (checkbox) {
-            checkbox.addEventListener('change', function () {
-                document.querySelectorAll('.price-row[data-type="' + checkbox.dataset.type + '"]').forEach(function (row) {
-                    row.classList.toggle('is-hidden', !checkbox.checked);
-                });
-                syncVisibility();
-            });
-        });
-
-        syncVisibility();
-    })();
-
     // ===== PROMO RATES JS =====
     (function () {
         var propertyId = {{ $property?->id ?? 'null' }};
@@ -725,3 +702,43 @@
 </script>
 @endpush
 @endif
+
+{{-- ===== ROOM TYPE ↔ PRICE ROW VISIBILITY =====
+
+     This push is deliberately OUTSIDE any @if. Blade turns a @push that sits
+     inside a false @if into a guarded push that discards its contents, so
+     nesting this in the promo guard (as an earlier change did) means the script
+     never reaches the Create screen at all — and because #price-tables ships
+     with class="hidden", ticking a room type there revealed nothing.
+
+     The tables are always rendered (one row per canonical type, unselected rows
+     carrying .is-hidden) and this script does the revealing client-side, so it
+     must run on Create (no $property) as well as Edit. --}}
+@push('scripts')
+<script>
+    (function () {
+        var checks = document.querySelectorAll('.type-check');
+        var tables = document.getElementById('price-tables');
+        var empty  = document.getElementById('price-empty');
+
+        // Show the price tables only while at least one room type is ticked, and
+        // show the "tick a room type" hint otherwise.
+        function syncVisibility() {
+            var anyChecked = Array.prototype.some.call(checks, function (c) { return c.checked; });
+            if (tables) tables.classList.toggle('hidden', !anyChecked);
+            if (empty)  empty.classList.toggle('hidden', anyChecked);
+        }
+
+        checks.forEach(function (checkbox) {
+            checkbox.addEventListener('change', function () {
+                document.querySelectorAll('.price-row[data-type="' + checkbox.dataset.type + '"]').forEach(function (row) {
+                    row.classList.toggle('is-hidden', !checkbox.checked);
+                });
+                syncVisibility();
+            });
+        });
+
+        syncVisibility();
+    })();
+</script>
+@endpush

@@ -213,6 +213,67 @@ class PropertyAdminFormFixesTest extends TestCase
         $this->assertStringContainsString('250000', $content);
     }
 
+    /**
+     * The Create screen ships #price-tables with class="hidden" and every
+     * .price-row with .is-hidden, so the price inputs only become visible once
+     * the reveal script un-hides them. That script lived inside the partial's
+     *
+     * @if($property?->exists) promo guard; Blade silently discards a @push made
+     * inside a false @if, so on Create (where $property is null) the script was
+     * never emitted and ticking a room type revealed no price fields at all.
+     *
+     * Asserting the inputs exist is not enough — the markup was always rendered.
+     * The assertion has to be on the script that reveals them.
+     */
+    public function test_create_page_emits_the_room_type_reveal_script(): void
+    {
+        $this->authenticate();
+
+        $content = $this->get(route('admin.properties.create'))
+            ->assertStatus(200)
+            ->getContent();
+
+        $this->assertStringContainsString(
+            'syncVisibility',
+            $content,
+            'Create must ship the script that un-hides #price-tables when a room type is ticked.'
+        );
+
+        $this->assertStringContainsString(
+            'price-row[data-type="',
+            $content,
+            'Create must ship the per-type row toggler, otherwise .is-hidden rows never appear.'
+        );
+
+        // The script's whole contract is: tick `.type-check[data-type=X]` →
+        // un-hide `.price-row[data-type=X]`. Pin that both sides agree for every
+        // canonical type, so a renamed attribute cannot silently break the
+        // reveal again while the inputs stay rendered.
+        preg_match_all('/class="type-check[^"]*"[^>]*data-type="([^"]+)"/', $content, $checkboxMatches);
+        $checkboxTypes = array_unique($checkboxMatches[1]);
+
+        $this->assertNotEmpty($checkboxTypes, 'No room-type checkboxes were rendered on Create.');
+
+        foreach ($checkboxTypes as $type) {
+            $this->assertStringContainsString(
+                'price-row is-hidden block lg:table-row',
+                $content,
+                'Unselected price rows must ship hidden so the reveal script has something to un-hide.'
+            );
+            $this->assertStringContainsString(
+                'data-type="'.$type.'"',
+                $content,
+                "No price row carries data-type=\"{$type}\" for its room-type checkbox."
+            );
+        }
+
+        $this->assertSame(
+            array_keys(Property::UNIT_TYPES),
+            array_values($checkboxTypes),
+            'Every canonical unit type must have exactly one checkbox, in a stable order.'
+        );
+    }
+
     /* =================================================================
      | 3. Nearby Places section on Create
      * ================================================================= */
