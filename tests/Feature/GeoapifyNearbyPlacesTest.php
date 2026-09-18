@@ -958,10 +958,92 @@ class GeoapifyNearbyPlacesTest extends TestCase
         );
 
         // app.js builds no user-facing text itself — every label comes from here.
-        foreach (['km_from', 'minutes', 'price_from', 'by_site', 'booking', 'directions'] as $key) {
+        foreach (['distance_from', 'minutes', 'price_from', 'booking', 'directions'] as $key) {
             $this->assertArrayHasKey($key, $payload['labels']);
             $this->assertNotEmpty($payload['labels'][$key]);
         }
+    }
+
+    /**
+     * The POI popup showed "813m Km dari ..." — a doubled unit.
+     *
+     * The payload ships an ALREADY-formatted distance ("813m"), so the label
+     * template must carry no unit of its own. The card still uses prop.km_from
+     * with a bare number, which is why the two keys are separate.
+     */
+    public function test_poi_popup_distance_label_has_no_double_unit(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake();
+
+        $property = $this->propertyWithCoords();
+
+        $payload = $this->extractMapData(
+            $this->get(route('properties.public.show', $property->slug))->getContent()
+        );
+
+        $label = (string) $payload['labels']['distance_from'];
+
+        // The placeholder must not be followed by a literal unit — the value
+        // already ends in m/km.
+        $this->assertStringContainsString(':distance', $label);
+        $this->assertDoesNotMatchRegularExpression(
+            '/:distance\s*(km|Km|m)\b/u',
+            $label,
+            'The distance label appends its own unit, so a formatted value like "813m" renders "813m Km".'
+        );
+    }
+
+    /**
+     * The nearby-place list caps each category at three entries; the rest sit
+     * behind an expand toggle. The list previously rendered every entry.
+     */
+    public function test_nearby_list_caps_each_category_at_three_entries(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake();
+
+        $property = $this->propertyWithCoords();
+
+        foreach (range(1, 5) as $i) {
+            $this->seedPlace($property, [
+                'name' => 'Cafe '.$i,
+                'category' => 'catering.cafe',
+            ], ['distance_m' => 100 * $i, 'show_on_frontend' => true]);
+        }
+
+        $html = $this->get(route('properties.public.show', $property->slug))
+            ->assertOk()
+            ->getContent();
+
+        // The 4th and 5th entries are behind the toggle.
+        $this->assertStringContainsString('x-show="expanded"', $html);
+        // "+2 lainnya" (5 entries - 3 visible).
+        $this->assertStringContainsString(__('prop.nearby_more', ['count' => 2]), $html);
+        $this->assertStringContainsString(__('prop.nearby_less'), $html);
+    }
+
+    public function test_nearby_list_has_no_toggle_when_three_or_fewer_entries(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake();
+
+        $property = $this->propertyWithCoords();
+
+        foreach (range(1, 3) as $i) {
+            $this->seedPlace($property, [
+                'name' => 'Cafe '.$i,
+                'category' => 'catering.cafe',
+            ], ['distance_m' => 100 * $i, 'show_on_frontend' => true]);
+        }
+
+        $html = $this->get(route('properties.public.show', $property->slug))
+            ->assertOk()
+            ->getContent();
+
+        // No overflow, so no toggle is rendered at all.
+        $this->assertStringNotContainsString(__('prop.nearby_less'), $html);
+        $this->assertStringNotContainsString('x-show="expanded"', $html);
     }
 
     public function test_map_payload_never_contains_the_geopify_api_key(): void

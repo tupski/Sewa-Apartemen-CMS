@@ -190,9 +190,13 @@
         // Localized popup strings, so app.js composes no user-facing text itself.
         'labels' => [
             'km_from' => __('prop.km_from', ['distance' => ':distance', 'name' => ':name']),
+            // Distance labels must NOT append a unit: the payload already ships a
+            // formatted value ("813m", "1.2km"), so a ":distance Km" template
+            // rendered "813m Km". Kept separate from prop.km_from, which the
+            // property CARD uses with a bare numeric value.
+            'distance_from' => __('prop.distance_from', ['distance' => ':distance', 'name' => ':name']),
             'minutes' => __('prop.minutes'),
             'price_from' => __('prop.price_from'),
-            'by_site' => __('prop.by_site', ['name' => ':name']),
             'booking' => __('prop.booking'),
             'directions' => __('directions.button'),
         ],
@@ -528,21 +532,30 @@
                             @endif
 
                             @if ($usePersistent)
-                                {{-- Persistent Geoapify POIs (grouped by place category). --}}
+                                {{-- Persistent Geoapify POIs (grouped by place category).
+                                     Each group shows at most 3 entries; the rest sit
+                                     behind a "+N lainnya" toggle so a category with many
+                                     places cannot flood the page. --}}
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     @foreach ($persistentGroups as $category => $items)
                                         @php
                                             $catIcon = \App\Models\PlaceCategory::iconForSlug($category);
                                             $catLabel = \App\Models\PlaceCategory::labelForSlug($category);
+                                            $visibleLimit = 3;
+                                            // $items is a plain PHP array (built with
+                                            // $persistentGroups[$cat][] = $pp), not a
+                                            // Collection — ->count() would fatal.
+                                            $overflowCount = max(0, count($items) - $visibleLimit);
                                         @endphp
-                                        <div>
+                                        <div x-data="{ expanded: false }">
                                             <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide mb-3 flex items-center gap-2">
                                                 <span class="text-base leading-none" aria-hidden="true">@if($catIcon)<i class="{{ $catIcon }}"></i>@else📌@endif</span>
                                                 {{ $catLabel }}
                                             </h3>
                                             <ul class="space-y-2.5">
-                                                @foreach ($items as $pp)
-                                                    <li class="flex items-start justify-between text-sm gap-3">
+                                                @foreach ($items as $index => $pp)
+                                                    <li class="flex items-start justify-between text-sm gap-3"
+                                                        @if($index >= $visibleLimit) x-show="expanded" x-cloak @endif>
                                                         <span class="text-gray-700 dark:text-gray-300">{{ $pp->display_name }}</span>
                                                         @if (!empty($pp->distance_formatted))
                                                             <span class="text-gray-500 dark:text-gray-400 text-xs shrink-0 tabular-nums">{{ $pp->distance_formatted }}</span>
@@ -550,24 +563,37 @@
                                                     </li>
                                                 @endforeach
                                             </ul>
+                                            @if ($overflowCount > 0)
+                                                <button type="button"
+                                                        @click="expanded = !expanded"
+                                                        class="mt-2.5 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded">
+                                                    <i class="fa-solid fa-chevron-down transition-transform" :class="expanded ? 'rotate-180' : ''" aria-hidden="true"></i>
+                                                    <span x-show="!expanded">{{ __('prop.nearby_more', ['count' => $overflowCount]) }}</span>
+                                                    <span x-show="expanded" x-cloak>{{ __('prop.nearby_less') }}</span>
+                                                </button>
+                                            @endif
                                         </div>
                                     @endforeach
                                 </div>
                             @elseif ($nearbyGroups)
-                                {{-- Fallback: manually-entered nearby_places JSON (unchanged behaviour). --}}
+                                {{-- Fallback: manually-entered nearby_places JSON.
+                                     Same 3-item cap + expand toggle as above. --}}
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     @foreach ($nearbyGroups as $category => $places)
                                         @php
                                             $catEmoji = \App\Models\Property::NEARBY_CATEGORIES[$category] ?? '📌';
+                                            $visibleLimit = 3;
+                                            $overflowCount = max(0, count($places) - $visibleLimit);
                                         @endphp
-                                        <div>
+                                        <div x-data="{ expanded: false }">
                                             <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide mb-3 flex items-center gap-2">
                                                 <span class="text-base leading-none" aria-hidden="true">{{ $catEmoji }}</span>
                                                 {{ $category }}
                                             </h3>
                                             <ul class="space-y-2.5">
-                                                @foreach ($places as $place)
-                                                    <li class="flex items-start justify-between text-sm gap-3">
+                                                @foreach ($places as $index => $place)
+                                                    <li class="flex items-start justify-between text-sm gap-3"
+                                                        @if($index >= $visibleLimit) x-show="expanded" x-cloak @endif>
                                                         <span class="text-gray-700 dark:text-gray-300">{{ $place['name'] ?? '' }}</span>
                                                         @if (!empty($place['distance_formatted']))
                                                             <span class="text-gray-500 dark:text-gray-400 text-xs shrink-0 tabular-nums">{{ $place['distance_formatted'] }}</span>
@@ -577,6 +603,15 @@
                                                     </li>
                                                 @endforeach
                                             </ul>
+                                            @if ($overflowCount > 0)
+                                                <button type="button"
+                                                        @click="expanded = !expanded"
+                                                        class="mt-2.5 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded">
+                                                    <i class="fa-solid fa-chevron-down transition-transform" :class="expanded ? 'rotate-180' : ''" aria-hidden="true"></i>
+                                                    <span x-show="!expanded">{{ __('prop.nearby_more', ['count' => $overflowCount]) }}</span>
+                                                    <span x-show="expanded" x-cloak>{{ __('prop.nearby_less') }}</span>
+                                                </button>
+                                            @endif
                                         </div>
                                     @endforeach
                                 </div>
