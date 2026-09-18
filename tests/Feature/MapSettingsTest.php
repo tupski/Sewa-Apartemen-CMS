@@ -229,6 +229,71 @@ class MapSettingsTest extends TestCase
         $response->assertSee(__('map_style.maptiler-basic'), false);
     }
 
+    /**
+     * The map group renders its own partial inside the shared settings <form>,
+     * so the submit control lives in the partial. It shipped without one — the
+     * page rendered fine and the update endpoint worked, so only a test that
+     * asserts the BUTTON is present catches it.
+     */
+    public function test_map_settings_page_has_a_save_button(): void
+    {
+        $this->authenticate();
+
+        $html = $this->get(route('admin.settings.index', ['group' => 'map']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Save Settings', $html);
+        $this->assertStringContainsString(
+            'type="submit"',
+            $this->settingsFormFragment($html),
+            'The map settings form has no submit button, so it cannot be saved from the UI.'
+        );
+    }
+
+    /**
+     * Every settings group that persists keys must expose a submit control;
+     * a group whose partial forgets one is unsavable from the UI.
+     */
+    public function test_every_savable_settings_group_renders_a_save_button(): void
+    {
+        $this->authenticate();
+
+        foreach (['general', 'homepage', 'footer', 'theme', 'seo', 'integrations', 'pricing', 'mail', 'email_templates', 'captcha', 'currency_api', 'map'] as $group) {
+            $html = $this->get(route('admin.settings.index', ['group' => $group]))
+                ->assertOk()
+                ->getContent();
+
+            $this->assertStringContainsString(
+                'type="submit"',
+                $this->settingsFormFragment($html),
+                "The '{$group}' settings group renders no submit button, so it cannot be saved from the UI."
+            );
+        }
+    }
+
+    /**
+     * Return the markup of the settings <form> only.
+     *
+     * Neither the update URL nor the first `type="submit"` on the page is a
+     * usable anchor: the index and update routes share the same URL (only the
+     * HTTP method differs), so the sidebar link matches first, and the admin
+     * layout renders other forms (logout) whose buttons would satisfy a
+     * page-wide search. The form carries `data-warn-unsaved`, which is unique.
+     */
+    private function settingsFormFragment(string $html): string
+    {
+        $anchor = strpos($html, 'data-warn-unsaved');
+        $this->assertNotFalse($anchor, 'The settings form (data-warn-unsaved) was not found.');
+
+        $open = strrpos(substr($html, 0, $anchor), '<form');
+        $close = strpos($html, '</form>', $anchor);
+        $this->assertNotFalse($open, 'The settings <form> opening tag was not found.');
+        $this->assertNotFalse($close, 'The settings <form> closing tag was not found.');
+
+        return substr($html, $open, $close - $open);
+    }
+
     /* ===================================================================
      | Property page map payload
      * =================================================================== */
