@@ -4,6 +4,8 @@ import * as Turbo from '@hotwired/turbo';
 
 import Alpine from 'alpinejs';
 
+import { resolveMapTileUrl, isGeoapifyTileUrl } from './map-theme.js';
+
 window.Alpine = Alpine;
 
 // ─── Turbo Progress Bar — aktifkan dengan delay 0 agar langsung muncul ─────
@@ -1789,15 +1791,31 @@ function initPropertyMap() {
     if (!center || center.length < 2) return;
 
     var markers = Array.isArray(data.markers) ? data.markers : [];
-    // Configured style (resolved server-side for the active theme) + BOTH theme
-    // variants so a light/dark toggle can swap tiles instantly. When a URL
-    // cannot resolve (keyless Geoapify style) fall back to OSM standard tiles —
-    // never invent a URL client-side.
-    var styleUrl = typeof data.styleUrl === 'string' && data.styleUrl ? data.styleUrl : null;
+    // Configured style + BOTH theme variants. `styleUrl` is the server's
+    // guess for the theme it *believes* is active (from the `theme` cookie),
+    // but that guess can be stale: the in-page toggle flips the `dark` class
+    // without a reload, so the cookie still describes the previous theme. A
+    // Turbo navigation reuses the already-dark document, so trusting
+    // `styleUrl` painted a LIGHT map on a DARK page. Resolve from the LIVE
+    // theme instead (see map-theme.js); a pinned mode ignores it by design.
+    var OSM_FALLBACK = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    var themeMode = typeof data.themeMode === 'string' && data.themeMode ? data.themeMode : 'follow';
     var styleUrls = {
-        light: typeof data.styleUrlLight === 'string' && data.styleUrlLight ? data.styleUrlLight : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        dark: typeof data.styleUrlDark === 'string' && data.styleUrlDark ? data.styleUrlDark : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        light: typeof data.styleUrlLight === 'string' && data.styleUrlLight ? data.styleUrlLight : OSM_FALLBACK,
+        dark: typeof data.styleUrlDark === 'string' && data.styleUrlDark ? data.styleUrlDark : OSM_FALLBACK,
     };
+
+    function liveTileUrl() {
+        return resolveMapTileUrl({
+            themeMode: themeMode,
+            isDark: document.documentElement.classList.contains('dark'),
+            lightUrl: styleUrls.light,
+            darkUrl: styleUrls.dark,
+            fallback: OSM_FALLBACK,
+        });
+    }
+
+    var initialUrl = liveTileUrl();
 
     el.dataset.mapInit = 'true';
 
@@ -1805,25 +1823,26 @@ function initPropertyMap() {
     var map = L.map(el, { scrollWheelZoom: false }).setView(center, 15);
 
     // Tiles: configured Geoapify style when available, OSM standard otherwise.
-    var tileLayer = L.tileLayer(styleUrl || styleUrls.light, {
-        attribution: styleUrl
+    var tileLayer = L.tileLayer(initialUrl, {
+        attribution: isGeoapifyTileUrl(initialUrl)
             ? 'Powered by <a href="https://www.geoapify.com/">Geoapify</a> | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: styleUrl ? 20 : 19
+        maxZoom: isGeoapifyTileUrl(initialUrl) ? 20 : 19
     }).addTo(map);
 
     // Theme-reactive style swap: the site toggle flips the `dark` class on
     // <html> client-side, so watch it and exchange the tile layer in place —
     // no reload, no provider request. The observer self-disconnects once the
     // map element leaves the DOM (Turbo body-swap), so it never leaks.
+    // (MutationObserver does NOT fire on registration, so the initial URL above
+    // is what matters on first paint — it is resolved from the live theme.)
     if (typeof MutationObserver === 'function') {
         var themeObserver = new MutationObserver(function () {
             if (!el.isConnected) {
                 themeObserver.disconnect();
                 return;
             }
-            var wantDark = document.documentElement.classList.contains('dark');
-            var nextUrl = wantDark ? styleUrls.dark : styleUrls.light;
+            var nextUrl = liveTileUrl();
             if (nextUrl && tileLayer._url !== nextUrl) {
                 tileLayer.setUrl(nextUrl);
             }

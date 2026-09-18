@@ -203,6 +203,10 @@
         // the client can swap tiles instantly on a light/dark toggle (no reload,
         // no provider request — the keyless fallback resolves to null and the
         // JS then uses OSM standard tiles).
+        // `themeMode` lets the client honour a PINNED mode ('light'/'dark')
+        // instead of tracking the site theme; `styleUrl` remains the
+        // server-resolved default for the initial render.
+        'themeMode' => \App\Services\MapSettingsService::themeMode(),
         'styleKey' => $resolvedStyleKey,
         'styleUrl' => $resolvedStyleUrl,
         'styleUrlLight' => \App\Services\MapSettingsService::styleUrl(\App\Services\MapSettingsService::lightStyle()),

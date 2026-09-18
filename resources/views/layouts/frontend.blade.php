@@ -1,7 +1,15 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}"
       x-data="{ dark: document.documentElement.classList.contains('dark') }"
-      x-init="$watch('dark', v => { document.documentElement.classList.toggle('dark', v); localStorage.setItem('theme', v ? 'dark' : 'light'); })"
+      x-init="$watch('dark', v => {
+          document.documentElement.classList.toggle('dark', v);
+          localStorage.setItem('theme', v ? 'dark' : 'light');
+          // Keep the cookie in step with localStorage: the server resolves
+          // theme-dependent markup (e.g. the map tile style) from it, and a
+          // Turbo navigation reuses the current <html> element — so a stale
+          // cookie would render the NEXT page with the PREVIOUS theme.
+          document.cookie = 'theme=' + (v ? 'dark' : 'light') + ';path=/;samesite=Lax;max-age=31536000';
+      })"
       class="scroll-smooth">
 <head>
     <meta charset="utf-8">

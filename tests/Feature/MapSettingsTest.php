@@ -379,4 +379,80 @@ class MapSettingsTest extends TestCase
 
         Http::assertNothingSent();
     }
+
+    /**
+     * The client must be able to resolve the tile URL from the LIVE theme.
+     *
+     * The server resolves `styleUrl` from the `theme` cookie, which is stale
+     * right after an in-page toggle (the toggle flips the `dark` class without
+     * a reload). A Turbo navigation reuses the dark document, so the client
+     * needs the mode + both variants to pick the right tiles itself.
+     */
+    public function test_property_page_map_payload_exposes_the_theme_mode(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake();
+
+        SettingsService::set('map_theme_mode', 'follow', 'map');
+        SettingsService::clearCache();
+
+        $property = Property::factory()->create([
+            'status' => 'published',
+            'latitude' => -6.2,
+            'longitude' => 106.8,
+        ]);
+
+        $payload = $this->extractMapData(
+            $this->get(route('properties.public.show', $property->slug))->getContent()
+        );
+
+        $this->assertSame('follow', $payload['themeMode']);
+        // Both variants are always present, so the client can swap without a
+        // round-trip.
+        $this->assertArrayHasKey('styleUrlLight', $payload);
+        $this->assertArrayHasKey('styleUrlDark', $payload);
+    }
+
+    public function test_pinned_map_theme_mode_is_reported_to_the_client(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake();
+
+        SettingsService::set('map_theme_mode', 'dark', 'map');
+        SettingsService::clearCache();
+
+        $property = Property::factory()->create([
+            'status' => 'published',
+            'latitude' => -6.2,
+            'longitude' => 106.8,
+        ]);
+
+        $payload = $this->extractMapData(
+            $this->get(route('properties.public.show', $property->slug))->getContent()
+        );
+
+        // A pinned mode must reach the client, so the client does NOT follow
+        // the site theme (that was the second half of the bug).
+        $this->assertSame('dark', $payload['themeMode']);
+    }
+
+    /**
+     * Extract the #map-data JSON payload from a rendered property page.
+     *
+     * @return array<string, mixed>
+     */
+    private function extractMapData(string $html): array
+    {
+        $matched = preg_match(
+            '#<script type="application/json" id="map-data">(.*?)</script>#s',
+            $html,
+            $matches
+        );
+        $this->assertSame(1, $matched, 'The #map-data JSON block was not rendered.');
+
+        $decoded = json_decode($matches[1], true);
+        $this->assertIsArray($decoded, 'The #map-data payload is not valid JSON.');
+
+        return $decoded;
+    }
 }
