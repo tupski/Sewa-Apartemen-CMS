@@ -7,15 +7,7 @@
  * initialiser.
  */
 
-/**
- * Escape a value for HTML text/attribute context.
- *
- * @param {unknown} value
- * @returns {string}
- */
-export function escapeHtml(value) {
-    return String(value).replace(/[&<>"']/g, (c) => '&#' + c.charCodeAt(0) + ';');
-}
+import { escapeHtml } from './html.js';
 
 /** Icon per travel mode, mirroring the on-page travel chips. */
 export const MODE_ICONS = {

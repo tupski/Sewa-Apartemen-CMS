@@ -6,6 +6,7 @@ import Alpine from 'alpinejs';
 
 import { resolveMapTileUrl, isGeoapifyTileUrl } from './map-theme.js';
 import { buildPropertyPopup, buildPoiPopup } from './map-popup.js';
+import { escapeHtml } from './html.js';
 
 window.Alpine = Alpine;
 
@@ -42,10 +43,8 @@ window.loadScript = function (src) {
 
 // Escape HTML sebelum interpolasi ke x-html: title & highlight harus bersih
 // dari XSS (title dari server, query dari user — keduanya ikut dirender).
-function escapeHtml(str) {
-    // Numeric char refs (bukan entitas &...;) — hasil sama, aman untuk x-html.
-    return str.replace(/[&<>"']/g, (c) => '&#' + c.charCodeAt(0) + ';');
-}
+// Implementasinya tinggal di html.js supaya tidak bisa menyimpang dari versi
+// yang dipakai popup peta.
 
 // Autocomplete client-side cache — simple Map, max 50 entries, keyed by query string.
 const searchCache = new Map();
