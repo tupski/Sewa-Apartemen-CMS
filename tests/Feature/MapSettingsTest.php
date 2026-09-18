@@ -242,14 +242,13 @@ class MapSettingsTest extends TestCase
         SettingsService::set('geoapify_map_key', 'referrer-restricted-key', 'integrations');
         SettingsService::clearCache();
 
-        $category = PlaceCategory::create([
-            'slug' => 'healthcare.hospital',
-            'name_id' => 'Rumah Sakit',
-            'name_en' => 'Hospital',
-            'icon' => 'fa-solid fa-hospital',
-            'color' => '#ef4444',
-            'is_active' => true,
-        ]);
+        $category = PlaceCategory::updateOrCreate(
+            ['slug' => 'healthcare.hospital'],
+            ['name_id' => 'Rumah Sakit',
+                'name_en' => 'Hospital',
+                'icon' => 'fa-solid fa-hospital',
+                'color' => '#ef4444',
+                'is_active' => true]);
 
         $property = Property::factory()->create([
             'status' => 'published',

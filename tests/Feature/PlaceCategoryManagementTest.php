@@ -58,12 +58,11 @@ class PlaceCategoryManagementTest extends TestCase
     {
         $this->authenticate();
 
-        $category = PlaceCategory::create([
-            'slug' => 'catering.cafe',
-            'name_id' => 'Kafe Lama',
-            'name_en' => 'Old Cafe',
-            'is_active' => true,
-        ]);
+        $category = PlaceCategory::updateOrCreate(
+            ['slug' => 'catering.cafe'],
+            ['name_id' => 'Kafe Lama',
+                'name_en' => 'Old Cafe',
+                'is_active' => true]);
 
         $response = $this->postJson(route('admin.place-categories.update'), [
             'categories' => [
@@ -87,12 +86,11 @@ class PlaceCategoryManagementTest extends TestCase
     {
         $this->authenticate();
 
-        $category = PlaceCategory::create([
-            'slug' => 'catering.cafe',
-            'name_id' => 'Kafe',
-            'name_en' => 'Cafe',
-            'is_active' => true,
-        ]);
+        $category = PlaceCategory::updateOrCreate(
+            ['slug' => 'catering.cafe'],
+            ['name_id' => 'Kafe',
+                'name_en' => 'Cafe',
+                'is_active' => true]);
 
         $this->postJson(route('admin.place-categories.update'), [
             'categories' => [
@@ -112,17 +110,24 @@ class PlaceCategoryManagementTest extends TestCase
     {
         $this->authenticate();
 
+        // A slug that is NOT in the shipped catalogue: adding it must create a
+        // row. (Using a seeded slug would exercise the duplicate path instead,
+        // since a migration now populates the catalogue.)
         $response = $this->postJson(route('admin.place-categories.update'), [
-            'categories' => [$this->categoryPayload()],
+            'categories' => [$this->categoryPayload([
+                'slug' => 'commercial.department_store',
+                'name_id' => 'Department Store',
+                'name_en' => 'Department Store',
+            ])],
         ]);
 
         $response->assertStatus(200);
         $response->assertJson(['success' => true, 'created' => 1, 'updated' => 0]);
 
         $this->assertDatabaseHas('place_categories', [
-            'slug' => 'catering.cafe',
-            'name_id' => 'Kafe',
-            'name_en' => 'Cafe',
+            'slug' => 'commercial.department_store',
+            'name_id' => 'Department Store',
+            'name_en' => 'Department Store',
         ]);
     }
 
@@ -130,12 +135,11 @@ class PlaceCategoryManagementTest extends TestCase
     {
         $this->authenticate();
 
-        $existing = PlaceCategory::create([
-            'slug' => 'catering.cafe',
-            'name_id' => 'Kafe',
-            'name_en' => 'Cafe',
-            'is_active' => true,
-        ]);
+        $existing = PlaceCategory::updateOrCreate(
+            ['slug' => 'catering.cafe'],
+            ['name_id' => 'Kafe',
+                'name_en' => 'Cafe',
+                'is_active' => true]);
 
         // Two rows sharing one slug inside the payload → rejected by `distinct`.
         $response = $this->postJson(route('admin.place-categories.update'), [
@@ -146,19 +150,19 @@ class PlaceCategoryManagementTest extends TestCase
         ]);
 
         $response->assertStatus(422);
-        $this->assertSame(1, PlaceCategory::count());
+        // Exactly one row for that slug — the duplicate was NOT inserted.
+        $this->assertSame(1, PlaceCategory::where('slug', 'catering.cafe')->count());
     }
 
     public function test_a_new_category_cannot_collide_with_an_existing_slug(): void
     {
         $this->authenticate();
 
-        PlaceCategory::create([
-            'slug' => 'catering.cafe',
-            'name_id' => 'Kafe',
-            'name_en' => 'Cafe',
-            'is_active' => true,
-        ]);
+        PlaceCategory::updateOrCreate(
+            ['slug' => 'catering.cafe'],
+            ['name_id' => 'Kafe',
+                'name_en' => 'Cafe',
+                'is_active' => true]);
 
         $response = $this->postJson(route('admin.place-categories.update'), [
             'categories' => [
@@ -168,19 +172,19 @@ class PlaceCategoryManagementTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonPath('message', fn (string $message) => str_contains($message, 'catering.cafe'));
-        $this->assertSame(1, PlaceCategory::count());
+        // Exactly one row for that slug — the colliding insert was rejected.
+        $this->assertSame(1, PlaceCategory::where('slug', 'catering.cafe')->count());
     }
 
     public function test_delete_is_prevented_while_places_still_use_the_category(): void
     {
         $this->authenticate();
 
-        $category = PlaceCategory::create([
-            'slug' => 'catering.cafe',
-            'name_id' => 'Kafe',
-            'name_en' => 'Cafe',
-            'is_active' => true,
-        ]);
+        $category = PlaceCategory::updateOrCreate(
+            ['slug' => 'catering.cafe'],
+            ['name_id' => 'Kafe',
+                'name_en' => 'Cafe',
+                'is_active' => true]);
 
         Place::create([
             'geoapify_place_id' => 'gp-1',
@@ -201,12 +205,11 @@ class PlaceCategoryManagementTest extends TestCase
     {
         $this->authenticate();
 
-        $category = PlaceCategory::create([
-            'slug' => 'sport',
-            'name_id' => 'Olahraga',
-            'name_en' => 'Sports',
-            'is_active' => true,
-        ]);
+        $category = PlaceCategory::updateOrCreate(
+            ['slug' => 'sport'],
+            ['name_id' => 'Olahraga',
+                'name_en' => 'Sports',
+                'is_active' => true]);
 
         $response = $this->deleteJson(route('admin.place-categories.destroy', $category));
 
@@ -217,12 +220,11 @@ class PlaceCategoryManagementTest extends TestCase
 
     public function test_category_management_requires_an_authenticated_admin(): void
     {
-        $category = PlaceCategory::create([
-            'slug' => 'sport',
-            'name_id' => 'Olahraga',
-            'name_en' => 'Sports',
-            'is_active' => true,
-        ]);
+        $category = PlaceCategory::updateOrCreate(
+            ['slug' => 'sport'],
+            ['name_id' => 'Olahraga',
+                'name_en' => 'Sports',
+                'is_active' => true]);
 
         // Guest → redirected to login.
         $this->post(route('admin.place-categories.update'), ['categories' => []])
@@ -285,6 +287,13 @@ class PlaceCategoryManagementTest extends TestCase
         $path = 'database/migrations/2026_09_18_020228_rename_service_ambulance_station_slug.php';
 
         $this->artisan('migrate:rollback', ['--path' => $path, '--force' => true])->assertExitCode(0);
+
+        // Rolling back the rename also renames the row the catalogue migration
+        // seeded, so clear BOTH variants first: the pre-fix state is exactly
+        // "the old slug exists, the new one does not".
+        DB::table('place_categories')
+            ->whereIn('slug', ['service.ambulance_station', 'emergency.ambulance_station'])
+            ->delete();
 
         // Simulate the pre-fix DB state (with an admin-edited label).
         $oldId = DB::table('place_categories')->insertGetId([

@@ -89,10 +89,12 @@
     // Raw provider slugs are normalized to the catalogue first: a deeply
     // nested chain (e.g. catering.cafe.coffee_shop) must group under its
     // nearest catalogue ancestor (catering.cafe), never leak as a raw key.
+    // Unmapped categories keep their own humanized bucket rather than all
+    // collapsing into one — see PlaceCategory::groupKeyForSlug().
     $persistentGroups = [];
     foreach ($persistentPlaces as $pp) {
         if (! $pp->place) { continue; }
-        $cat = \App\Models\PlaceCategory::normalizedSlug($pp->place->category) ?? 'Others';
+        $cat = \App\Models\PlaceCategory::groupKeyForSlug($pp->place->category) ?? 'Others';
         $persistentGroups[$cat][] = $pp;
     }
     // Build the map marker set. Property marker first, then POIs (persistent if
@@ -120,7 +122,9 @@
             if (! $pp->place || $pp->place->lat === null || $pp->place->lng === null) { continue; }
             // Normalize once: raw chains (catering.cafe.coffee_shop) resolve to
             // the nearest catalogue slug, so every field below shares one key.
-            $catSlug = \App\Models\PlaceCategory::normalizedSlug($pp->place->category);
+            // Unmapped slugs are humanized so the map card never shows a raw
+            // dotted provider key.
+            $catSlug = \App\Models\PlaceCategory::groupKeyForSlug($pp->place->category);
             $mapMarkers[] = [
                 'id'       => $pp->id,
                 'lat'      => (float) $pp->place->lat,
@@ -448,7 +452,11 @@
                                  overflow on mobile. --}}
                             @if ($showDetailMap)
                                 <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-3">
-                                    <div id="property-map" class="w-full h-64 md:h-80 rounded-lg overflow-hidden"></div>
+                                    {{-- `isolate` + z-0 create a stacking context so Leaflet's
+                                         internal z-indexes (panes 200–700, controls up to 1000)
+                                         stay contained and can never paint over page-level
+                                         overlays such as the share dialog. --}}
+                                    <div id="property-map" class="relative isolate z-0 w-full h-64 md:h-80 rounded-lg overflow-hidden"></div>
                                 </div>
                                 {{-- Category filter chips — populated client-side from the
                                      DB-managed labels carried by the markers (no network). --}}

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Place;
+use App\Models\PlaceCategory;
 use App\Models\Property;
 use App\Models\PropertyPlace;
 use App\Models\Role;
@@ -599,9 +600,15 @@ class GeoapifyPoiSyncTest extends TestCase
             'count' => 2,
         ]);
 
-        // The message names the failed category (locale-independent assertions;
-        // no place_categories rows are seeded here, so the raw slug is shown).
-        $this->assertStringContainsString('public_transport', $response->json('message'));
+        // The message names the failed category using its DB-managed label
+        // (never a raw provider slug — the catalogue is populated by migration).
+        $failedLabel = PlaceCategory::labelForSlug('public_transport');
+        $this->assertStringContainsString($failedLabel, $response->json('message'));
+        $this->assertStringNotContainsString(
+            'public_transport',
+            $response->json('message'),
+            'The sync toast must not leak a raw provider category key.'
+        );
         $this->assertStringContainsString('2', $response->json('message'));
         $this->assertSame('failed', $response->json('categories.public_transport.status'));
 

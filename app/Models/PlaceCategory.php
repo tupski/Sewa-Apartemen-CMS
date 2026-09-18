@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 /**
  * Artivo-managed POI category.
@@ -68,19 +69,64 @@ class PlaceCategory extends Model
     }
 
     /**
-     * Resolve a category label for a raw Geoapify category slug, tolerating
-     * child keys (`public_transport.train` → `public_transport` row or exact
-     * slug match). Returns the slug itself when no category row exists.
+     * Resolve a category label for a raw provider category key.
+     *
+     * Tolerates nested chains (`catering.cafe.coffee_shop` → the nearest
+     * catalogue row). When NO catalogue row matches, the most specific segment
+     * is humanized (`commercial.shopping_mall` → "Shopping Mall") rather than
+     * returning the raw slug — a dotted provider key must never reach the UI,
+     * and collapsing to a generic bucket would hide which category it is.
      */
     public static function labelForSlug(?string $slug, ?string $locale = null): string
     {
         $category = static::resolveForSlug($slug);
 
-        if (! $category) {
-            return (string) $slug;
+        if ($category) {
+            return $category->label($locale);
         }
 
-        return $category->label($locale);
+        return static::humanizeSlug($slug);
+    }
+
+    /**
+     * Human-readable form of an unmapped provider category key: the most
+     * specific chain segment, underscores spaced, title-cased.
+     *
+     * `commercial.shopping_mall` → "Shopping Mall"
+     * `religion.place_of_worship.islam` → "Islam"
+     * Already-readable input passes through unchanged, so a humanized value can
+     * safely be fed back in as a group key.
+     */
+    public static function humanizeSlug(?string $slug): string
+    {
+        $slug = trim((string) $slug);
+
+        if ($slug === '') {
+            return '';
+        }
+
+        $segments = explode('.', $slug);
+        $specific = end($segments);
+
+        return (string) Str::headline(str_replace('_', ' ', $specific));
+    }
+
+    /**
+     * Grouping key for a raw provider category: the catalogue slug when it
+     * resolves, otherwise the humanized label. Guarantees every POI lands in a
+     * distinct, readable bucket instead of all unmapped ones merging into one.
+     */
+    public static function groupKeyForSlug(?string $slug): ?string
+    {
+        $resolved = static::normalizedSlug($slug);
+
+        if ($resolved !== null) {
+            return $resolved;
+        }
+
+        $humanized = static::humanizeSlug($slug);
+
+        return $humanized === '' ? null : $humanized;
     }
 
     /**

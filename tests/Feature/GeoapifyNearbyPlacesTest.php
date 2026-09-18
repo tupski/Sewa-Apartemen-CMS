@@ -63,21 +63,28 @@ class GeoapifyNearbyPlacesTest extends TestCase
     }
 
     /**
-     * Seed a small, deterministic category fixture (instead of the full 20)
-     * so pipeline tests issue a predictable, low number of Places requests.
+     * Install a small, deterministic category catalogue (instead of the full
+     * seeded set) so pipeline tests issue a predictable, low number of Places
+     * requests.
      *
-     * Requests per sync: 4 Places (one per category) + 3 Route Matrix
+     * The catalogue is REPLACED, not appended to: a data migration ships the 20
+     * shipped defaults, so an additive fixture would silently inflate the
+     * request count and break every assertion that counts them.
+     *
+     * Requests per sync: 1 Places call per category (4) + 3 Route Matrix
      * (walk / drive / motorcycle) = 7.
      */
     protected function seedCategories(): void
     {
+        PlaceCategory::query()->delete();
+
         foreach ([
             ['slug' => 'healthcare.hospital', 'name_id' => 'Rumah Sakit', 'name_en' => 'Hospital', 'icon' => 'fa-solid fa-hospital', 'color' => '#ef4444', 'sort_order' => 0],
             ['slug' => 'commercial.shopping_mall', 'name_id' => 'Mal', 'name_en' => 'Shopping Mall', 'icon' => 'fa-solid fa-bag-shopping', 'color' => '#f59e0b', 'sort_order' => 1],
             ['slug' => 'public_transport', 'name_id' => 'Transportasi Umum', 'name_en' => 'Public Transport', 'icon' => 'fa-solid fa-train-subway', 'color' => '#7c3aed', 'sort_order' => 2],
             ['slug' => 'public_transport.train', 'name_id' => 'Stasiun Kereta', 'name_en' => 'Train Station', 'icon' => 'fa-solid fa-train', 'color' => '#7c3aed', 'sort_order' => 3],
         ] as $category) {
-            PlaceCategory::firstOrCreate(['slug' => $category['slug']], $category);
+            PlaceCategory::create($category);
         }
     }
 
@@ -623,9 +630,12 @@ class GeoapifyNearbyPlacesTest extends TestCase
         // No Cache::forget() — the second run must hit the 24h cached payload.
         (new FetchNearbyPlacesJob($property))->handle();
 
-        // Cold cache: one Places request per category (4) + one Route Matrix
-        // request per mode (walk / drive / motorcycle) = 7.
-        Http::assertSentCount(7);
+        // Cold cache: one Places request per ACTIVE category + one Route Matrix
+        // request per mode (walk / drive / motorcycle). Count the categories
+        // from the catalogue instead of hardcoding — the seeded catalogue is
+        // populated by migration now, so a fixed number silently rots.
+        $categories = count(GeoapifyService::activeCategorySlugs());
+        Http::assertSentCount($categories + 3);
         $this->assertDatabaseCount('places', 1);
         $this->assertDatabaseCount('property_places', 1);
     }

@@ -50,8 +50,16 @@ class PoiFilterAndGeocodeTest extends TestCase
         $this->authenticate();
         Http::preventStrayRequests();
 
-        PlaceCategory::create(['slug' => 'healthcare.hospital', 'name_id' => 'Rumah Sakit', 'name_en' => 'Hospital', 'is_active' => true]);
-        PlaceCategory::create(['slug' => 'catering.cafe', 'name_id' => 'Kafe', 'name_en' => 'Cafe', 'is_active' => true]);
+        PlaceCategory::updateOrCreate(
+            ['slug' => 'healthcare.hospital'],
+            ['name_id' => 'Rumah Sakit',
+                'name_en' => 'Hospital',
+                'is_active' => true]);
+        PlaceCategory::updateOrCreate(
+            ['slug' => 'catering.cafe'],
+            ['name_id' => 'Kafe',
+                'name_en' => 'Cafe',
+                'is_active' => true]);
 
         $property = Property::factory()->create(['status' => 'published', 'latitude' => -6.2, 'longitude' => 106.8]);
 

@@ -17,6 +17,14 @@
     button share its own target — the payload is passed on open, so cards in a
     loop don't each need their own Alpine component.
 
+    z-index: Leaflet (the property map) renders its panes at z-index 200–700 and
+    its controls up to 1000. This modal previously sat at z-[70] — below the map
+    — so opening "Bagikan petunjuk arah" from the What's Around card drew the
+    dialog behind it. It now uses the same topmost-overlay value as
+    components/confirm-modal (one convention) and must stay above 1000 to clear
+    Leaflet. The map container also isolates its own stacking context so Leaflet
+    can never escape it again.
+
     Share targets: WhatsApp, Telegram, Facebook Messenger, Instagram (copy-link
     hint), Email, SMS, X (Twitter), Facebook, and Copy Link (with "Copied!"
     state). The Web Share API is offered as a progressive enhancement when the
@@ -28,7 +36,7 @@
     x-on:keydown.escape.window="close()"
     x-show="isOpen"
     x-cloak
-    class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center"
+    class="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center"
     role="dialog"
     aria-modal="true"
     aria-labelledby="share-modal-title"

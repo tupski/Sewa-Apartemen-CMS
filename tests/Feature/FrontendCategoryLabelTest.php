@@ -28,7 +28,10 @@ class FrontendCategoryLabelTest extends TestCase
         ];
 
         foreach ($rows as $i => $row) {
-            PlaceCategory::create($row + ['icon' => null, 'color' => null, 'is_active' => true, 'sort_order' => $i]);
+            PlaceCategory::updateOrCreate(
+                ['slug' => $row['slug']],
+                $row + ['icon' => null, 'color' => null, 'is_active' => true, 'sort_order' => $i]
+            );
         }
     }
 
