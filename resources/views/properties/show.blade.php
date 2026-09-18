@@ -712,6 +712,9 @@
                             'property'     => $nearby,
                             'primaryColor' => $primaryColor,
                             'distance'     => $nearby->distance_km ?? null,
+                            // The distance is measured from the property being
+                            // viewed, so the badge reads "1,7 Km dari <page>".
+                            'distanceFrom' => $property->name,
                         ])
                     @endforeach
                 </div>

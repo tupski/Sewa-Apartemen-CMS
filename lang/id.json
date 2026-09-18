@@ -191,6 +191,7 @@
     "prop.from": "Mulai dari",
     "prop.see_detail": "Lihat Detail",
     "prop.nearby_heading": "Akomodasi terdekat dari Apartemen :name",
+    "prop.km_from": ":distance Km dari :name",
     "prop.empty_title": "Apartemen tidak ditemukan",
     "prop.empty_desc": "Coba ubah kata kunci atau filter pencarian Anda.",
     "prop.faq": "Pertanyaan Umum (FAQ)",

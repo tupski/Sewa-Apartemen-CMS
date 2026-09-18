@@ -11,6 +11,9 @@
       - $distance (optional) : great-circle distance in KM (float). When set and
                                numeric, a location-pin badge is rendered. The
                                listing page does not pass this, so no badge shows.
+      - $distanceFrom (optional) : name of the property the distance is measured
+                               FROM (i.e. the page's current property). Only used
+                               with $distance, to render "1,7 Km dari <name>".
 --}}
 @php
     $primaryColor = $primaryColor ?? \App\Services\SettingsService::get('primary_color', '#3b82f6');
@@ -23,6 +26,7 @@
 
     // Distance badge: only render when a valid, non-null numeric distance is provided.
     $distanceValue = isset($distance) && $distance !== null && is_numeric($distance) ? (float) $distance : null;
+    $distanceFrom = $distanceFrom ?? null;
 @endphp
 <a href="{{ route('properties.public.show', $property->slug) }}"
    class="group bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 flex flex-col">
@@ -56,22 +60,27 @@
             </span>
         @endif
 
-        {{-- Type badge overlay --}}
-        @if($unitTypeLabel)
-            <span class="absolute top-3 right-3 px-2 py-1 rounded-lg text-xs font-medium text-white/90 bg-black/40 backdrop-blur-sm">
-                {{ $unitTypeLabel }}
-            </span>
-        @endif
+        {{-- Top-right overlay row: type badge + share button.
+             They live in ONE flex row so they cannot overlap — previously both
+             were absolutely positioned at top-3 right-3 and stacked on top of
+             each other. --}}
+        <div class="absolute top-3 right-3 flex items-center gap-2">
+            @if($unitTypeLabel)
+                <span class="max-w-[8rem] truncate px-2 py-1 rounded-lg text-xs font-medium text-white/90 bg-black/40 backdrop-blur-sm">
+                    {{ $unitTypeLabel }}
+                </span>
+            @endif
 
-        {{-- Share button — opens the global share modal for THIS property.
-             stop/prevent so clicking it never triggers the card's link navigation. --}}
-        <button type="button"
-                x-data
-                x-on:click.prevent.stop="$dispatch('open-share-modal', { url: @js(route('properties.public.show', $property->slug)), title: @js($property->name) })"
-                class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 dark:bg-gray-800/90 shadow hover:bg-white dark:hover:bg-gray-800 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                aria-label="{{ __('share.button') }}">
-            <i class="fa-solid fa-share-nodes text-sm text-gray-500 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors" aria-hidden="true"></i>
-        </button>
+            {{-- Share button — opens the global share modal for THIS property.
+                 stop/prevent so clicking it never triggers the card's link navigation. --}}
+            <button type="button"
+                    x-data
+                    x-on:click.prevent.stop="$dispatch('open-share-modal', { url: @js(route('properties.public.show', $property->slug)), title: @js($property->name) })"
+                    class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 dark:bg-gray-800/90 shadow hover:bg-white dark:hover:bg-gray-800 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    aria-label="{{ __('share.button') }}">
+                <i class="fa-solid fa-share-nodes text-sm text-gray-500 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors" aria-hidden="true"></i>
+            </button>
+        </div>
 
     </div>
 
@@ -94,11 +103,17 @@
             </span>
         </p>
 
-        {{-- Distance badge (only for nearby section; hidden gracefully when coords missing) --}}
+        {{-- Distance badge (only for nearby section; hidden gracefully when coords missing).
+             Shows the distance FROM the current property, so the number has context
+             on a card that is itself a property. --}}
         @if($distanceValue !== null)
             <span class="inline-flex items-center gap-1 self-start px-2 py-1 rounded-lg text-xs font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/60">
                 <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
-                {{ number_format($distanceValue, 1, '.', '') }} km
+                @if($distanceFrom)
+                    {{ __('prop.km_from', ['distance' => number_format($distanceValue, 1, ',', ''), 'name' => $distanceFrom]) }}
+                @else
+                    {{ number_format($distanceValue, 1, ',', '') }} km
+                @endif
             </span>
         @endif
 
