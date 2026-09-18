@@ -58,9 +58,17 @@ class PropertyCardBadgeLayoutTest extends TestCase
         );
 
         $this->assertMatchesRegularExpression(
-            '/class="absolute top-3 right-3 flex items-center gap-2"/',
+            '/class="absolute top-3 right-3 flex items-center justify-end gap-2[^"]*"/',
             $html,
-            'The share button and type badge must share one top-right flex row.'
+            'The share button and the type badges must share one top-right flex row.'
+        );
+
+        // The share button must sit INSIDE that row (not as a sibling overlay),
+        // which is what makes the overlap structurally impossible.
+        $this->assertMatchesRegularExpression(
+            '/absolute top-3 right-3 flex[^>]*>.*?aria-label="[^"]*"[^>]*>\s*<i class="fa-solid fa-share-nodes/s',
+            $html,
+            'The share button must be rendered inside the shared top-right row.'
         );
     }
 

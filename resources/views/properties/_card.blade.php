@@ -20,8 +20,16 @@
 
     $lowestPx = $property->lowestPriceToday();
     $priceLabel = $lowestPx ? 'Rp ' . number_format($lowestPx, 0, ',', '.') : null;
-    $topUnitType = $property->unit_types[0] ?? null;
-    $unitTypeLabel = $topUnitType ? (\App\Models\Property::UNIT_TYPES[$topUnitType] ?? $topUnitType) : null;
+    // EVERY offered room type gets a badge — the card previously rendered only
+    // unit_types[0], so a property offering studio + 1 BR advertised one type.
+    // Capped so the row cannot grow without bound on the card's image overlay;
+    // the remainder collapses into a "+N" chip.
+    $unitTypeLabels = collect($property->unit_types ?? [])
+        ->map(fn ($type) => \App\Models\Property::UNIT_TYPES[$type] ?? $type)
+        ->values();
+    $unitTypeBadgeLimit = 3;
+    $unitTypeOverflow = max(0, $unitTypeLabels->count() - $unitTypeBadgeLimit);
+    $unitTypeLabels = $unitTypeLabels->take($unitTypeBadgeLimit)->all();
     $amenityBadges = $property->amenities->take(3);
 
     // Distance badge: only render when a valid, non-null numeric distance is provided.
@@ -60,14 +68,23 @@
             </span>
         @endif
 
-        {{-- Top-right overlay row: type badge + share button.
+        {{-- Top-right overlay row: type badges + share button.
              They live in ONE flex row so they cannot overlap — previously both
-             were absolutely positioned at top-3 right-3 and stacked on top of
-             each other. --}}
-        <div class="absolute top-3 right-3 flex items-center gap-2">
-            @if($unitTypeLabel)
-                <span class="max-w-[8rem] truncate px-2 py-1 rounded-lg text-xs font-medium text-white/90 bg-black/40 backdrop-blur-sm">
-                    {{ $unitTypeLabel }}
+             the badge and the button were absolutely positioned at top-3
+             right-3 and stacked on top of each other.
+             `nowrap` keeps the share button on the same line; the badges are
+             capped (max 3) with a "+N" chip for the rest. --}}
+        <div class="absolute top-3 right-3 flex items-center justify-end gap-2 max-w-[calc(100%-1.5rem)]">
+            @foreach($unitTypeLabels as $typeLabel)
+                <span class="min-w-0 max-w-[8rem] truncate px-2 py-1 rounded-lg text-xs font-medium text-white/90 bg-black/40 backdrop-blur-sm">
+                    {{ $typeLabel }}
+                </span>
+            @endforeach
+
+            @if($unitTypeOverflow > 0)
+                <span class="shrink-0 px-2 py-1 rounded-lg text-xs font-medium text-white/90 bg-black/40 backdrop-blur-sm"
+                      title="{{ $property->unit_types ? implode(', ', array_map(fn ($t) => \App\Models\Property::UNIT_TYPES[$t] ?? $t, $property->unit_types)) : '' }}">
+                    +{{ $unitTypeOverflow }}
                 </span>
             @endif
 

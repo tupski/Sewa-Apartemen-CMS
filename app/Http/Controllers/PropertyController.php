@@ -415,6 +415,11 @@ class PropertyController extends Controller
 
             $property = Property::create($data);
 
+            // Keep the metadata layer in step: every offered type needs a row in
+            // the "Detail Tipe Kamar" editor (the migration could only backfill
+            // the types that existed when it ran).
+            $property->syncUnitTypeMetadata();
+
             // Sync amenities if provided
             if ($request->has('amenities')) {
                 $property->amenities()->sync($request->amenities);
@@ -500,6 +505,11 @@ class PropertyController extends Controller
             }
 
             $property->update($data);
+
+            // Keep the metadata layer in step with the checkbox grid: newly
+            // ticked types get a row, unticked ones lose theirs. Without this a
+            // newly offered type never appeared in the "Detail Tipe Kamar" editor.
+            $property->syncUnitTypeMetadata();
 
             // Sync amenities. Always sync (default to an empty array) so that
             // unchecking every amenity on Edit actually detaches them — with the

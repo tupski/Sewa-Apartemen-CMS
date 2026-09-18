@@ -146,6 +146,52 @@ class Property extends Model
     }
 
     /**
+     * Keep the metadata layer in step with the canonical availability list.
+     *
+     * `properties.unit_types` is the source of truth (the checkbox grid in the
+     * "Tipe Kamar & Harga" section owns it). This creates a metadata row for
+     * every newly selected type and drops rows for types no longer offered, so
+     * the "Detail Tipe Kamar" editor always shows exactly one card per offered
+     * type — matching the invariant the table was introduced with.
+     *
+     * The introducing migration could only backfill the types that existed at
+     * that moment; a type ticked through the form afterwards never got a row
+     * and was therefore missing from the editor entirely. This is what keeps
+     * the two layers from drifting.
+     *
+     * Called explicitly from the admin store/update actions — NOT from a model
+     * event, so factory-created and directly-created properties (tests, seeders)
+     * keep full control over their own rows.
+     */
+    public function syncUnitTypeMetadata(): void
+    {
+        $types = array_values(array_intersect(
+            array_keys(self::UNIT_TYPES),
+            array_values(array_unique((array) ($this->unit_types ?? [])))
+        ));
+
+        if ($types === []) {
+            $this->unitTypeMetadata()->delete();
+
+            return;
+        }
+
+        // A type that is no longer offered must not keep an orphaned card in
+        // the editor (it would be un-editable: the store endpoint rejects a
+        // unit_type the property does not offer).
+        $this->unitTypeMetadata()
+            ->whereNotIn('unit_type', $types)
+            ->delete();
+
+        foreach ($types as $order => $type) {
+            PropertyUnitType::firstOrCreate(
+                ['property_id' => $this->id, 'unit_type' => $type],
+                ['is_active' => true, 'sort_order' => $order]
+            );
+        }
+    }
+
+    /**
      * Human label for a unit-type key (safe to call statically).
      */
     public static function typeLabel(string $type): string
