@@ -311,3 +311,24 @@ body {
     border-color: #2563eb;
     color: #fff;
 }
+
+/*
+ * Listing filter chips (durasi sewa / tipe unit / harga).
+ *
+ * The checked state must paint the SITE theme colour, which Tailwind's
+ * `peer-checked:bg-*` cannot do (it resolves to a fixed utility). Each chip
+ * carries the theme colour in `--chip-active`, set inline from the settings
+ * value, so the active pill matches the brand without a JS round-trip.
+ */
+.listing-chip .listing-chip-label {
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.listing-chip input:checked + .listing-chip-label {
+    background-color: var(--chip-active, #2563eb);
+    border-color: var(--chip-active, #2563eb);
+    color: #fff;
+}
+.listing-chip input:focus-visible + .listing-chip-label {
+    outline: 2px solid var(--chip-active, #2563eb);
+    outline-offset: 2px;
+}

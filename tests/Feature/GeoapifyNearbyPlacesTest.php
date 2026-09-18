@@ -909,10 +909,59 @@ class GeoapifyNearbyPlacesTest extends TestCase
         $this->assertNotNull($poi, 'No POI marker in the map payload.');
         $this->assertSame('Walked Hospital', $poi['name']);
         $this->assertSame('650m', $poi['distance']);
-        $this->assertSame('8 '.__('min walk'), $poi['walking']);
+        // Bare minute counts: the popup pairs each with its own mode icon, so
+        // the payload stays language-neutral (see buildPoiPopup in app.js).
+        $this->assertSame('8', $poi['walking']);
+        $this->assertSame($property->name, $poi['distance_from']);
         $this->assertSame('Jl. Detail No. 5, Jakarta', $poi['address']);
         $this->assertSame('https://walked.example.test', $poi['website']);
         $this->assertSame('+6221000111', $poi['phone']);
+    }
+
+    public function test_property_marker_popup_carries_site_name_price_phone_and_directions(): void
+    {
+        SettingsService::set('site_name', 'Sewa Apartemen Test');
+        SettingsService::set('contact_phone', '+628123456789');
+        SettingsService::clearCache();
+
+        Http::preventStrayRequests();
+        Http::fake();
+
+        $property = $this->propertyWithCoords(['name' => 'Springwood Residence']);
+
+        $response = $this->get(route('properties.public.show', $property->slug));
+
+        $response->assertStatus(200);
+
+        $payload = $this->extractMapData($response->getContent());
+        $marker = collect($payload['markers'])->firstWhere('type', 'property');
+
+        $this->assertNotNull($marker, 'No property marker in the map payload.');
+        $this->assertSame('Springwood Residence', $marker['name']);
+        $this->assertSame('Sewa Apartemen Test', $marker['site_name']);
+        $this->assertSame('+628123456789', $marker['booking_phone']);
+        // Directions URL is built server-side from the coordinates (raw decimal
+        // attributes, URL-encoded).
+        $this->assertStringContainsString('google.com/maps/dir/', $marker['directions_url']);
+        $this->assertStringContainsString(rawurlencode('-6.20000000,106.80000000'), $marker['directions_url']);
+    }
+
+    public function test_map_payload_carries_localized_popup_labels(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake();
+
+        $property = $this->propertyWithCoords();
+
+        $payload = $this->extractMapData(
+            $this->get(route('properties.public.show', $property->slug))->getContent()
+        );
+
+        // app.js builds no user-facing text itself — every label comes from here.
+        foreach (['km_from', 'minutes', 'price_from', 'by_site', 'booking', 'directions'] as $key) {
+            $this->assertArrayHasKey($key, $payload['labels']);
+            $this->assertNotEmpty($payload['labels'][$key]);
+        }
     }
 
     public function test_map_payload_never_contains_the_geopify_api_key(): void

@@ -31,7 +31,10 @@
             'monthly' => __('prop.monthly'),
         ];
 
-        $unitTypeOptions = \App\Models\Property::UNIT_TYPES;
+        // Only types that exist among published properties, in canonical order.
+        $unitTypeOptions = collect($availableUnitTypes ?? [])
+            ->mapWithKeys(fn ($key) => [$key => \App\Models\Property::UNIT_TYPES[$key] ?? $key])
+            ->all();
     @endphp
 
     {{-- ── Page Header ─────────────────────────────────────────────── --}}
@@ -109,13 +112,15 @@
                                     <div class="flex flex-wrap gap-2">
                                         @foreach($typeOptions as $typeVal => $typeLabel)
                                             @php $isActive = ($typeFilter === $typeVal) || ($typeVal === '' && !$typeFilter); @endphp
-                                            <label class="cursor-pointer">
+                                            {{-- Active chip uses the THEME colour. `peer-checked` alone
+                                                 would paint the Tailwind default, not the site colour, so
+                                                 the checked state is driven by a CSS variable set here. --}}
+                                            <label class="cursor-pointer listing-chip"
+                                                   style="--chip-active: {{ $primaryColor }}">
                                                 <input type="radio" name="type" value="{{ $typeVal }}"
                                                        class="sr-only peer" @checked($isActive)>
-                                                <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border transition
-                                                    peer-checked:text-white peer-checked:border-transparent
-                                                    text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                                    style="{{ $isActive ? 'background-color:'.$primaryColor.'; border-color:'.$primaryColor.'; color:#fff;' : '' }}">
+                                                <span class="listing-chip-label inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border transition
+                                                    text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700">
                                                     {{ $typeLabel }}
                                                 </span>
                                             </label>
@@ -175,6 +180,7 @@
                                 @endif
 
                                 {{-- Tipe Unit --}}
+                                @if(!empty($unitTypeOptions))
                                 <fieldset>
                                     <legend class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">
                                         {{ __('prop.filter_unit_type') }}
@@ -202,6 +208,7 @@
                                         @endif
                                     </div>
                                 </fieldset>
+                                @endif
 
                                 {{-- Fasilitas --}}
                                 @if($availableAmenities->isNotEmpty())
@@ -429,12 +436,11 @@
                         <div class="flex flex-wrap gap-2">
                             @foreach($typeOptions as $typeVal => $typeLabel)
                                 @php $isActive = ($typeFilter === $typeVal) || ($typeVal === '' && !$typeFilter); @endphp
-                                <label class="cursor-pointer">
+                                <label class="cursor-pointer listing-chip"
+                                       style="--chip-active: {{ $primaryColor }}">
                                     <input type="radio" name="type" value="{{ $typeVal }}" class="sr-only peer" @checked($isActive)>
-                                    <span class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border transition
-                                        peer-checked:text-white peer-checked:border-transparent
-                                        text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800"
-                                          style="{{ $isActive ? 'background-color:'.$primaryColor.'; border-color:'.$primaryColor.'; color:#fff;' : '' }}">
+                                    <span class="listing-chip-label inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border transition
+                                        text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800">
                                         {{ $typeLabel }}
                                     </span>
                                 </label>
@@ -490,31 +496,29 @@
                     @endif
 
                     {{-- Tipe Unit --}}
+                    @if(!empty($unitTypeOptions))
                     <fieldset>
                         <legend class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">{{ __('prop.filter_unit_type') }}</legend>
                         <div class="flex flex-wrap gap-2">
-                            <label class="cursor-pointer">
+                            <label class="cursor-pointer listing-chip" style="--chip-active: {{ $primaryColor }}">
                                 <input type="radio" name="unit_type" value="" class="sr-only peer" @checked(!$unitTypeFilter)>
-                                <span class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border transition
-                                    peer-checked:text-white peer-checked:border-transparent
-                                    text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800"
-                                      style="{{ !$unitTypeFilter ? 'background-color:'.$primaryColor.'; border-color:'.$primaryColor.'; color:#fff;' : '' }}">
+                                <span class="listing-chip-label inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border transition
+                                    text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800">
                                     {{ __('prop.all_types') }}
                                 </span>
                             </label>
                             @foreach($unitTypeOptions as $typeKey => $typeLabel)
-                                <label class="cursor-pointer">
+                                <label class="cursor-pointer listing-chip" style="--chip-active: {{ $primaryColor }}">
                                     <input type="radio" name="unit_type" value="{{ $typeKey }}" class="sr-only peer" @checked($unitTypeFilter === $typeKey)>
-                                    <span class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border transition
-                                        peer-checked:text-white peer-checked:border-transparent
-                                        text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800"
-                                          style="{{ $unitTypeFilter === $typeKey ? 'background-color:'.$primaryColor.'; border-color:'.$primaryColor.'; color:#fff;' : '' }}">
+                                    <span class="listing-chip-label inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border transition
+                                        text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800">
                                         {{ $typeLabel }}
                                     </span>
                                 </label>
                             @endforeach
                         </div>
                     </fieldset>
+                    @endif
 
                     {{-- Fasilitas --}}
                     @if($availableAmenities->isNotEmpty())

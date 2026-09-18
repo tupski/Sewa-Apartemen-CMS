@@ -17,9 +17,12 @@
 
     <div class="{{ $showLabel ? 'flex items-center gap-2' : '' }}">
         <label for="{{ $id }}" class="{{ $showLabel ? 'text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap' : 'sr-only' }}">{{ __('prop.sort_label') }}{{ $showLabel ? ':' : '' }}</label>
-        <select id="{{ $id }}" name="sort" onchange="this.form.submit()"
+        {{-- `onchange` uses requestSubmit(), NOT form.submit(): the native
+             form.submit() does not fire a `submit` event, so Turbo Drive never
+             intercepts it and the browser does a full page reload. --}}
+        <select id="{{ $id }}" name="sort" onchange="this.form.requestSubmit()"
                 class="{{ $selectClass }}"
-                style="background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E\"); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1rem;">
+                style="background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E&quot;); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1rem;">
             @foreach($sortOptions as $val => $label)
                 <option value="{{ $val }}" @selected($sort === $val)>{{ $optionPrefix ? __('prop.sort_label') . ': ' : '' }}{{ $label }}</option>
             @endforeach

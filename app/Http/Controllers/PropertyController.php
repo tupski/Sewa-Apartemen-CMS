@@ -147,6 +147,22 @@ class PropertyController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Only offer unit types that at least one published property actually
+        // has — listing all six canonical types let visitors filter by a type
+        // that can never match anything (guaranteed empty result).
+        $presentUnitTypes = Property::published()
+            ->whereNotNull('unit_types')
+            ->pluck('unit_types')
+            ->flatMap(fn ($types) => is_array($types) ? $types : [])
+            ->unique()
+            ->all();
+
+        // Preserve the canonical order from Property::UNIT_TYPES.
+        $availableUnitTypes = array_values(array_intersect(
+            array_keys(Property::UNIT_TYPES),
+            $presentUnitTypes
+        ));
+
         // Build SEO for the listing page; the admin can override title/description
         // for this route via admin Pages → System Pages (`properties.index`).
         $seo = SeoService::forSystemPage(
@@ -185,6 +201,7 @@ class PropertyController extends Controller
             'sort' => $sort,
             'availableCities' => $availableCities,
             'availableAmenities' => $availableAmenities,
+            'availableUnitTypes' => $availableUnitTypes,
             'seo' => $seo,
         ]);
     }

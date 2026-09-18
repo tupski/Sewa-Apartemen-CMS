@@ -41,14 +41,10 @@
             </div>
 
             <!-- Stats -->
-            <div class="mt-14 grid grid-cols-3 gap-6 max-w-xl">
+            <div class="mt-14 grid grid-cols-2 gap-6 max-w-md">
                 <div>
                     <p class="text-3xl md:text-4xl font-bold text-white">{{ number_format($stats['properties']) }}</p>
                     <p class="text-sm text-white/80 mt-1">{{ __('home.stats_apartments') }}</p>
-                </div>
-                <div>
-                    <p class="text-3xl md:text-4xl font-bold text-white">{{ number_format($stats['units']) }}</p>
-                    <p class="text-sm text-white/80 mt-1">{{ __('home.stats_units') }}</p>
                 </div>
                 <div>
                     <p class="text-3xl md:text-4xl font-bold text-white">{{ number_format($stats['cities']) }}</p>
@@ -252,8 +248,8 @@
                                                         </div>
                                                     @endif
                                                     @if ($property->is_featured)
-                                                        <span class="absolute top-3 left-3 bg-white/95 text-xs font-bold px-3 py-1 rounded-full shadow" style="color: {{ $primaryColor }}">
-                                                            {{ __('home.featured_badge') }}
+                                                        <span class="absolute top-3 left-3 inline-flex items-center gap-0.5 px-2 py-1 rounded-lg text-xs font-bold text-yellow-900 bg-yellow-400/95 shadow-sm">
+                                                            ★ {{ __('home.featured_badge') }}
                                                         </span>
                                                     @endif
                                                     @php
@@ -375,8 +371,8 @@
                                         </div>
                                     @endif
                                     @if ($property->is_featured)
-                                        <span class="absolute top-3 left-3 bg-white/95 text-xs font-bold px-3 py-1 rounded-full shadow" style="color: {{ $primaryColor }}">
-                                            {{ __('home.featured_badge') }}
+                                        <span class="absolute top-3 left-3 inline-flex items-center gap-0.5 px-2 py-1 rounded-lg text-xs font-bold text-yellow-900 bg-yellow-400/95 shadow-sm">
+                                            ★ {{ __('home.featured_badge') }}
                                         </span>
                                     @endif
                                     @php

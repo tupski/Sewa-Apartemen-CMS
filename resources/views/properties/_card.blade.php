@@ -30,7 +30,11 @@
     $unitTypeBadgeLimit = 3;
     $unitTypeOverflow = max(0, $unitTypeLabels->count() - $unitTypeBadgeLimit);
     $unitTypeLabels = $unitTypeLabels->take($unitTypeBadgeLimit)->all();
+    // Amenity chips: show up to three, then a "+N lainnya" chip for the rest
+    // (the full list is in the property's amenity section). The overflow chip
+    // must not silently drop the remainder.
     $amenityBadges = $property->amenities->take(3);
+    $amenityOverflow = max(0, $property->amenities->count() - 3);
 
     // Distance badge: only render when a valid, non-null numeric distance is provided.
     $distanceValue = isset($distance) && $distance !== null && is_numeric($distance) ? (float) $distance : null;
@@ -143,6 +147,13 @@
                         {{ $amenity->name }}
                     </span>
                 @endforeach
+                @if($amenityOverflow > 0)
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700/60"
+                          title="{{ $property->amenities->pluck('name')->implode(', ') }}">
+                        <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                        {{ __('prop.amenity_more', ['count' => $amenityOverflow]) }}
+                    </span>
+                @endif
             </div>
         @endif
 

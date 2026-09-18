@@ -110,11 +110,23 @@
 
     $mapMarkers = [];
     if ($hasMap) {
+        // The property's own pin opens a card with the essentials a guest needs:
+        // who it is, the cheapest rate, and how to book / get directions. Site
+        // name and booking phone come from Settings (admin-managed), never
+        // hardcoded. The directions URL is built server-side so the client does
+        // no string assembly.
+        $propertyDirectionsUrl = 'https://www.google.com/maps/dir/?api=1&destination='
+            .rawurlencode($property->latitude.','.$property->longitude);
+
         $mapMarkers[] = [
             'lat'  => (float) $property->latitude,
             'lng'  => (float) $property->longitude,
             'type' => 'property',
             'name' => $property->name,
+            'site_name' => \App\Services\SettingsService::get('site_name', config('app.name', '')),
+            'price_from' => $property->lowestPriceToday(),
+            'booking_phone' => \App\Services\SettingsService::get('contact_phone', ''),
+            'directions_url' => $propertyDirectionsUrl,
         ];
     }
     if ($usePersistent) {
@@ -135,11 +147,14 @@
                 'cat_label' => \App\Models\PlaceCategory::labelForSlug($catSlug ?? 'Others'),
                 'cat_icon'  => \App\Models\PlaceCategory::iconForSlug($catSlug),
                 'cat_color' => \App\Models\PlaceCategory::resolveForSlug($catSlug)?->color,
+                // Distance from the property being viewed (the popup reads
+                // "900m dari <name>"), plus bare minute counts so the popup can
+                // pair each mode with its own icon.
                 'distance' => $pp->distance_formatted,
-                // Place details for the marker popup (see initPropertyMap in app.js).
-                'walking'  => $pp->walking_duration_formatted,
-                'driving'  => $pp->driving_duration_formatted,
-                'motorcycle' => $pp->motorcycle_duration_formatted,
+                'distance_from' => $property->name,
+                'walking'  => $pp->walking_minutes_label,
+                'driving'  => $pp->driving_minutes_label,
+                'motorcycle' => $pp->motorcycle_minutes_label,
                 'address'  => $pp->place->address,
                 'website'  => $pp->place->website,
                 'phone'    => $pp->place->phone,
@@ -147,13 +162,19 @@
         }
     } else {
         foreach ($nearbyWithCoords as $place) {
+            // Manual (admin-entered) POIs carry no measured travel times, so the
+            // popup simply omits those rows. Category is already a human label
+            // here (a NEARBY_CATEGORIES key), so it doubles as the cat_label.
             $mapMarkers[] = [
                 'lat'      => (float) $place['lat'],
                 'lng'      => (float) $place['lng'],
                 'type'     => 'poi',
                 'name'     => $place['name'] ?? '',
                 'category' => $place['category'] ?? '',
+                'cat_label' => $place['category'] ?? '',
                 'distance' => $place['distance_formatted'] ?? null,
+                'distance_from' => $property->name,
+                'address'  => $place['address'] ?? null,
             ];
         }
     }
@@ -166,6 +187,15 @@
     // Geoapify map key is embedded in the style URLs server-side — no raw key
     // field is exposed separately, and no raw provider payload is included.
     $mapData = [
+        // Localized popup strings, so app.js composes no user-facing text itself.
+        'labels' => [
+            'km_from' => __('prop.km_from', ['distance' => ':distance', 'name' => ':name']),
+            'minutes' => __('prop.minutes'),
+            'price_from' => __('prop.price_from'),
+            'by_site' => __('prop.by_site', ['name' => ':name']),
+            'booking' => __('prop.booking'),
+            'directions' => __('directions.button'),
+        ],
         'center'  => $hasMap
             ? [(float) $property->latitude, (float) $property->longitude]
             : (count($mapMarkers) ? [$mapMarkers[0]['lat'], $mapMarkers[0]['lng']] : [-2.5, 118.0]),

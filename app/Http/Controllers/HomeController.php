@@ -63,7 +63,6 @@ class HomeController extends Controller
 
         $stats = [
             'properties' => Property::published()->count(),
-            'units' => Property::published()->get()->sum(fn ($p) => count($p->unit_types ?? [])),
             'cities' => Property::published()->distinct()->count('city'),
         ];
 

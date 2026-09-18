@@ -1855,6 +1855,25 @@ function initPropertyMap() {
 
     var poiMarkers = [];
     var bounds = [];
+    // Localized popup fragments come from the server payload (never built here),
+    // so no user-facing text is hardcoded in this file.
+    var mapLabels = (data.labels && typeof data.labels === 'object') ? data.labels : {};
+    var labelMinutes = typeof mapLabels.minutes === 'string' && mapLabels.minutes ? mapLabels.minutes : 'min';
+
+    // Mode icons mirror the visual language of the on-page travel chips.
+    var MODE_ICONS = {
+        walking: 'fa-person-walking',
+        driving: 'fa-car-side',
+        motorcycle: 'fa-motorcycle'
+    };
+
+    // "<icon> 15 min" for one travel mode; '' when unmeasured.
+    function travelChip(mode, minutes) {
+        if (minutes === null || minutes === undefined || String(minutes) === '') return '';
+        return '<i class="fa-solid ' + MODE_ICONS[mode] + '" style="margin-right:3px" aria-hidden="true"></i>'
+            + escapeHtml(String(minutes)) + ' ' + escapeHtml(String(labelMinutes));
+    }
+
     markers.forEach(function (m) {
         var lat = parseFloat(m.lat);
         var lng = parseFloat(m.lng);
@@ -1864,7 +1883,7 @@ function initPropertyMap() {
         var marker = L.marker([lat, lng], { icon: isProperty ? propertyIcon : poiIcon(m) }).addTo(map);
 
         if (isProperty) {
-            marker.bindPopup('<strong>' + escapeHtml(String(m.name || '')) + '</strong>');
+            marker.bindPopup(buildPropertyPopup(m));
             marker.openPopup();
         } else {
             marker.bindPopup(buildPoiPopup(m));
@@ -1874,19 +1893,80 @@ function initPropertyMap() {
         bounds.push([lat, lng]);
     });
 
+    // The property's own pin: name (+ site name), cheapest rate, booking phone and
+    // a directions button. Every field is server-supplied and admin-managed.
+    function buildPropertyPopup(m) {
+        var siteName = String(m.site_name || '');
+        var popup = '<strong>' + escapeHtml(String(m.name || '')) + '</strong>';
+        if (siteName) {
+            // "oleh <Site Name>" — the brand line under the property name.
+            var byLabel = String(mapLabels.by_site || 'by :name').replace(':name', siteName);
+            popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(byLabel) + '</span>';
+        }
+
+        var price = Number(m.price_from);
+        if (m.price_from !== null && m.price_from !== undefined && !isNaN(price) && price > 0) {
+            popup += '<br><span style="color:#6b7280;font-size:0.75rem">'
+                + escapeHtml(String(mapLabels.price_from || 'From')) + ' Rp '
+                + escapeHtml(price.toLocaleString('id-ID')) + '</span>';
+        }
+
+        var phone = String(m.booking_phone || '');
+        if (phone) {
+            popup += '<br><span style="color:#6b7280;font-size:0.75rem">'
+                + escapeHtml(String(mapLabels.booking || 'Booking')) + ': '
+                + escapeHtml(phone) + '</span>';
+        }
+
+        // Only http(s) — never render an arbitrary scheme from the payload.
+        if (m.directions_url && /^https?:\/\//i.test(String(m.directions_url))) {
+            popup += '<br><a href="' + escapeHtml(String(m.directions_url)) + '" target="_blank" rel="noopener noreferrer"'
+                + ' style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;color:#2563eb;font-size:0.75rem;font-weight:600">'
+                + '<i class="fa-solid fa-diamond-turn-right" aria-hidden="true"></i>'
+                + escapeHtml(String(mapLabels.directions || 'Directions')) + '</a>';
+        }
+
+        return popup;
+    }
+
+    // A nearby POI: name, "<distance> dari <property>", its category, the three
+    // travel times with mode icons, then the address.
     function buildPoiPopup(m) {
         var popup = '<strong>' + escapeHtml(String(m.name || '')) + '</strong>';
+
+        var distance = String(m.distance || '');
+        var from = String(m.distance_from || '');
+        if (distance) {
+            var distanceLine = from
+                ? String(mapLabels.km_from || ':distance dari :name')
+                    .replace(':distance', distance)
+                    .replace(':name', from)
+                : distance;
+            popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(distanceLine) + '</span>';
+        }
+
         if (m.cat_label) {
             popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(String(m.cat_label)) + '</span>';
         }
-        // Travel info: walking · driving · motorcycle, whichever is measured.
-        var travelLine = [m.walking, m.driving, m.motorcycle, m.distance].filter(Boolean).map(String).join(' \u00b7 ');
-        if (travelLine) {
-            popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(travelLine) + '</span>';
+
+        // One icon per measured mode; unmeasured modes are omitted entirely.
+        var travel = [
+            travelChip('walking', m.walking),
+            travelChip('driving', m.driving),
+            travelChip('motorcycle', m.motorcycle)
+        ].filter(Boolean).join(' <span style="color:#d1d5db">\u00b7</span> ');
+
+        if (travel) {
+            popup += '<br><span style="color:#6b7280;font-size:0.75rem;display:inline-flex;align-items:center;flex-wrap:wrap;gap:2px">'
+                + travel + '</span>';
         }
+
         if (m.address) {
-            popup += '<br><span style="color:#6b7280;font-size:0.75rem">' + escapeHtml(String(m.address)) + '</span>';
+            popup += '<br><span style="color:#6b7280;font-size:0.75rem;display:inline-flex;align-items:flex-start;gap:4px">'
+                + '<i class="fa-solid fa-location-dot" style="margin-top:2px" aria-hidden="true"></i>'
+                + '<span>' + escapeHtml(String(m.address)) + '</span></span>';
         }
+
         // Only http(s) links — never render an arbitrary scheme from the payload.
         if (m.website && /^https?:\/\//i.test(String(m.website))) {
             popup += '<br><a href="' + escapeHtml(String(m.website)) + '" target="_blank" rel="noopener noreferrer" style="color:#2563eb;font-size:0.75rem">' + escapeHtml(String(m.website)) + '</a>';

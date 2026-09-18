@@ -111,6 +111,38 @@ class PropertyPlace extends Model
     }
 
     /**
+     * Walking duration as a bare minute count ("15"), or null when unmeasured.
+     * Used where the mode is conveyed by an icon instead of a word, so the
+     * payload stays language-neutral and the label is composed client-side.
+     */
+    public function getWalkingMinutesLabelAttribute(): ?string
+    {
+        $minutes = self::durationMinutes($this->walking_duration_s);
+
+        return $minutes === null ? null : (string) $minutes;
+    }
+
+    /**
+     * Driving duration as a bare minute count ("4"), or null when unmeasured.
+     */
+    public function getDrivingMinutesLabelAttribute(): ?string
+    {
+        $minutes = self::durationMinutes($this->driving_duration_s);
+
+        return $minutes === null ? null : (string) $minutes;
+    }
+
+    /**
+     * Motorcycle duration as a bare minute count ("4"), or null when unmeasured.
+     */
+    public function getMotorcycleMinutesLabelAttribute(): ?string
+    {
+        $minutes = self::durationMinutes($this->motorcycle_duration_s);
+
+        return $minutes === null ? null : (string) $minutes;
+    }
+
+    /**
      * Human-readable driving distance, or null when unmeasured.
      */
     public function getDrivingDistanceFormattedAttribute(): ?string
