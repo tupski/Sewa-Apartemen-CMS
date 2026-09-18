@@ -36,7 +36,7 @@
     @endunless
 
     @if($exists)
-        <div x-data="unitTypeManager(@json($metadataRows), '{{ route('admin.properties.unit-types.store', $property) }}', '{{ route('admin.properties.unit-types.reorder', $property) }}', '{{ route('admin.properties.unit-types.destroy', ['property' => $property, 'unitType' => '__ID__']) }}')"
+        <div x-data="unitTypeManager(@js($metadataRows), '{{ route('admin.properties.unit-types.store', $property) }}', '{{ route('admin.properties.unit-types.reorder', $property) }}', '{{ route('admin.properties.unit-types.destroy', ['property' => $property, 'unitType' => '__ID__']) }}')"
              x-cloak>
             <div class="grid gap-3">
                 <template x-for="(row, index) in rows" :key="row.id ?? 'row-' + index">

@@ -58,7 +58,7 @@
 @endphp
 
 <div class="overflow-x-auto"
-     x-data="poiTable(@json($rows), '{{ route('admin.properties.places.update', ['property' => $property->id ?? 0, 'place' => '__ID__']) }}')"
+     x-data="poiTable(@js($rows), '{{ route('admin.properties.places.update', ['property' => $property->id ?? 0, 'place' => '__ID__']) }}')"
      x-cloak>
     @if($propertyPlaces->isEmpty())
         <p class="text-sm text-gray-400 py-4">{{ __('No nearby places have been synchronized yet.') }}</p>

@@ -156,7 +156,10 @@
     @endphp
     <div id="place-category-manager"
          class="mt-4 border border-gray-200 rounded-md"
-         x-data="placeCategoryManager(@json($managedCategories), '{{ route('admin.place-categories.update') }}', '{{ route('admin.place-categories.destroy', '__ID__') }}')"
+         {{-- NOTE: @js() (not @json()) inside this double-quoted attribute —
+              @json() emits raw " characters that terminate the attribute
+              early and hand Alpine a truncated expression. --}}
+         x-data="placeCategoryManager(@js($managedCategories), '{{ route('admin.place-categories.update') }}', '{{ route('admin.place-categories.destroy', '__ID__') }}')"
          x-cloak>
         <button type="button" class="w-full flex items-center justify-between px-4 py-3 text-left text-sm font-semibold text-gray-700 hover:bg-gray-50 rounded-t-md"
                 @click="open = !open" :aria-expanded="open.toString()">

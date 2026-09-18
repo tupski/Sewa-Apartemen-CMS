@@ -270,6 +270,9 @@ class PropertyPlaceManagementTest extends TestCase
             ->assertOk()
             ->assertSee('RS Dekat Apartemen', false)
             ->assertSee('RS Sehat', false)
-            ->assertSee('"show_on_frontend":false', false);
+            // The rows ride inside a double-quoted x-data attribute via @js(),
+            // so " is escaped as \u0022 — a raw " there would truncate the
+            // attribute and break Alpine (see AlpineXDataJsonSafetyTest).
+            ->assertSee('\u0022show_on_frontend\u0022:false', false);
     }
 }
