@@ -306,9 +306,23 @@ class GeoapifyService
                 continue;
             }
 
-            // SEC-007: sanitize the raw category BEFORE matching, so a hostile
+            // SEC-007: sanitize each raw category BEFORE matching, so a hostile
             // payload cannot smuggle markup into `raw_category`.
-            $rawCategory = $this->sanitize($props['categories'][0] ?? '', 255);
+            //
+            // Geoapify returns a CATEGORY CHAIN ordered parent-first, e.g.
+            // ["service", "service.police"] or
+            // ["building", "building.healthcare", "healthcare.hospital"].
+            // The most specific slug is the LAST member; matching only [0]
+            // would persist the top-level parent ("service", "healthcare") as
+            // the place's category and break every per-category filter.
+            $rawCategories = [];
+            foreach ((array) ($props['categories'] ?? []) as $raw) {
+                $sanitized = $this->sanitize($raw, 255);
+                if ($sanitized !== '') {
+                    $rawCategories[] = $sanitized;
+                }
+            }
+            $rawCategory = $rawCategories === [] ? '' : $rawCategories[count($rawCategories) - 1];
             $category = $this->matchCategory($rawCategory, $categorySlug);
 
             // Skip POIs whose category does not belong to the requested key.

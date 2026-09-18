@@ -36,7 +36,7 @@ class PlaceCategorySeeder extends Seeder
             ['slug' => 'national_park',                'name_id' => 'Taman Nasional',       'name_en' => 'National Park',      'icon' => 'fa-solid fa-tree',            'color' => '#16a34a'],
             ['slug' => 'office.government',            'name_id' => 'Kantor Pemerintahan',  'name_en' => 'Government Office',  'icon' => 'fa-solid fa-landmark',        'color' => '#64748b'],
             ['slug' => 'rental.car',                   'name_id' => 'Rental Mobil',         'name_en' => 'Car Rental',         'icon' => 'fa-solid fa-car',             'color' => '#0284c7'],
-            ['slug' => 'service.ambulance_station',    'name_id' => 'Stasiun Ambulans',     'name_en' => 'Ambulance Station',  'icon' => 'fa-solid fa-truck-medical',   'color' => '#dc2626'],
+            ['slug' => 'emergency.ambulance_station',  'name_id' => 'Stasiun Ambulans',     'name_en' => 'Ambulance Station',  'icon' => 'fa-solid fa-truck-medical',   'color' => '#dc2626'],
             ['slug' => 'service.police',               'name_id' => 'Kantor Polisi',        'name_en' => 'Police',             'icon' => 'fa-solid fa-shield-halved',   'color' => '#1d4ed8'],
             ['slug' => 'tourism',                      'name_id' => 'Wisata',               'name_en' => 'Tourism',            'icon' => 'fa-solid fa-umbrella-beach',  'color' => '#f97316'],
             ['slug' => 'religion',                     'name_id' => 'Tempat Ibadah',        'name_en' => 'Place of Worship',   'icon' => 'fa-solid fa-place-of-worship', 'color' => '#14b8a6'],

@@ -6,7 +6,9 @@ use App\Models\Place;
 use App\Models\PlaceCategory;
 use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\PlaceCategorySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -236,5 +238,81 @@ class PlaceCategoryManagementTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseHas('place_categories', ['id' => $category->id]);
+    }
+
+    /* =================================================================
+     | Geoapify slug validity
+     * ================================================================= */
+
+    /**
+     * Every seeded slug is sent verbatim to the Geoapify Places API as the
+     * `categories` filter. An unsupported slug makes the provider reject the
+     * whole request with HTTP 400 "Category is not supported", so that POI
+     * type is never synchronized and every sync reports it as failed
+     * (observed in production with service.ambulance_station — the correct
+     * Geoapify identifier is emergency.ambulance_station).
+     *
+     * This pins the shipped defaults to the slugs verified against the live
+     * API. If Geoapify's taxonomy changes, this test failing is the signal to
+     * re-verify and ship a rename migration.
+     */
+    public function test_no_seeded_category_slug_carries_a_stale_prefix(): void
+    {
+        foreach (PlaceCategorySeeder::defaults() as $category) {
+            $this->assertStringStartsNotWith(
+                'service.ambulance',
+                $category['slug'],
+                "'{$category['slug']} is not a valid Geoapify category — ambulances live under emergency.*."
+            );
+        }
+
+        $slugs = array_column(PlaceCategorySeeder::defaults(), 'slug');
+
+        $this->assertContains('emergency.ambulance_station', $slugs);
+        $this->assertNotContains('service.ambulance_station', $slugs);
+    }
+
+    /**
+     * The rename migration must heal an install that already seeded the broken
+     * slug, and stay idempotent when run twice / after a re-seed.
+     *
+     * RefreshDatabase runs every pending migration during setUp, so the
+     * migration has already executed by the time the test body runs. Roll it
+     * back, seed the broken pre-fix state, then re-run it.
+     */
+    public function test_ambulance_slug_migration_renames_and_is_idempotent(): void
+    {
+        $path = 'database/migrations/2026_09_18_020228_rename_service_ambulance_station_slug.php';
+
+        $this->artisan('migrate:rollback', ['--path' => $path, '--force' => true])->assertExitCode(0);
+
+        // Simulate the pre-fix DB state (with an admin-edited label).
+        $oldId = DB::table('place_categories')->insertGetId([
+            'slug' => 'service.ambulance_station',
+            'name_id' => 'Stasiun Ambulans (edited)',
+            'name_en' => 'Ambulance Station',
+            'icon' => 'fa-solid fa-truck-medical',
+            'color' => '#dc2626',
+            'is_active' => true,
+            'sort_order' => 9,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->artisan('migrate', ['--path' => $path, '--force' => true])->assertExitCode(0);
+
+        $this->assertDatabaseMissing('place_categories', ['slug' => 'service.ambulance_station']);
+        $this->assertDatabaseHas('place_categories', [
+            'slug' => 'emergency.ambulance_station',
+            'name_id' => 'Stasiun Ambulans (edited)',
+        ]);
+
+        // Row identity (admin label edits) is preserved on rename.
+        $this->assertSame($oldId, (int) DB::table('place_categories')->where('slug', 'emergency.ambulance_station')->value('id'));
+
+        // Second run: nothing to do, no error.
+        $this->artisan('migrate:rollback', ['--path' => $path, '--force' => true])->assertExitCode(0);
+        $this->artisan('migrate', ['--path' => $path, '--force' => true])->assertExitCode(0);
+        $this->assertDatabaseMissing('place_categories', ['slug' => 'service.ambulance_station']);
     }
 }

@@ -290,7 +290,6 @@ class GeoapifyNearbyPlacesTest extends TestCase
         $this->assertSame('Jl. Sudirman No. 1, Jakarta', $poi['address']);
         $this->assertSame('https://rs.example.test', $poi['website']);
         $this->assertSame('+622****4567', $poi['phone']);
-
         // GeoJSON gave [106.81, -6.21]; lat/lng must be un-swapped.
         $this->assertSame(-6.21, $poi['lat']);
         $this->assertSame(106.81, $poi['lng']);
@@ -310,6 +309,51 @@ class GeoapifyNearbyPlacesTest extends TestCase
 
         $this->assertCount(1, $pois);
         $this->assertSame('RS Bunda', $pois[0]['name']);
+    }
+
+    /**
+     * Geoapify returns a CATEGORY CHAIN ordered parent-first, e.g.
+     * ["service", "service.police"] or
+     * ["building", "building.healthcare", "healthcare.hospital"]. The most
+     * specific slug is the LAST member.
+     *
+     * Reading only categories[0] persisted the top-level parent ("service",
+     * "healthcare") as the place's category, which broke every per-category
+     * filter, icon mapping, and the stale-row protection scope in the sync.
+     */
+    public function test_service_matches_the_most_specific_slug_in_the_category_chain(): void
+    {
+        // Raw provider shapes observed against the live API.
+        $this->fakeGeoapify([
+            $this->poiFeature([
+                'place_id' => 'gp-chain-3',
+                'name' => 'RS Ranting',
+                'categories' => ['building', 'building.healthcare', 'healthcare.hospital'],
+            ]),
+            $this->poiFeature([
+                'place_id' => 'gp-chain-parent-only',
+                'name' => 'RS Generik',
+                'categories' => ['healthcare', 'healthcare.hospital'],
+            ]),
+        ]);
+
+        $pois = (new GeoapifyService)->searchGroup(GeoapifyService::GROUP_HOSPITAL, -6.2, 106.8);
+
+        $byPlaceId = array_column($pois, null, 'geoapify_place_id');
+
+        $this->assertArrayHasKey(
+            'gp-chain-3',
+            $byPlaceId,
+            'A chain whose LAST member is the requested slug must match.'
+        );
+        $this->assertSame('healthcare.hospital', $byPlaceId['gp-chain-3']['raw_category']);
+
+        $this->assertArrayHasKey(
+            'gp-chain-parent-only',
+            $byPlaceId,
+            'The common two-member chain (parent, child) must match the child.'
+        );
+        $this->assertSame('healthcare.hospital', $byPlaceId['gp-chain-parent-only']['raw_category']);
     }
 
     public function test_service_returns_empty_array_when_response_has_no_features_key(): void

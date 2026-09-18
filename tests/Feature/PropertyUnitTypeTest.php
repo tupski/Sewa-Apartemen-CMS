@@ -84,8 +84,12 @@ class PropertyUnitTypeTest extends TestCase
             'unit_types' => json_encode(['studio', '2br']),
         ]);
 
-        $this->artisan('migrate:rollback', ['--step' => 1]);
-        $this->artisan('migrate');
+        // Target THIS migration explicitly: '--step 1' alone would roll back
+        // whatever migration happens to be newest today, so adding any future
+        // migration to the app would silently break this test.
+        $path = 'database/migrations/2026_09_15_090000_create_property_unit_types_table.php';
+        $this->artisan('migrate:rollback', ['--path' => $path, '--force' => true]);
+        $this->artisan('migrate', ['--path' => $path, '--force' => true]);
 
         $rows = PropertyUnitType::where('property_id', $property->id)
             ->orderBy('sort_order')
