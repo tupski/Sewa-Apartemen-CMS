@@ -85,7 +85,7 @@ class PlaceCategory extends Model
 
     /**
      * Resolve the Font Awesome icon class for a raw Geoapify category slug
-     * (same exact-or-parent matching as labelForSlug). Null when unknown or unset.
+     * (same nearest-ancestor matching as labelForSlug). Null when unknown or unset.
      */
     public static function iconForSlug(?string $slug): ?string
     {
@@ -93,18 +93,43 @@ class PlaceCategory extends Model
     }
 
     /**
-     * Find the category row for a raw slug: exact match first, then the
-     * top-level parent key (`public_transport.train` → `public_transport`).
+     * The resolved catalogue slug for a raw provider category: the stored slug
+     * itself when it matches, otherwise the nearest catalogue ancestor, else
+     * null. Use this wherever a raw `places.category` value is grouped,
+     * filtered, or displayed — raw slugs must never leak to the UI.
      */
-    protected static function resolveForSlug(?string $slug): ?self
+    public static function normalizedSlug(?string $slug): ?string
+    {
+        return static::resolveForSlug($slug)?->slug;
+    }
+
+    /**
+     * Find the category row for a raw slug: exact match first, then the
+     * NEAREST catalogue ancestor. Geoapify chains nest deeper than one dot
+     * (e.g. `catering.cafe.coffee_shop`), so the probe walks upwards
+     * (`catering.cafe.coffee_shop` → `catering.cafe` → `catering`).
+     *
+     * Public because render paths normalize raw `places.category` values before
+     * display: exact matches keep priority and a child never collapses to a
+     * top-level parent when an intermediate catalogue row exists.
+     */
+    public static function resolveForSlug(?string $slug): ?self
     {
         if ($slug === null || $slug === '') {
             return null;
         }
 
+        $candidates = [];
+        $probe = $slug;
+        while ($probe !== '' && $probe !== false) {
+            $candidates[] = $probe;
+            $pos = strrpos($probe, '.');
+            $probe = $pos === false ? '' : substr($probe, 0, $pos);
+        }
+
         return static::query()
-            ->where('slug', $slug)
-            ->orWhere('slug', strtok($slug, '.'))
+            ->whereIn('slug', $candidates)
+            ->orderByRaw('LENGTH(slug) DESC')
             ->first();
     }
 }

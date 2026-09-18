@@ -86,10 +86,13 @@
     $usePersistent    = $persistentPlaces->isNotEmpty();
 
     // Group persistent POIs by their place category for the list display.
+    // Raw provider slugs are normalized to the catalogue first: a deeply
+    // nested chain (e.g. catering.cafe.coffee_shop) must group under its
+    // nearest catalogue ancestor (catering.cafe), never leak as a raw key.
     $persistentGroups = [];
     foreach ($persistentPlaces as $pp) {
         if (! $pp->place) { continue; }
-        $cat = $pp->place->category ?: 'Others';
+        $cat = \App\Models\PlaceCategory::normalizedSlug($pp->place->category) ?? 'Others';
         $persistentGroups[$cat][] = $pp;
     }
     // Build the map marker set. Property marker first, then POIs (persistent if
@@ -115,6 +118,9 @@
     if ($usePersistent) {
         foreach ($persistentPlaces as $pp) {
             if (! $pp->place || $pp->place->lat === null || $pp->place->lng === null) { continue; }
+            // Normalize once: raw chains (catering.cafe.coffee_shop) resolve to
+            // the nearest catalogue slug, so every field below shares one key.
+            $catSlug = \App\Models\PlaceCategory::normalizedSlug($pp->place->category);
             $mapMarkers[] = [
                 'id'       => $pp->id,
                 'lat'      => (float) $pp->place->lat,
@@ -122,9 +128,9 @@
                 'type'     => 'poi',
                 'name'     => $pp->display_name,
                 // DB-managed presentation config (never raw provider strings).
-                'cat_label' => \App\Models\PlaceCategory::labelForSlug($pp->place->category),
-                'cat_icon'  => \App\Models\PlaceCategory::iconForSlug($pp->place->category),
-                'cat_color' => \App\Models\PlaceCategory::resolveForSlug($pp->place->category)?->color,
+                'cat_label' => \App\Models\PlaceCategory::labelForSlug($catSlug ?? 'Others'),
+                'cat_icon'  => \App\Models\PlaceCategory::iconForSlug($catSlug),
+                'cat_color' => \App\Models\PlaceCategory::resolveForSlug($catSlug)?->color,
                 'distance' => $pp->distance_formatted,
                 // Place details for the marker popup (see initPropertyMap in app.js).
                 'walking'  => $pp->walking_duration_formatted,

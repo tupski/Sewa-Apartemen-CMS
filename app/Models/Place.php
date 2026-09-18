@@ -44,15 +44,17 @@ class Place extends Model
     }
 
     /**
-     * The Artivo-managed category row matching this place's category slug.
+     * The Artivo-managed category row matching this place's stored category.
      *
-     * Matches the exact slug first; a raw child key (`public_transport.train`)
-     * resolves to its parent row (`public_transport`) as a fallback.
+     * Stored categories are the most-specific slug the pipeline kept. Because
+     * provider chains can nest deeper than the catalogue
+     * (e.g. catering.cafe.coffee_shop), exact matching alone can miss; prefer
+     * PlaceCategory::normalizedSlug() / labelForSlug() for display, which walk
+     * up to the nearest catalogue ancestor.
      */
     public function placeCategory()
     {
-        return $this->belongsTo(PlaceCategory::class, 'category', 'slug')
-            ->orWhere('slug', strtok((string) $this->category, '.'));
+        return $this->belongsTo(PlaceCategory::class, 'category', 'slug');
     }
 
     /**

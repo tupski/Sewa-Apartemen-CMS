@@ -10,33 +10,15 @@
     // Data shape per row: every field the JS needs, JSON-encoded once.
     $propertyPlaces = $propertyPlaces ?? collect();
 
-    $orderedCategories = \App\Models\PlaceCategory::query()
-        ->orderBy('sort_order')->orderBy('id')->get();
-
     $rows = [];
 
     foreach ($propertyPlaces as $propertyPlace) {
+        // Normalize through the catalogue: deeply nested provider chains
+        // (catering.cafe.coffee_shop) resolve to the nearest catalogue slug,
+        // so the table, its category filter, and the grouping key all share
+        // one resolved value instead of a raw provider key.
         $raw = $propertyPlace->place->category ?? null;
-        $slug = null;
-
-        if (is_string($raw) && $raw !== '') {
-            foreach ($orderedCategories as $category) {
-                if ($raw === $category->slug || str_starts_with($raw, $category->slug.'.')) {
-                    $slug = $category->slug;
-                    break;
-                }
-            }
-
-            if ($slug === null) {
-                $top = strtok($raw, '.');
-                foreach ($orderedCategories as $category) {
-                    if ($category->slug === $top) {
-                        $slug = $top;
-                        break;
-                    }
-                }
-            }
-        }
+        $slug = \App\Models\PlaceCategory::normalizedSlug(is_string($raw) ? $raw : null);
 
         $rows[] = [
             'id' => $propertyPlace->id,
