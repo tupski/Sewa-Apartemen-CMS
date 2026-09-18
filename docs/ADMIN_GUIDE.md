@@ -101,4 +101,4 @@ SEO is handled automatically for all content types:
 - **Open Graph / Twitter Cards**: Per-content OG title, description, image.
 - **JSON-LD**: Organization, WebSite, RealEstateListing, Offer, Article, BreadcrumbList schemas.
 - **Sitemap**: Auto-generated at `/sitemap.xml`. Includes homepage, properties, units, pages, blog posts.
-- **Robots.txt**: Auto-generated at `/robots.txt`. Disallows admin, login, register, dashboard, profile.
+- **Robots.txt**: Auto-generated at `/robots.txt`. Disallows admin, login, dashboard, profile.

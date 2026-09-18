@@ -126,7 +126,7 @@ Business logic berada di `app/Services/`, bukan di controller atau view:
 
 ## Model Auth / _Auth Model_
 
-- **Laravel Breeze session-based auth** (login, register, password reset, email verification).
+- **Laravel Breeze session-based auth** (login, password reset, email verification). Public registration is intentionally removed — accounts are created only by an admin at `admin/users`, since this is a single-tenant CMS.
 - Middleware `admin` → [`EnsureUserIsAdmin`](../app/Http/Middleware/EnsureUserIsAdmin.php), memanggil `User::isAdmin()` yang menerima role slug **`super-admin`** dan **`admin`** ([`app/Models/User.php`](../app/Models/User.php:60)).
 - Role disimpan via pivot `model_has_roles` (gaya Spatie, tapi custom).
 - Admin group di [`routes/web.php`](../routes/web.php:86) menggunakan middleware `['auth', 'verified', 'admin']` dengan prefix dari setting **`admin_prefix`** via helper [`slug()`](../app/Helpers/slug.php:16) — **jangan hardcode `/admin`**.

@@ -34,7 +34,7 @@ Skrip `composer test` juga tersedia (config:clear + test).
 
 | Suite | Cakupan |
 |-------|---------|
-| [`Auth/AuthenticationTest.php`](../tests/Feature/Auth/AuthenticationTest.php), [`EmailVerificationTest.php`](../tests/Feature/Auth/EmailVerificationTest.php), [`PasswordConfirmationTest.php`](../tests/Feature/Auth/PasswordConfirmationTest.php), [`PasswordResetTest.php`](../tests/Feature/Auth/PasswordResetTest.php), [`PasswordUpdateTest.php`](../tests/Feature/Auth/PasswordUpdateTest.php), [`RegistrationTest.php`](../tests/Feature/Auth/RegistrationTest.php) | Auth Breeze: login, register, verifikasi email, reset password |
+| [`Auth/AuthenticationTest.php`](../tests/Feature/Auth/AuthenticationTest.php), [`EmailVerificationTest.php`](../tests/Feature/Auth/EmailVerificationTest.php), [`PasswordConfirmationTest.php`](../tests/Feature/Auth/PasswordConfirmationTest.php), [`PasswordResetTest.php`](../tests/Feature/Auth/PasswordResetTest.php), [`PasswordUpdateTest.php`](../tests/Feature/Auth/PasswordUpdateTest.php), [`RegistrationTest.php`](../tests/Feature/Auth/RegistrationTest.php) | Auth Breeze: login, verifikasi email, reset password. `RegistrationTest` asserts public registration is DISABLED (admin-only user creation). |
 | [`BookingFlowTest.php`](../tests/Feature/BookingFlowTest.php) | Alur booking end-to-end |
 | [`CrudTest.php`](../tests/Feature/CrudTest.php) | CRUD resource admin |
 | [`BlogTest.php`](../tests/Feature/BlogTest.php) | Blog (posts, kategori, tag) |
