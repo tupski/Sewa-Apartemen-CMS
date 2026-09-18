@@ -24,7 +24,6 @@ class RobotsService
         $lines[] = 'Disallow: /install';
         $lines[] = 'Disallow: /login';
         $lines[] = 'Disallow: /logout';
-        $lines[] = 'Disallow: /register';
         $lines[] = 'Disallow: /profile';
         $lines[] = 'Disallow: /dashboard';
         $lines[] = 'Disallow: /'.slug('slug_booking', 'bookings');

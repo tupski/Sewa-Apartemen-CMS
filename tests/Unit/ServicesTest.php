@@ -319,7 +319,8 @@ class ServicesTest extends TestCase
         $this->assertStringContainsString('Disallow: /login', $txt);
         $this->assertStringContainsString('Disallow: /dashboard', $txt);
         $this->assertStringContainsString('Disallow: /profile', $txt);
-        $this->assertStringContainsString('Disallow: /register', $txt);
+        // Public registration is gone, so robots no longer needs to exclude it.
+        $this->assertStringNotContainsString('Disallow: /register', $txt);
     }
 
     public function test_robots_includes_sitemap_reference(): void

@@ -7,18 +7,17 @@ use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    Route::get('register', [RegisteredUserController::class, 'create'])
-        ->name('register');
-
-    // VERIFY-009: rate-limit account enumeration / brute force
-    Route::post('register', [RegisteredUserController::class, 'store'])
-        ->middleware(['throttle:5,1', 'captcha']);
-
+    // PUBLIC REGISTRATION IS INTENTIONALLY ABSENT.
+    //
+    // This is a single-tenant CMS: accounts exist only to give staff access to
+    // the admin panel, and the admin creates them (admin.users.store, gated by
+    // the `admin` middleware). A public /register route would let anyone mint
+    // themselves an account — an open door to the CMS. Do not reintroduce it;
+    // add users from admin/users instead.
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 

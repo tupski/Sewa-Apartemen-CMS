@@ -16,7 +16,7 @@ class CheckInstalled
      * Selain itu, tambahkan cleanup state file saat user kembali ke langkah 1
      * agar password/credential lama tidak menumpuk (BUG-021 partial fix).
      *
-     * @param  \Closure(Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -30,7 +30,7 @@ class CheckInstalled
         $currentRoute = $request->route()?->getName() ?? '';
 
         $authRoutes = [
-            'login', 'register', 'password.request',
+            'login', 'password.request',
             'password.reset', 'password.email', 'password.update',
             'verification.notice', 'verification.verify', 'verification.send',
         ];
@@ -40,7 +40,7 @@ class CheckInstalled
         }
 
         // Fallback path-based check untuk route yang belum punya nama
-        if ($request->is('login') || $request->is('register')
+        if ($request->is('login')
             || $request->is('forgot-password') || $request->is('reset-password*')
             || $request->is('email/verify*') || $request->is('email/confirm*')) {
             return $next($request);
@@ -52,7 +52,7 @@ class CheckInstalled
         }
 
         // Require installation lock for all other routes
-        if (!file_exists(storage_path('installed.lock'))) {
+        if (! file_exists(storage_path('installed.lock'))) {
             return redirect('/install');
         }
 
