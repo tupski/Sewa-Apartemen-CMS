@@ -477,9 +477,15 @@
     var defaultZoom  = 5;
     var pinZoom      = 14;
 
+    function isValidCoordinatePair(lat, lng) {
+        return Number.isFinite(lat) && Number.isFinite(lng)
+            && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+    }
+
+    var hasInitialCoordinates = isValidCoordinatePair(initLat, initLng);
     var map = L.map('property-map').setView(
-        (initLat && initLng) ? [initLat, initLng] : defaultCenter,
-        (initLat && initLng) ? pinZoom : defaultZoom
+        hasInitialCoordinates ? [initLat, initLng] : defaultCenter,
+        hasInitialCoordinates ? pinZoom : defaultZoom
     );
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -490,6 +496,9 @@
     var marker = null;
 
     function setPin(lat, lng) {
+        if (!isValidCoordinatePair(lat, lng)) {
+            return;
+        }
         if (marker) {
             marker.setLatLng([lat, lng]);
         } else {
@@ -521,7 +530,7 @@
     });
 
     // Pre-populate existing pin
-    if (initLat && initLng) {
+    if (hasInitialCoordinates) {
         setPin(initLat, initLng);
     }
 
@@ -551,7 +560,10 @@
                 li.textContent = item.display_name;
                 li.addEventListener('click', function () {
                     var lat = parseFloat(item.lat);
-                    var lng = parseFloat(item.lon);
+                    var lng = parseFloat(item.lng);
+                    if (!isValidCoordinatePair(lat, lng)) {
+                        return;
+                    }
                     map.setView([lat, lng], pinZoom);
                     setPin(lat, lng);
                     searchInput.value = item.display_name;

@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class CrudTest extends TestCase
@@ -40,6 +42,46 @@ class CrudTest extends TestCase
         $this->get(route('admin.properties.index'))->assertStatus(200);
     }
 
+    public function test_admin_properties_index_includes_drafts_without_status_filter_and_preserves_pagination_query(): void
+    {
+        $this->authenticate();
+        $draft = \App\Models\Property::factory()->create([
+            'name' => 'Saved Draft After Error',
+            'status' => 'draft',
+        ]);
+        \App\Models\Property::factory()->count(15)->create([
+            'name' => 'Saved Draft',
+            'status' => 'draft',
+        ]);
+        \App\Models\Property::factory()->create([
+            'name' => 'Published Property',
+            'status' => 'published',
+        ]);
+
+        $response = $this->get(route('admin.properties.index'));
+
+        $response->assertOk();
+        $response->assertSee($draft->name, false);
+        $response->assertSee('name="status"', false);
+
+        $paginated = $this->get(route('admin.properties.index', ['page' => 2, 'search' => 'Saved']))
+            ->assertOk();
+        $paginated->assertSee('search=Saved', false);
+    }
+
+    public function test_public_property_listing_excludes_drafts(): void
+    {
+        $this->authenticate();
+        $draft = \App\Models\Property::factory()->create([
+            'name' => 'Private Draft',
+            'status' => 'draft',
+        ]);
+
+        $this->get(route('properties.public.index'))
+            ->assertOk()
+            ->assertDontSee($draft->name, false);
+    }
+
     public function test_property_gallery_media_linking_works(): void
     {
         $this->authenticate();
@@ -73,6 +115,67 @@ class CrudTest extends TestCase
         $this->assertNotNull($photo);
         $this->assertEquals('Lobby', $photo->category);
         $this->assertEquals($media->id, $photo->media_id);
+    }
+
+    public function test_property_store_persists_uploaded_gallery_file(): void
+    {
+        Storage::fake('public');
+        $this->authenticate();
+
+        $response = $this->post(route('admin.properties.store'), [
+            'name' => 'Uploaded Gallery Property',
+            'slug' => 'uploaded-gallery-property',
+            'status' => 'draft',
+            'photo_categories' => json_encode(['Bedroom']),
+            'gallery_uploads' => [0 => [UploadedFile::fake()->image('bedroom.jpg', 120, 80)]],
+        ]);
+
+        $response->assertRedirect(route('admin.properties.index'));
+        $property = \App\Models\Property::where('slug', 'uploaded-gallery-property')->firstOrFail();
+        $media = $property->photos()->firstOrFail()->media;
+
+        $this->assertSame('Bedroom', $property->photos()->first()->category);
+        Storage::disk('public')->assertExists($media->directory.'/'.$media->filename);
+    }
+
+    public function test_invalid_gallery_upload_rolls_back_property_and_does_not_report_success(): void
+    {
+        Storage::fake('public');
+        $this->authenticate();
+
+        $response = $this->post(route('admin.properties.store'), [
+            'name' => 'Invalid Gallery Property',
+            'slug' => 'invalid-gallery-property',
+            'status' => 'draft',
+            'photo_categories' => json_encode(['Bedroom']),
+            'gallery_uploads' => [0 => [UploadedFile::fake()->create('not-an-image.txt', 10, 'text/plain')]],
+        ]);
+
+        $response->assertSessionHasErrors('gallery_uploads.0.0');
+        $this->assertDatabaseMissing('properties', ['slug' => 'invalid-gallery-property']);
+    }
+
+    public function test_property_update_persists_uploaded_gallery_file(): void
+    {
+        Storage::fake('public');
+        $this->authenticate();
+        $property = \App\Models\Property::factory()->create([
+            'name' => 'Gallery Update Property',
+            'slug' => 'gallery-update-property',
+            'status' => 'draft',
+        ]);
+
+        $response = $this->put(route('admin.properties.update', $property), [
+            'name' => 'Gallery Update Property',
+            'slug' => 'gallery-update-property',
+            'status' => 'draft',
+            'photo_categories' => json_encode(['View']),
+            'gallery_uploads' => [0 => [UploadedFile::fake()->image('view.jpg', 120, 80)]],
+        ]);
+
+        $response->assertRedirect(route('admin.properties.index'));
+        $media = $property->refresh()->photos()->firstOrFail()->media;
+        Storage::disk('public')->assertExists($media->directory.'/'.$media->filename);
     }
 
     public function test_property_store_persists_seo_to_morph(): void

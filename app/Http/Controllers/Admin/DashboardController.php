@@ -105,8 +105,8 @@ class DashboardController extends Controller
      */
     public function calendar(Request $request): View
     {
-        $month = $this->resolveCalendarMonth($request);
-        $holidays = NationalHolidayService::forMonth($month->year, $month->month);
+        $holidayMonth = $this->resolveCalendarMonth($request);
+        $holidays = NationalHolidayService::forMonth($holidayMonth->year, $holidayMonth->month);
         $upcomingHolidays = NationalHolidayService::upcoming();
 
         return view('admin.dashboard._holiday-calendar', compact('holidayMonth', 'holidays', 'upcomingHolidays'));

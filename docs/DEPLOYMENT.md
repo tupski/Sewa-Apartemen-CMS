@@ -119,6 +119,23 @@ php artisan view:cache
 
 Jangan lupa `php artisan optimize:clear` setelah deploy perubahan saat pengembangan.
 
+## Upload Properti di cPanel / _Property Uploads on cPanel_
+
+Upload galeri properti sekarang divalidasi di aplikasi dan menggunakan batas
+konservatif yang dapat dikonfigurasi, bukan menebak batas hosting:
+
+- `PROPERTY_UPLOAD_MAX_FILES` — jumlah maksimum file galeri per penyimpanan (default `30`).
+- `PROPERTY_UPLOAD_MAX_TOTAL_BYTES` — total ukuran byte per penyimpanan (default `104857600`, 100 MB).
+- Setiap file tetap mengikuti validasi tipe gambar dan maksimum 10 MB yang sudah ada.
+- Pastikan `storage/app/public` writable dan jalankan `php artisan storage:link`.
+
+Batas ini **tidak dapat memperbaiki 503 yang terjadi sebelum Laravel menerima
+request multipart**. Jika cPanel memutus request sebelum aplikasi berjalan,
+periksa bersama penyedia hosting: `post_max_size`, `upload_max_filesize`,
+`memory_limit`, `max_execution_time`, dan timeout/proxy/server. Sesuaikan
+`PROPERTY_UPLOAD_MAX_TOTAL_BYTES` dengan batas hosting yang sebenarnya; jangan
+menaikkannya sebagai pengganti pengaturan server.
+
 ## Catatan Penting / _Important Notes_
 
 - **Jangan jalankan perintah destruktif** tanpa persetujuan eksplisit: `migrate:fresh`, `db:wipe`, `rm -rf`, force-push. Prefer migrasi aditif.

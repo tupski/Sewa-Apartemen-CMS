@@ -85,4 +85,19 @@ return [
         public_path('storage') => storage_path('app/public'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Property gallery upload guardrails
+    |--------------------------------------------------------------------------
+    |
+    | These application-level limits complement PHP/cPanel upload limits. They
+    | are deliberately configurable so hosting-specific limits do not need to
+    | be hardcoded into the property form or controller.
+    |
+    */
+    'property_uploads' => [
+        'max_files' => (int) env('PROPERTY_UPLOAD_MAX_FILES', 30),
+        'max_total_bytes' => (int) env('PROPERTY_UPLOAD_MAX_TOTAL_BYTES', 104857600),
+    ],
+
 ];

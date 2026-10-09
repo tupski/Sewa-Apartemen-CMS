@@ -17,8 +17,10 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class PropertyController extends Controller
@@ -391,7 +393,8 @@ class PropertyController extends Controller
 
         $properties = $query->orderBy('order', 'asc')
             ->orderBy('created_at', 'desc')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         return view('admin.properties.index', compact('properties'));
     }
@@ -420,47 +423,40 @@ class PropertyController extends Controller
      */
     public function store(PropertyRequest $request)
     {
+        $createdPaths = [];
+        $deletedMedia = [];
+
         try {
-            $data = array_merge($request->validated(), $this->normalizeDetailData($request), $this->buildPricingData($request));
-            // FIND-005: sanitize rich content before persistence
-            $data['description'] = SafeHtmlService::sanitize($data['description'] ?? null);
+            DB::transaction(function () use ($request, &$createdPaths, &$deletedMedia): void {
+                $data = array_merge($request->validated(), $this->normalizeDetailData($request), $this->buildPricingData($request));
+                $data['description'] = SafeHtmlService::sanitize($data['description'] ?? null);
 
-            // Auto-generate slug if empty
-            if (empty($data['slug'])) {
-                $data['slug'] = Str::slug($data['name']);
-            }
+                if (empty($data['slug'])) {
+                    $data['slug'] = Str::slug($data['name']);
+                }
 
-            $property = Property::create($data);
+                $property = Property::create($data);
+                $property->syncUnitTypeMetadata();
+                $property->amenities()->sync($request->input('amenities', []));
+                $this->saveGallery($request, $property, $createdPaths, $deletedMedia);
+                $this->saveSeo($request, $property);
+            });
 
-            // Keep the metadata layer in step: every offered type needs a row in
-            // the "Detail Tipe Kamar" editor (the migration could only backfill
-            // the types that existed when it ran).
-            $property->syncUnitTypeMetadata();
-
-            // Sync amenities if provided
-            if ($request->has('amenities')) {
-                $property->amenities()->sync($request->amenities);
-            }
-
-            $this->saveGallery($request, $property);
-
-            // Save SEO metadata
-            $property->seo()->updateOrCreate([], [
-                'meta_title' => $request->input('seo.meta_title'),
-                'meta_description' => $request->input('seo.meta_description'),
-                'open_graph' => $request->input('seo.open_graph'),
-                'twitter' => $request->input('seo.twitter'),
-                'canonical_url' => $request->input('seo.canonical_url'),
-                'index_status' => $request->boolean('seo.index_status', true),
-            ]);
+            $this->deleteMediaFiles($deletedMedia);
 
             return redirect()
                 ->route('admin.properties.index')
                 ->with('success', 'Property created successfully.');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $this->cleanupUploadedPaths($createdPaths);
+            Log::error('Property creation failed', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+
             return back()
                 ->withInput()
-                ->with('error', 'Failed to create property: '.$e->getMessage());
+                ->with('error', 'Failed to create property. Please check the gallery files and try again.');
         }
     }
 
@@ -511,49 +507,41 @@ class PropertyController extends Controller
      */
     public function update(PropertyRequest $request, Property $property)
     {
+        $createdPaths = [];
+        $deletedMedia = [];
+
         try {
-            $data = array_merge($request->validated(), $this->normalizeDetailData($request), $this->buildPricingData($request));
-            // FIND-005: sanitize rich content before persistence
-            $data['description'] = SafeHtmlService::sanitize($data['description'] ?? null);
+            DB::transaction(function () use ($request, $property, &$createdPaths, &$deletedMedia): void {
+                $data = array_merge($request->validated(), $this->normalizeDetailData($request), $this->buildPricingData($request));
+                $data['description'] = SafeHtmlService::sanitize($data['description'] ?? null);
 
-            // Auto-generate slug if empty
-            if (empty($data['slug'])) {
-                $data['slug'] = Str::slug($data['name']);
-            }
+                if (empty($data['slug'])) {
+                    $data['slug'] = Str::slug($data['name']);
+                }
 
-            $property->update($data);
+                $property->update($data);
+                $property->syncUnitTypeMetadata();
+                $property->amenities()->sync($request->input('amenities', []));
+                $this->saveGallery($request, $property, $createdPaths, $deletedMedia);
+                $this->saveSeo($request, $property);
+            });
 
-            // Keep the metadata layer in step with the checkbox grid: newly
-            // ticked types get a row, unticked ones lose theirs. Without this a
-            // newly offered type never appeared in the "Detail Tipe Kamar" editor.
-            $property->syncUnitTypeMetadata();
-
-            // Sync amenities. Always sync (default to an empty array) so that
-            // unchecking every amenity on Edit actually detaches them — with the
-            // previous `$request->has('amenities')` guard, an all-unchecked form
-            // omits the `amenities` key entirely and the stale pivot rows were
-            // never removed (a silent "cannot delete amenities" bug).
-            $property->amenities()->sync($request->input('amenities', []));
-
-            $this->saveGallery($request, $property);
-
-            // Save SEO metadata
-            $property->seo()->updateOrCreate([], [
-                'meta_title' => $request->input('seo.meta_title'),
-                'meta_description' => $request->input('seo.meta_description'),
-                'open_graph' => $request->input('seo.open_graph'),
-                'twitter' => $request->input('seo.twitter'),
-                'canonical_url' => $request->input('seo.canonical_url'),
-                'index_status' => $request->boolean('seo.index_status', true),
-            ]);
+            $this->deleteMediaFiles($deletedMedia);
 
             return redirect()
                 ->route('admin.properties.index')
                 ->with('success', 'Properti berhasil diperbarui.');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $this->cleanupUploadedPaths($createdPaths);
+            Log::error('Property update failed', [
+                'property_id' => $property->id,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+
             return back()
                 ->withInput()
-                ->with('error', 'Gagal memperbarui properti: '.$e->getMessage());
+                ->with('error', 'Gagal memperbarui properti. Please check the gallery files and try again.');
         }
     }
 
@@ -585,7 +573,7 @@ class PropertyController extends Controller
     /**
      * Save photo gallery: categories, uploads, media-library picks, deletions.
      */
-    protected function saveGallery(Request $request, Property $property): void
+    protected function saveGallery(Request $request, Property $property, array &$createdPaths = [], array &$deletedMedia = []): void
     {
         // 1. Categories
         $categories = $request->input('photo_categories', []);
@@ -640,12 +628,39 @@ class PropertyController extends Controller
         }
 
         // 3. Direct uploads (stored under properties/{id}/{category-slug}/)
+        $uploadFiles = [];
+        foreach ((array) $request->file('gallery_uploads', []) as $files) {
+            foreach ((array) $files as $file) {
+                $uploadFiles[] = $file;
+            }
+        }
+
+        $maxFiles = max(1, (int) config('filesystems.property_uploads.max_files', 30));
+        $maxTotalBytes = max(1, (int) config('filesystems.property_uploads.max_total_bytes', 104857600));
+        if (count($uploadFiles) > $maxFiles) {
+            throw new \RuntimeException("Too many gallery files. You can upload up to {$maxFiles} files per save.");
+        }
+
+        $totalBytes = 0;
+        foreach ($uploadFiles as $file) {
+            if (! $file instanceof \Illuminate\Http\UploadedFile || ! $file->isValid()) {
+                throw new \RuntimeException('One of the gallery uploads is invalid.');
+            }
+            $totalBytes += (int) $file->getSize();
+        }
+        if ($totalBytes > $maxTotalBytes) {
+            $maxMegabytes = number_format($maxTotalBytes / 1048576, 0);
+            throw new \RuntimeException("The gallery upload is too large. The total limit is {$maxMegabytes} MB per save.");
+        }
+
         foreach ((array) $request->file('gallery_uploads', []) as $index => $files) {
             $category = $categories[(int) $index] ?? null;
             if (! $category) {
+                if ((array) $files !== []) {
+                    throw new \RuntimeException('Every gallery upload must have a valid category.');
+                }
                 continue;
             }
-            $catSlug = Str::slug($category, '_') ?: 'general';
 
             foreach ((array) $files as $file) {
                 try {
@@ -662,6 +677,10 @@ class PropertyController extends Controller
                     $filename = $result['filename'];
                     $folder = $result['folder'];
                     $path = $result['path'];
+                    if (! is_string($path) || $path === '' || ! Storage::disk('public')->exists($path)) {
+                        throw new \RuntimeException('The gallery file could not be saved to storage.');
+                    }
+                    $createdPaths[] = $path;
 
                     $media = Media::create([
                         'user_id' => auth()->id(),
@@ -682,9 +701,13 @@ class PropertyController extends Controller
                         'category' => $category,
                         'sort_order' => $property->photos()->count(),
                     ]);
-                } catch (\Exception $e) {
-                    // Skip unreadable file; keep the rest of the gallery intact
-                    continue;
+                } catch (\Throwable $e) {
+                    Log::warning('Property gallery file failed', [
+                        'property_id' => $property->id,
+                        'user_id' => auth()->id(),
+                        'error' => $e->getMessage(),
+                    ]);
+                    throw $e;
                 }
             }
         }
@@ -695,7 +718,7 @@ class PropertyController extends Controller
             $deletedIds = array_filter(array_map('trim', explode(',', $deletedIds)));
         }
         foreach ((array) $deletedIds as $photoId) {
-            $photo = PropertyPhoto::find($photoId);
+            $photo = $property->photos()->find($photoId);
             if (! $photo) {
                 continue;
             }
@@ -703,7 +726,7 @@ class PropertyController extends Controller
             $photo->delete();
 
             if ($media && $this->mediaIsUnused($media)) {
-                $media->deleteFile();
+                $deletedMedia[] = $media;
                 $media->delete();
             }
         }
@@ -718,6 +741,62 @@ class PropertyController extends Controller
             $photo = $property->photos()->find($photoId);
             if ($photo) {
                 $photo->update(['category' => $newCategory]);
+            }
+        }
+    }
+
+    /**
+     * Persist the property's polymorphic SEO metadata inside the same transaction.
+     */
+    protected function saveSeo(Request $request, Property $property): void
+    {
+        $property->seo()->updateOrCreate([], [
+            'meta_title' => $request->input('seo.meta_title'),
+            'meta_description' => $request->input('seo.meta_description'),
+            'open_graph' => $request->input('seo.open_graph'),
+            'twitter' => $request->input('seo.twitter'),
+            'canonical_url' => $request->input('seo.canonical_url'),
+            'index_status' => $request->boolean('seo.index_status', true),
+        ]);
+    }
+
+    /**
+     * Delete files belonging to media rows removed by a committed gallery save.
+     *
+     * @param array<int, Media> $mediaItems
+     */
+    protected function deleteMediaFiles(array $mediaItems): void
+    {
+        foreach ($mediaItems as $media) {
+            try {
+                $media->deleteFile();
+            } catch (\Throwable $e) {
+                Log::warning('Failed to remove deleted property gallery file', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Remove files written during a failed database transaction.
+     *
+     * Existing media files are not included; only paths created by this request
+     * are tracked and removed.
+     *
+     * @param array<int, string> $paths
+     */
+    protected function cleanupUploadedPaths(array $paths): void
+    {
+        foreach (array_unique($paths) as $path) {
+            try {
+                if (Storage::disk('public')->exists($path)) {
+                    Storage::disk('public')->delete($path);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Failed to clean up property gallery file', [
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
     }

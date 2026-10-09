@@ -147,6 +147,9 @@ class PropertyRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'gallery_uploads.*.*.image' => 'Each gallery file must be a valid image.',
+            'gallery_uploads.*.*.mimes' => 'Gallery images must be JPG, JPEG, PNG, WebP, or GIF files.',
+            'gallery_uploads.*.*.max' => 'Each gallery image may not be larger than 10 MB.',
             'name.required' => 'The property name is required.',
             'slug.unique' => 'This slug is already in use. Please choose a different one.',
             'slug.regex' => 'The slug may only contain lowercase letters, numbers, and hyphens.',

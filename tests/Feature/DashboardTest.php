@@ -63,6 +63,22 @@ class DashboardTest extends TestCase
         $response->assertViewHas('bookingChartValues');
     }
 
+    public function test_admin_calendar_endpoint_uses_holiday_month_and_string_dispatch_payloads(): void
+    {
+        $user = $this->createAdminUser();
+
+        $response = $this->actingAs($user)->get(
+            route('admin.dashboard.calendar', ['month' => '2026-08']),
+            ['X-Requested-With' => 'XMLHttpRequest']
+        );
+
+        $response->assertOk();
+        $response->assertViewIs('admin.dashboard._holiday-calendar');
+        $response->assertViewHas('holidayMonth');
+        $response->assertSee("calendar-navigate', '2026-07", false);
+        $response->assertSee("calendar-navigate', '2026-09", false);
+    }
+
     // ==================== User Management ====================
 
     public function test_user_index_lists_users(): void
