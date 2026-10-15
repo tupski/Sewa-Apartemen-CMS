@@ -584,6 +584,8 @@
     "prop.ask_first": "Ask First",
     "prop.book_apartment": "Book Apartment",
     "prop.view_all_photos": "View All Photos",
+    "prop.amenities_show_more": "Show more",
+    "prop.amenities_show_less": "Show less",
     "prop.wa_ask_message": "Hello, I would like to ask about :property",
     "bkf.room_type": "Room Type",
     "bkf.select_room_type": "Select room type",

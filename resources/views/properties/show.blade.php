@@ -29,7 +29,9 @@
     })->values();
     $allPhotoUrls = $photoGallery->pluck('url')->values();
     $firstPhoto = $photoGallery[0] ?? null;
-    $restPhotos = $photoGallery->slice(1)->take(6)->values();
+    // 7 thumbs + the main photo = 8 uniform tiles, which fills the desktop
+    // 4-column grid exactly (2 even rows).
+    $restPhotos = $photoGallery->slice(1)->take(7)->values();
     // LCP candidate: first gallery photo; with an empty gallery the
     // featured-image fallback section is the LCP instead.
     $lcpMedia = $firstPhoto['media'] ?? null;
@@ -241,10 +243,12 @@
     @if ($photoGallery->isNotEmpty())
         <section class="bg-gray-100 dark:bg-gray-900">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-                <!-- Desktop: big left photo (full height) + all remaining photos right (3 per row) -->
+                <!-- Uniform grid: every tile shares the same aspect-[4/3] box so no photo
+                     ends up taller than the others (the previous md:[grid-row:1/-1] main
+                     photo had no explicit rows to span, so it stretched on its own). -->
                 <div class="relative md:grid md:grid-cols-4 gap-2 rounded-2xl overflow-hidden">
-                    {{-- Main photo: aspect-[4/3] on mobile, spans full grid height on desktop --}}
-                    <button type="button" data-photo="0" class="relative aspect-[4/3] md:aspect-auto md:h-auto md:[grid-row:1/-1] group overflow-hidden text-left">
+                    {{-- Main photo: identical aspect-[4/3] tile as every other photo --}}
+                    <button type="button" data-photo="0" class="relative aspect-[4/3] group overflow-hidden text-left">
                         <x-media-image :media="$firstPhoto['media']"
                                        :alt="$firstPhoto['alt']"
                                        eager
@@ -261,7 +265,7 @@
                         <button type="button" data-photo="{{ $i + 1 }}" class="relative hidden md:block aspect-[4/3] group overflow-hidden">
                             <x-media-image :media="$photo['media']"
                                            :alt="$photo['alt']"
-                                           sizes="(min-width: 768px) 12.5vw, 33vw"
+                                           sizes="(min-width: 768px) 25vw, 33vw"
                                            class="w-full h-full object-cover object-center group-hover:scale-105 transition duration-300"/>
                         </button>
                     @endforeach
@@ -367,7 +371,12 @@
                                 'mall' => 'shopping-bag', 'shopping' => 'shopping-bag', 'pusat perbelanjaan' => 'shopping-bag',
                             ];
                             @endphp
-                            <div class="flex flex-wrap gap-3">
+                            {{-- Collapsed to a single row; the toggle below reveals the rest --}}
+                            <div x-data="{ amenitiesExpanded: false, amenitiesOverflow: false }"
+                                 x-init="$nextTick(() => { amenitiesOverflow = $refs.amenityList.scrollHeight > $refs.amenityList.clientHeight + 1 })">
+                                <div x-ref="amenityList"
+                                     class="flex flex-wrap gap-3 transition-all duration-300"
+                                     :class="amenitiesExpanded ? 'max-h-[2000px]' : 'max-h-16 overflow-hidden'">
                                 @foreach ($property->amenities as $amenity)
                                     @php
                                         // Prefer the admin-selected Font Awesome icon (normalised to valid FA6).
@@ -406,6 +415,17 @@
                                         </div>
                                     </div>
                                 @endforeach
+                                </div>
+                                {{-- Only rendered when the amenities actually overflow one row --}}
+                                <button type="button"
+                                        x-show="amenitiesOverflow"
+                                        x-cloak
+                                        x-on:click="amenitiesExpanded = !amenitiesExpanded"
+                                        class="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded"
+                                        style="color: {{ $primaryColor }}">
+                                    <span x-text="amenitiesExpanded ? @js(__('prop.amenities_show_less')) : @js(__('prop.amenities_show_more'))"></span>
+                                    <svg class="w-4 h-4 transition-transform duration-200" :class="amenitiesExpanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
                             </div>
                             <script>
                             document.querySelectorAll('.amenity-item').forEach(function(el) {
