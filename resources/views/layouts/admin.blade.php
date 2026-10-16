@@ -661,8 +661,15 @@
                     } catch (e) { /* keep empty */ }
                 }
 
-                // Keep hidden textarea in sync (Quill outputs full HTML)
-                function sync() { ta.value = quill.root.innerHTML; }
+                // Keep hidden textarea in sync. getSemanticHTML() (Quill 2)
+                // emits clean <h2>/<ul>/<ol> markup; root.innerHTML would leak
+                // Quill's internal list markup (li[data-list] + ql-ui spans)
+                // that the sanitizer strips, losing bullet/ordered semantics.
+                function sync() {
+                    ta.value = typeof quill.getSemanticHTML === 'function'
+                        ? quill.getSemanticHTML()
+                        : quill.root.innerHTML;
+                }
                 quill.on('text-change', sync);
                 if (form) form.addEventListener('submit', sync);
                 ta.style.display = 'none';

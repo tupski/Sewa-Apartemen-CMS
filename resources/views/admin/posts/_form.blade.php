@@ -412,6 +412,10 @@
         var formRoot = document.getElementById('post-form');
         if (!formRoot || formRoot.dataset.postFormInited) return;
         formRoot.dataset.postFormInited = '1';
+
+        // Shared Quill instance (assigned by section 3 below) so the status
+        // buttons can read semantic HTML on programmatic form.submit().
+        var postQuill = null;
         // ═══════════════════════════════════════════════════════════════
         // 1. SLUG: auto-generate from title (stop if user edits slug)
         // ═══════════════════════════════════════════════════════════════
@@ -540,6 +544,13 @@
             function syncQuillBeforeSubmit() {
                 var ta = document.getElementById('content');
                 if (!ta) return;
+                // getSemanticHTML() (Quill 2) emits clean <ul>/<ol> markup;
+                // root.innerHTML would leak Quill's internal list markup
+                // (li[data-list] + ql-ui spans) that the sanitizer strips.
+                if (postQuill && typeof postQuill.getSemanticHTML === 'function') {
+                    ta.value = postQuill.getSemanticHTML();
+                    return;
+                }
                 var editor = document.querySelector('.wysiwyg-container .ql-editor');
                 if (editor) {
                     ta.value = editor.innerHTML;
@@ -642,9 +653,19 @@
                 } catch (e) { /* keep empty */ }
             }
 
-            // Sync hidden textarea on submit
+            // Expose the instance for the status buttons (section 2).
+            postQuill = quill;
+
+            // Sync hidden textarea on submit. getSemanticHTML() (Quill 2)
+            // emits clean <h2>/<ul>/<ol> markup; root.innerHTML would leak
+            // Quill's internal list markup (li[data-list] + ql-ui spans),
+            // which the sanitizer strips, losing bullet/ordered semantics.
             var form = ta.closest('form');
-            function sync() { ta.value = quill.root.innerHTML; }
+            function sync() {
+                ta.value = typeof quill.getSemanticHTML === 'function'
+                    ? quill.getSemanticHTML()
+                    : quill.root.innerHTML;
+            }
             quill.on('text-change', sync);
             if (form) form.addEventListener('submit', sync);
             ta.style.display = 'none';
